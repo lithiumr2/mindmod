@@ -30,6 +30,11 @@ jobs:
           rm -rf android
           flutter create . --platforms=android --org=com.mindmod
 
+      - name: Actualizar compileSdk a 36
+        run: |
+          sed -i 's/compileSdk .*/compileSdk = 36/g' android/app/build.gradle
+          sed -i 's/compileSdkVersion .*/compileSdkVersion = 36/g' android/app/build.gradle
+
       - name: Instalar dependencias
         run: flutter pub get
 
