@@ -25,17 +25,6 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Regenerar estructura Android limpia (v2 embedding)
-        run: |
-          rm -rf android
-          flutter create . --platforms=android --org=com.mindmod
-
-      - name: Actualizar compileSdk a 36
-        run: |
-          find android -name "build.gradle*" -exec sed -i 's/compileSdk = .*/compileSdk = 36/g' {} +
-          find android -name "build.gradle*" -exec sed -i 's/compileSdk .*/compileSdk = 36/g' {} +
-          find android -name "build.gradle*" -exec sed -i 's/compileSdkVersion .*/compileSdkVersion = 36/g' {} +
-
       - name: Instalar dependencias
         run: flutter pub get
 
@@ -47,3 +36,4 @@ jobs:
         with:
           name: mindmod-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+          
