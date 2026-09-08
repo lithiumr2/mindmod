@@ -25,6 +25,51 @@ jobs:
         with:
           channel: 'stable'
 
+      - name: Regenerar estructura Android limpia (v2 embedding)
+        run: |
+          rm -rf android
+          flutter create . --platforms=android --org=com.mindmod
+
+      - name: Forzar compileSdk y minSdk en el proyecto y sus dependencias
+        run: |
+          python3 -c "
+          import os
+
+          # 1. Modificar archivos build.gradle en android/
+          for root, dirs, files in os.walk('android'):
+              for file in files:
+                  if file.startswith('build.gradle'):
+                      filepath = os.path.join(root, file)
+                      with open(filepath, 'r') as f:
+                          content = f.read()
+                      
+                      # Insertar o reemplazar compileSdk
+                      if 'compileSdk' in content:
+                          import re
+                          content = re.sub(r'compileSdk\s*=*\s*\d+', 'compileSdk = 36', content)
+                          content = re.sub(r'compileSdkVersion\s*=*\s*\d+', 'compileSdkVersion = 36', content)
+                      
+                      with open(filepath, 'w') as f:
+                          f.write(content)
+
+          # 2. Agregar subprojects rule al android/build.gradle raíz para forzar a las dependencias
+          root_gradle = 'android/build.gradle'
+          if os.path.exists(root_gradle):
+              with open(root_gradle, 'a') as f:
+                  f.write('''
+
+          subprojects {
+              afterEvaluate { project ->
+                  if (project.hasProperty('android')) {
+                      project.android {
+                          compileSdkVersion 36
+                      }
+                  }
+              }
+          }
+          ''')
+          "
+
       - name: Instalar dependencias
         run: flutter pub get
 
@@ -36,4 +81,3 @@ jobs:
         with:
           name: mindmod-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
-          
