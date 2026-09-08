@@ -32,8 +32,9 @@ jobs:
 
       - name: Actualizar compileSdk a 36
         run: |
-          sed -i 's/compileSdk .*/compileSdk = 36/g' android/app/build.gradle
-          sed -i 's/compileSdkVersion .*/compileSdkVersion = 36/g' android/app/build.gradle
+          find android -name "build.gradle*" -exec sed -i 's/compileSdk = .*/compileSdk = 36/g' {} +
+          find android -name "build.gradle*" -exec sed -i 's/compileSdk .*/compileSdk = 36/g' {} +
+          find android -name "build.gradle*" -exec sed -i 's/compileSdkVersion .*/compileSdkVersion = 36/g' {} +
 
       - name: Instalar dependencias
         run: flutter pub get
@@ -46,4 +47,3 @@ jobs:
         with:
           name: mindmod-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
-          
