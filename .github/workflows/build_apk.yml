@@ -27,6 +27,25 @@ jobs:
       - name: Instalar dependencias
         run: flutter pub get
 
+      - name: Forzar compileSdk 36 en todos los plugins
+        run: |
+          mkdir -p ~/.gradle
+          cat << 'EOF' > ~/.gradle/init.gradle
+          allprojects {
+              afterEvaluate { project ->
+                  if (project.hasProperty('android')) {
+                      try {
+                          project.android.compileSdkVersion 36
+                      } catch (Exception e) {
+                          try {
+                              project.android.compileSdk = 36
+                          } catch (Exception e2) {}
+                      }
+                  }
+              }
+          }
+          EOF
+
       - name: Compilar APK Release
         run: flutter build apk --release --no-tree-shake-icons
 
