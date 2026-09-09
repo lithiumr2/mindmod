@@ -1,0 +1,38 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Configurar Flutter
+        uses: actions/subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Instalar dependencias
+        run: flutter pub get
+
+      - name: Compilar APK Release
+        run: flutter build apk --release --no-tree-shake-icons
+
+      - name: Subir ejecutable APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: mindmod-release
+          path: build/app/outputs/flutter-apk/app-release.apk
+          
