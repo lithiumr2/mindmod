@@ -18,6 +18,10 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   @override
   Widget build(BuildContext context) {
     final activeFile = ref.watch(projectProvider).activeFile;
+    
+    // Evitamos que mod.json intente renderizarse en el formulario visual de bloques
+    final bool isModJson = activeFile?.name == 'mod.json';
+    final bool forceCodeView = _isCodeView || isModJson;
 
     return Scaffold(
       backgroundColor: const Color(0xFF18181C),
@@ -31,15 +35,18 @@ class _MainScreenState extends ConsumerState<MainScreen> {
         actions: [
           if (activeFile != null && !activeFile.isImage)
             ToggleButtons(
-              isSelected: [!_isCodeView, _isCodeView],
+              // Si es mod.json, forzamos que el selector marque "Código" y deshabilitamos el "Visual"
+              isSelected: [!forceCodeView, forceCodeView],
               onPressed: (index) {
-                setState(() {
-                  _isCodeView = index == 1;
-                });
+                if (!isModJson) {
+                  setState(() {
+                    _isCodeView = index == 1;
+                  });
+                }
               },
               color: Colors.white54,
               selectedColor: Colors.black,
-              fillColor: const Color(0xFFFBC02D),
+              fillColor: isModJson ? Colors.grey : const Color(0xFFFBC02D),
               constraints: const BoxConstraints(minHeight: 32, minWidth: 64),
               children: const [
                 Icon(Icons.edit_outlined, size: 18),
@@ -50,8 +57,15 @@ class _MainScreenState extends ConsumerState<MainScreen> {
         ],
       ),
       body: Row(
+        // SOLUCIÓN 1: Obliga a los widgets hijos a ocupar exactamente el 100% de la pantalla disponible.
+        // Esto elimina el error de altura de CodeEditorWidget y VisualFormWidget.
+        crossAxisAlignment: CrossAxisAlignment.stretch, 
         children: [
-          const SidebarWidget(),
+          // SOLUCIÓN 2: Enjaulamos la barra lateral en un ancho fijo de 260px para evitar un colapso horizontal.
+          const SizedBox(
+            width: 260,
+            child: SidebarWidget(),
+          ),
           Expanded(
             child: activeFile == null
                 ? const Center(
@@ -60,7 +74,8 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                       style: TextStyle(color: Colors.white54),
                     ),
                   )
-                : (_isCodeView && !activeFile.isImage
+                // SOLUCIÓN 3: Renderiza con seguridad. Si es mod.json, inyecta siempre el CodeEditorWidget.
+                : (forceCodeView && !activeFile.isImage
                     ? const CodeEditorWidget()
                     : const VisualFormWidget()),
           ),
