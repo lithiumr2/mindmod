@@ -33,7 +33,7 @@ class MindmodApp extends StatelessWidget {
           surface: Color(0xFF202026),
         ),
       ),
-      home: MainScreen(), // Removido el "const" de aquí
+      home: MainScreen(),
     );
   }
 }
