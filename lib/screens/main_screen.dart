@@ -22,9 +22,11 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFF18181C),
+      extendBodyBehindAppBar: true, // Permite que la interfaz ocupe toda la pantalla de forma fluida
       appBar: AppBar(
-        backgroundColor: const Color(0xFF141418),
+        backgroundColor: Colors.transparent, // Hace la barra superior completamente transparente
         elevation: 0,
+        scrolledUnderElevation: 0,
         title: const Text('Mindmod IDE', style: TextStyle(color: Color(0xFFFBC02D), fontWeight: FontWeight.bold)),
         actions: [
           TextButton.icon(
@@ -47,14 +49,17 @@ class _MainScreenState extends ConsumerState<MainScreen> {
           const SizedBox(width: 12),
         ],
       ),
-      body: Row(
-        children: [
-          const SidebarWidget(),
-          const VerticalDivider(width: 1, color: Color(0xFF303038)),
-          Expanded(
-            child: isVisualMode ? const VisualFormWidget() : const CodeEditorWidget(),
-          ),
-        ],
+      body: Padding(
+        padding: const EdgeInsets.only(top: 56.0), // Evita que el contenido quede oculto detrás de la barra superior transparente
+        child: Row(
+          children: [
+            const SidebarWidget(),
+            const VerticalDivider(width: 1, color: Color(0xFF303038)),
+            Expanded(
+              child: isVisualMode ? const VisualFormWidget() : const CodeEditorWidget(),
+            ),
+          ],
+        ),
       ),
     );
   }
