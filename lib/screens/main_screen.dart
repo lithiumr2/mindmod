@@ -155,7 +155,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
               border: Border(right: BorderSide(color: Colors.white12, width: 1)),
             ),
             child: Column(
-              crossAxisAlignment: CrossAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Padding(
                   padding: EdgeInsets.all(12.0),
