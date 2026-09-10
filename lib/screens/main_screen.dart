@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:convert';
 import '../widgets/sidebar_widget.dart';
 import '../widgets/visual_form_widget.dart';
 import '../widgets/code_editor_widget.dart';
+import '../widgets/mod_json_form_widget.dart';
 import '../providers/project_provider.dart';
 import '../services/export_service.dart';
 
@@ -18,8 +20,9 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final projectState = ref.watch(projectProvider);
-    final activeFile = projectState.activeFile;
+    final activeFile = ref.watch(projectProvider).activeFile;
+    
+    final bool isModJson = activeFile?.name == 'mod.json';
 
     return Scaffold(
       backgroundColor: const Color(0xFF18181C),
@@ -36,12 +39,22 @@ class _MainScreenState extends ConsumerState<MainScreen> {
           ),
         ),
         actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.menu, color: Colors.white),
-            color: const Color(0xFF202026),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-              side: const BorderSide(color: Color(0xFF303038)),
+          if (activeFile != null && !activeFile.isImage)
+            ToggleButtons(
+              isSelected: [!_isCodeView, _isCodeView],
+              onPressed: (index) {
+                setState(() {
+                  _isCodeView = index == 1;
+                });
+              },
+              color: Colors.white54,
+              selectedColor: Colors.black,
+              fillColor: const Color(0xFFFBC02D),
+              constraints: const BoxConstraints(minHeight: 32, minWidth: 64),
+              children: const [
+                Icon(Icons.edit_outlined, size: 18),
+                Icon(Icons.code, size: 18),
+              ],
             ),
             onSelected: (value) async {
               if (value == 'toggle_mode') {
@@ -89,7 +102,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
         ],
       ),
       body: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+        crossAxisAlignment: CrossAxisAlignment.stretch, 
         children: [
           const SizedBox(
             width: 260,
@@ -103,11 +116,37 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                       style: TextStyle(color: Colors.white54),
                     ),
                   )
-                : (activeFile.name == 'mod.json'
-                    ? const CodeEditorWidget()
-                    : (isVisualMode && !activeFile.isImage
-                        ? const VisualFormWidget()
-                        : const CodeEditorWidget())),
+                : activeFile.isImage
+                    ? Center(
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF202026),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(activeFile.name, style: const TextStyle(color: Colors.white70)),
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                height: 200,
+                                child: Image.memory(
+                                  base64Decode(activeFile.content),
+                                  errorBuilder: (context, error, stackTrace) => const Text(
+                                    'Error al cargar imagen',
+                                    style: TextStyle(color: Colors.redAccent),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : isModJson
+                        // Eliminados los 'const' que provocaban el error de compilación
+                        ? (_isCodeView ? const CodeEditorWidget() : ModJsonFormWidget())
+                        : (_isCodeView ? const CodeEditorWidget() : VisualFormWidget()),
           ),
         ],
       ),

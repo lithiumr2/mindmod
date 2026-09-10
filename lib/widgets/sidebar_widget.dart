@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:file_picker/file_picker.dart' as filePicker;
+import 'dart:convert';
 import '../providers/project_provider.dart';
 import '../models/project_file.dart';
 
@@ -16,8 +18,8 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
   @override
   Widget build(BuildContext context) {
     final projectState = ref.watch(projectProvider);
+    final files = projectState.files;
 
-    // Determinar etiqueta dinámica para el botón inferior según la carpeta activa
     String buttonLabel = 'New Block';
     if (selectedFolder == 'items') buttonLabel = 'New Item';
     if (selectedFolder == 'liquids') buttonLabel = 'New Liquid';
@@ -38,6 +40,7 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
           ),
           Expanded(
             child: ListView(
+              padding: EdgeInsets.zero,
               children: [
                 ListTile(
                   leading: const Icon(Icons.description, color: Color(0xFFFBC02D), size: 18),
@@ -49,10 +52,11 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
                 ExpansionTile(
                   leading: const Icon(Icons.folder, color: Color(0xFFFBC02D), size: 18),
                   title: const Text('content', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                  initiallyExpanded: true,
                   children: [
-                    _buildSubFolderCategory(projectState, 'blocks', 'blocks', Icons.folder, Colors.blueAccent),
-                    _buildSubFolderCategory(projectState, 'items', 'items', Icons.folder, Colors.orangeAccent),
-                    _buildSubFolderCategory(projectState, 'liquids', 'liquids', Icons.folder, Colors.cyanAccent),
+                    _buildSubFolderCategory(files, projectState, 'blocks', 'blocks', Icons.folder, Colors.blueAccent),
+                    _buildSubFolderCategory(files, projectState, 'items', 'items', Icons.folder, Colors.orangeAccent),
+                    _buildSubFolderCategory(files, projectState, 'liquids', 'liquids', Icons.folder, Colors.cyanAccent),
                   ],
                 ),
                 ListTile(
@@ -63,7 +67,7 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
                   onTap: () => setState(() => selectedFolder = 'sprites'),
                 ),
                 if (selectedFolder == 'sprites')
-                  ...projectState.files.where((f) => f.isImage).map((file) => ListTile(
+                  ...files.where((f) => f.isImage).map((file) => ListTile(
                         dense: true,
                         contentPadding: const EdgeInsets.only(left: 32.0, right: 16.0),
                         leading: const Icon(Icons.image, color: Colors.purpleAccent, size: 16),
@@ -84,7 +88,10 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFBC02D), foregroundColor: Colors.black),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFBC02D),
+                  foregroundColor: Colors.black,
+                ),
                 icon: const Icon(Icons.add, size: 16),
                 label: Text(buttonLabel, style: const TextStyle(fontSize: 12)),
                 onPressed: () {
@@ -98,19 +105,44 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
     );
   }
 
-  Widget _buildSubFolderCategory(dynamic projectState, String title, String folderKey, IconData icon, Color iconColor) {
-    final files = projectState.files.where((f) {
+  Widget _buildSubFolderCategory(
+    List<ProjectFile> files,
+    dynamic projectState,
+    String title,
+    String folderKey,
+    IconData icon,
+    Color iconColor,
+  ) {
+    final categoryFiles = files.where((f) {
       if (f.name == 'mod.json' || f.isImage) return false;
-      if (folderKey == 'items') return f.name.contains('item') || f.content.contains('type: "Item"');
-      if (folderKey == 'liquids') return f.name.contains('liquid') || f.content.contains('type: "Liquid"');
-      return !f.name.contains('item') && !f.name.contains('liquid') && !f.content.contains('type: "Item"') && !f.content.contains('type: "Liquid"');
+      final content = f.content.toLowerCase();
+      if (folderKey == 'items') {
+        return f.name.contains('item') || content.contains('type: "item"');
+      }
+      if (folderKey == 'liquids') {
+        return f.name.contains('liquid') || content.contains('type: "liquid"');
+      }
+      return !f.name.contains('item') && 
+             !f.name.contains('liquid') && 
+             !content.contains('type: "item"') && 
+             !content.contains('type: "liquid"');
     }).toList();
 
     return ExpansionTile(
       leading: Icon(icon, color: iconColor, size: 18),
-      title: Text(title, style: TextStyle(color: selectedFolder == folderKey ? const Color(0xFFFBC02D) : Colors.white70, fontSize: 13)),
-      onExpansionChanged: (_) => setState(() => selectedFolder = folderKey),
-      children: files.map((file) => ListTile(
+      title: Text(
+        title,
+        style: TextStyle(
+          color: selectedFolder == folderKey ? const Color(0xFFFBC02D) : Colors.white70,
+          fontSize: 13,
+        ),
+      ),
+      onExpansionChanged: (expanded) {
+        if (expanded) {
+          setState(() => selectedFolder = folderKey);
+        }
+      },
+      children: categoryFiles.map((file) => ListTile(
             dense: true,
             contentPadding: const EdgeInsets.only(left: 32.0, right: 16.0),
             leading: const Icon(Icons.insert_drive_file, color: Colors.amber, size: 16),
@@ -126,7 +158,27 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
     );
   }
 
-  void _showNewItemDialog(BuildContext context, WidgetRef ref, String folder) {
+  Future<void> _showNewItemDialog(BuildContext context, WidgetRef ref, String folder) async {
+    if (folder == 'sprites') {
+      filePicker.FilePickerResult? result = await filePicker.FilePicker.platform.pickFiles(
+        type: filePicker.FileType.image,
+        withData: true,
+      );
+
+      if (result != null && result.files.single.bytes != null) {
+        final fileName = result.files.single.name;
+        final bytes = result.files.single.bytes!;
+        final base64Image = base64Encode(bytes);
+        
+        ref.read(projectProvider.notifier).addFile(
+              fileName,
+              FileType.image,
+              content: base64Image,
+            );
+      }
+      return;
+    }
+
     String defaultName = 'copper-wall.hjson';
     String title = 'Create New Block';
     String defaultContent = '{\n  name: "copper-wall"\n  type: "Wall"\n  health: 200\n  size: 1\n}';
@@ -139,8 +191,6 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
       defaultName = 'custom-liquid.hjson';
       title = 'Create New Liquid';
       defaultContent = '{\n  name: "custom-liquid"\n  color: "ff0000"\n}';
-    } else if (folder == 'sprites') {
-      return;
     }
 
     final controller = TextEditingController(text: defaultName);
@@ -166,7 +216,7 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
                 final baseName = controller.text.split('.').first;
                 ref.read(projectProvider.notifier).addFile(
                       controller.text.trim(),
-                      folder == 'sprites' ? FileType.image : FileType.hjson,
+                      FileType.hjson,
                       content: defaultContent
                           .replaceAll('copper-wall', baseName)
                           .replaceAll('custom-item', baseName)
