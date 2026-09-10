@@ -22,35 +22,60 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFF18181C),
-      extendBodyBehindAppBar: true, // Permite que la interfaz ocupe toda la pantalla de forma fluida
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        backgroundColor: Colors.transparent, // Hace la barra superior completamente transparente
+        backgroundColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
         title: const Text('Mindmod IDE', style: TextStyle(color: Color(0xFFFBC02D), fontWeight: FontWeight.bold)),
         actions: [
-          TextButton.icon(
-            icon: Icon(isVisualMode ? Icons.code : Icons.tune, color: Colors.white, size: 18),
-            label: Text(isVisualMode ? 'Ver Código' : 'Ver Formulario', style: const TextStyle(color: Colors.white)),
-            onPressed: () => setState(() => isVisualMode = !isVisualMode),
-          ),
-          const SizedBox(width: 8),
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFBC02D), foregroundColor: Colors.black),
-            icon: const Icon(Icons.download, size: 18),
-            label: const Text('Exportar ZIP'),
-            onPressed: () async {
-              final path = await ExportService.exportModToZip(projectState.files);
-              if (context.mounted && path != null) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Mod exportado en: $path')));
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.menu, color: Colors.white),
+            color: const Color(0xFF202026),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: const BorderSide(color: Color(0xFF303038)),
+            ),
+            onSelected: (value) async {
+              if (value == 'toggle_mode') {
+                setState(() => isVisualMode = !isVisualMode);
+              } else if (value == 'export_zip') {
+                final path = await ExportService.exportModToZip(projectState.files);
+                if (context.mounted && path != null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Mod exportado en Descargas: $path')),
+                  );
+                }
               }
             },
+            itemBuilder: (BuildContext context) => [
+              PopupMenuItem(
+                value: 'toggle_mode',
+                child: Row(
+                  children: [
+                    Icon(isVisualMode ? Icons.code : Icons.tune, color: const Color(0xFFFBC02D), size: 18),
+                    const SizedBox(width: 10),
+                    Text(isVisualMode ? 'Ver Código' : 'Ver Formulario', style: const TextStyle(color: Colors.white)),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'export_zip',
+                child: Row(
+                  children: [
+                    Icon(Icons.download, color: Color(0xFFFBC02D), size: 18),
+                    SizedBox(width: 10),
+                    Text('Exportar ZIP', style: TextStyle(color: Colors.white)),
+                  ],
+                ),
+              ),
+            ],
           ),
           const SizedBox(width: 12),
         ],
       ),
       body: Padding(
-        padding: const EdgeInsets.only(top: 56.0), // Evita que el contenido quede oculto detrás de la barra superior transparente
+        padding: const EdgeInsets.only(top: 56.0),
         child: Row(
           children: [
             const SidebarWidget(),
