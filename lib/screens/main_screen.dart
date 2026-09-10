@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'dart:convert';
-import '../widgets/sidebar_widget.dart';
-import '../widgets/visual_form_widget.dart';
-import '../widgets/code_editor_widget.dart';
-import '../widgets/mod_json_form_widget.dart';
 import '../providers/project_provider.dart';
 import '../services/export_service.dart';
+import '../widgets/code_editor_widget.dart';
+import '../widgets/visual_form_widget.dart';
+import '../widgets/mod_json_form_widget.dart';
 
 class MainScreen extends ConsumerStatefulWidget {
   const MainScreen({super.key});
@@ -16,28 +14,17 @@ class MainScreen extends ConsumerStatefulWidget {
 }
 
 class _MainScreenState extends ConsumerState<MainScreen> {
-  bool isVisualMode = true;
+  bool _isCodeView = false;
 
   @override
   Widget build(BuildContext context) {
-    final activeFile = ref.watch(projectProvider).activeFile;
-    
-    final bool isModJson = activeFile?.name == 'mod.json';
+    final projectState = ref.watch(projectProvider);
+    final activeFile = projectState.activeFile;
+    final isModJson = activeFile?.name == 'mod.json';
 
     return Scaffold(
-      backgroundColor: const Color(0xFF18181C),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF202026),
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        title: const Text(
-          'Mindmod IDE',
-          style: TextStyle(
-            color: Color(0xFFFBC02D),
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
-        ),
+        title: Text(activeFile?.name ?? 'Mindmod IDE'),
         actions: [
           if (activeFile != null && !activeFile.isImage)
             ToggleButtons(
@@ -56,11 +43,12 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                 Icon(Icons.code, size: 18),
               ],
             ),
+          PopupMenuButton<String>(
             onSelected: (value) async {
               if (value == 'toggle_mode') {
-                setState(() => isVisualMode = !isVisualMode);
+                setState(() => _isCodeView = !_isCodeView);
               } else if (value == 'export_zip') {
-                final path = await ExportService.exportModToZip(projectState.files);
+                final path = await ExportService.exportModToZip(ref.read(projectProvider).files);
                 if (context.mounted && path != null) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('Mod exportado en Descargas: $path')),
@@ -74,13 +62,13 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                 child: Row(
                   children: [
                     Icon(
-                      isVisualMode ? Icons.code : Icons.tune,
+                      !_isCodeView ? Icons.code : Icons.tune,
                       color: const Color(0xFFFBC02D),
                       size: 18,
                     ),
                     const SizedBox(width: 10),
                     Text(
-                      isVisualMode ? 'Ver Código' : 'Ver Formulario',
+                      !_isCodeView ? 'Ver Código' : 'Ver Formulario',
                       style: const TextStyle(color: Colors.white),
                     ),
                   ],
@@ -101,55 +89,13 @@ class _MainScreenState extends ConsumerState<MainScreen> {
           const SizedBox(width: 12),
         ],
       ),
-      body: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch, 
-        children: [
-          const SizedBox(
-            width: 260,
-            child: SidebarWidget(),
-          ),
-          Expanded(
-            child: activeFile == null
-                ? const Center(
-                    child: Text(
-                      'No file selected',
-                      style: TextStyle(color: Colors.white54),
-                    ),
-                  )
-                : activeFile.isImage
-                    ? Center(
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF202026),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(activeFile.name, style: const TextStyle(color: Colors.white70)),
-                              const SizedBox(height: 12),
-                              SizedBox(
-                                height: 200,
-                                child: Image.memory(
-                                  base64Decode(activeFile.content),
-                                  errorBuilder: (context, error, stackTrace) => const Text(
-                                    'Error al cargar imagen',
-                                    style: TextStyle(color: Colors.redAccent),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                    : isModJson
-                        // Eliminados los 'const' que provocaban el error de compilación
-                        ? (_isCodeView ? const CodeEditorWidget() : ModJsonFormWidget())
-                        : (_isCodeView ? const CodeEditorWidget() : VisualFormWidget()),
-          ),
-        ],
-      ),
+      body: activeFile == null
+          ? const Center(child: Text('Selecciona o crea un archivo', style: TextStyle(color: Colors.white)))
+          : activeFile.isImage
+              ? const Center(child: Text('Vista de imagen no disponible en este editor', style: TextStyle(color: Colors.white)))
+              : isModJson
+                  ? (_isCodeView ? const CodeEditorWidget() : const ModJsonFormWidget())
+                  : (_isCodeView ? const CodeEditorWidget() : const VisualFormWidget()),
     );
   }
 }
