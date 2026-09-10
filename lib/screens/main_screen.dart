@@ -23,9 +23,8 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFF18181C),
-      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: const Color(0xFF202026),
         elevation: 0,
         scrolledUnderElevation: 0,
         title: const Text(
@@ -33,6 +32,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
           style: TextStyle(
             color: Color(0xFFFBC02D),
             fontWeight: FontWeight.bold,
+            fontSize: 16,
           ),
         ),
         actions: [
@@ -88,31 +88,28 @@ class _MainScreenState extends ConsumerState<MainScreen> {
           const SizedBox(width: 12),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.only(top: 56.0),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(
-              width: 260,
-              child: SidebarWidget(),
-            ),
-            Expanded(
-              child: activeFile == null
-                  ? const Center(
-                      child: Text(
-                        'No file selected',
-                        style: TextStyle(color: Colors.white54),
-                      ),
-                    )
-                  : (activeFile.name == 'mod.json'
-                      ? const CodeEditorWidget()
-                      : (isVisualMode && !activeFile.isImage
-                          ? const VisualFormWidget()
-                          : const CodeEditorWidget())),
-            ),
-          ],
-        ),
+      body: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(
+            width: 260,
+            child: SidebarWidget(),
+          ),
+          Expanded(
+            child: activeFile == null
+                ? const Center(
+                    child: Text(
+                      'No file selected',
+                      style: TextStyle(color: Colors.white54),
+                    ),
+                  )
+                : (activeFile.name == 'mod.json'
+                    ? const CodeEditorWidget()
+                    : (isVisualMode && !activeFile.isImage
+                        ? const VisualFormWidget()
+                        : const CodeEditorWidget())),
+          ),
+        ],
       ),
     );
   }
