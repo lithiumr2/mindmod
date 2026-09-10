@@ -23,7 +23,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
   Widget build(BuildContext context) {
     final activeFile = ref.watch(projectProvider).activeFile;
     if (activeFile == null) {
-      return const Center(child: Text('Sin archivo seleccionado', style: TextStyle(color: Colors.white)));
+      return const Center(child: Text('No file selected', style: TextStyle(color: Colors.white54)));
     }
 
     final data = HjsonEngine.parse(activeFile.content);
@@ -39,8 +39,8 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
         children: [
           if (suggestedProps.isNotEmpty) ...[
             const Text(
-              'Propiedades recomendadas:',
-              style: TextStyle(color: Color(0xFFFBC02D), fontSize: 12, fontWeight: FontWeight.bold),
+              'Recommended Properties:',
+              style: TextStyle(color: Color(0xFFFBC02D), fontSize: 13, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Wrap(
@@ -50,7 +50,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                 return ActionChip(
                   backgroundColor: const Color(0xFF202026),
                   side: const BorderSide(color: Color(0xFF303038)),
-                  label: Text('+ $prop', style: const TextStyle(color: Colors.white, fontSize: 12)),
+                  label: Text('+ $prop', style: const TextStyle(color: Colors.white70, fontSize: 12)),
                   onPressed: () {
                     data[prop] = '';
                     _saveData(data);
@@ -59,27 +59,48 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
               }).toList(),
             ),
             const SizedBox(height: 16),
+            const Divider(color: Color(0xFF303038)),
+            const SizedBox(height: 8),
           ],
           ...data.entries.map((entry) {
             return Padding(
               padding: const EdgeInsets.only(bottom: 12.0),
               child: Row(
                 children: [
-                  SizedBox(
-                    width: 130,
-                    child: Text('${entry.key}:', style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-                  ),
+                  // Contenedor ancho y cómodo para la llave de la propiedad
                   Expanded(
+                    flex: 2,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF141418),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFF303038)),
+                      ),
+                      child: Text(
+                        entry.key,
+                        style: const TextStyle(color: Color(0xFFFBC02D), fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Campo de texto expandido que ocupa todo el espacio libre
+                  Expanded(
+                    flex: 3,
                     child: TextField(
                       controller: TextEditingController(text: entry.value.toString())
                         ..selection = TextSelection.collapsed(offset: entry.value.toString().length),
-                      style: const TextStyle(color: Colors.white),
+                      style: const TextStyle(color: Colors.white, fontSize: 13),
                       decoration: InputDecoration(
                         isDense: true,
                         filled: true,
                         fillColor: const Color(0xFF202026),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(color: Color(0xFF303038)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
                           borderSide: const BorderSide(color: Color(0xFF303038)),
                         ),
                       ),
@@ -93,8 +114,10 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                       },
                     ),
                   ),
+                  const SizedBox(width: 4),
+                  // Botón de eliminar separado al margen derecho
                   IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 18),
+                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
                     onPressed: () {
                       data.remove(entry.key);
                       _saveData(data);
