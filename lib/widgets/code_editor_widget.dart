@@ -16,6 +16,14 @@ class _CodeEditorWidgetState extends ConsumerState<CodeEditorWidget> {
   void initState() {
     super.initState();
     _controller = TextEditingController();
+    
+    // Cargar contenido inicial al montar el widget si existe
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final activeFile = ref.read(projectProvider).activeFile;
+      if (activeFile != null) {
+        _controller.text = activeFile.content;
+      }
+    });
   }
 
   @override
@@ -26,10 +34,12 @@ class _CodeEditorWidgetState extends ConsumerState<CodeEditorWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final activeFile = ref.watch(projectProvider).activeFile;
-    if (activeFile != null && _controller.text != activeFile.content) {
-      _controller.text = activeFile.content;
-    }
+    // Escuchar cambios en el archivo activo de forma segura sin romper el renderizado
+    ref.listen(projectProvider.select((s) => s.activeFile), (previous, next) {
+      if (next != null && _controller.text != next.content) {
+        _controller.text = next.content;
+      }
+    });
 
     return Container(
       color: const Color(0xFF18181C),
