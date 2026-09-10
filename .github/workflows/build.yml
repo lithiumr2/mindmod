@@ -2,10 +2,10 @@ name: Build Android APK
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "experimental" ]
   pull_request:
-    branches: [ "main" ]
-
+    branches: [ "main", "experimental" ]
+    
 jobs:
   build:
     runs-on: ubuntu-latest
