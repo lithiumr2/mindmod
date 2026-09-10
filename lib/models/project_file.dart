@@ -7,6 +7,8 @@ enum FileType {
   liquid,
   modJson,
   image,
+  json,
+  hjson,
   other,
 }
 
@@ -30,5 +32,36 @@ class ProjectFile {
     } catch (_) {
       return null;
     }
+  }
+
+  factory ProjectFile.fromJson(Map<String, dynamic> json) {
+    return ProjectFile(
+      name: json['name'] as String? ?? '',
+      content: json['content'] as String? ?? '',
+      type: FileType.values.firstWhere(
+        (e) => e.name == json['type'],
+        orElse: () => FileType.other,
+      ),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'content': content,
+      'type': type.name,
+    };
+  }
+
+  ProjectFile copyWith({
+    String? name,
+    String? content,
+    FileType? type,
+  }) {
+    return ProjectFile(
+      name: name ?? this.name,
+      content: content ?? this.content,
+      type: type ?? this.type,
+    );
   }
 }
