@@ -26,6 +26,27 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
       return const Center(child: Text('No file selected', style: TextStyle(color: Colors.white54)));
     }
 
+    if (activeFile.isImage) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.image, size: 64, color: Colors.purpleAccent),
+            const SizedBox(height: 12),
+            Text(
+              activeFile.name,
+              style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Sprite graphic file (Binary format)',
+              style: TextStyle(color: Colors.white54, fontSize: 13),
+            ),
+          ],
+        ),
+      );
+    }
+
     final data = HjsonEngine.parse(activeFile.content);
     final currentType = data['type']?.toString() ?? 'Wall';
     final suggestedProps = (_propertyDictionary[currentType] ?? [])
@@ -63,68 +84,21 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
             const SizedBox(height: 8),
           ],
           ...data.entries.map((entry) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12.0),
-              child: Row(
-                children: [
-                  // Contenedor ancho y cómodo para la llave de la propiedad
-                  Expanded(
-                    flex: 2,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF141418),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFF303038)),
-                      ),
-                      child: Text(
-                        entry.key,
-                        style: const TextStyle(color: Color(0xFFFBC02D), fontWeight: FontWeight.bold, fontSize: 13),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  // Campo de texto expandido que ocupa todo el espacio libre
-                  Expanded(
-                    flex: 3,
-                    child: TextField(
-                      controller: TextEditingController(text: entry.value.toString())
-                        ..selection = TextSelection.collapsed(offset: entry.value.toString().length),
-                      style: const TextStyle(color: Colors.white, fontSize: 13),
-                      decoration: InputDecoration(
-                        isDense: true,
-                        filled: true,
-                        fillColor: const Color(0xFF202026),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(color: Color(0xFF303038)),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(color: Color(0xFF303038)),
-                        ),
-                      ),
-                      onChanged: (newVal) {
-                        dynamic val = newVal;
-                        if (int.tryParse(newVal) != null) val = int.parse(newVal);
-                        if (newVal == 'true') val = true;
-                        if (newVal == 'false') val = false;
-                        data[entry.key] = val;
-                        _saveData(data);
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  // Botón de eliminar separado al margen derecho
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
-                    onPressed: () {
-                      data.remove(entry.key);
-                      _saveData(data);
-                    },
-                  ),
-                ],
-              ),
+            return _PropertyRow(
+              propertyKey: entry.key,
+              initialValue: entry.value.toString(),
+              onChanged: (newVal) {
+                dynamic val = newVal;
+                if (int.tryParse(newVal) != null) val = int.parse(newVal);
+                if (newVal == 'true') val = true;
+                if (newVal == 'false') val = false;
+                data[entry.key] = val;
+                _saveData(data);
+              },
+              onDeleted: () {
+                data.remove(entry.key);
+                _saveData(data);
+              },
             );
           }),
         ],
@@ -135,5 +109,99 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
   void _saveData(Map<String, dynamic> data) {
     final newHjson = HjsonEngine.stringify(data);
     ref.read(projectProvider.notifier).updateActiveFileContent(newHjson);
+  }
+}
+
+class _PropertyRow extends StatefulWidget {
+  final String propertyKey;
+  final String initialValue;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onDeleted;
+
+  const _PropertyRow({
+    required this.propertyKey,
+    required this.initialValue,
+    required this.onChanged,
+    required this.onDeleted,
+  });
+
+  @override
+  State<_PropertyRow> createState() => _PropertyRowState();
+}
+
+class _PropertyRowState extends State<_PropertyRow> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialValue);
+  }
+
+  @override
+  void didUpdateWidget(covariant _PropertyRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialValue != widget.initialValue && _controller.text != widget.initialValue) {
+      _controller.text = widget.initialValue;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 2,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+              decoration: BoxDecoration(
+                color: const Color(0xFF141418),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFF303038)),
+              ),
+              child: Text(
+                widget.propertyKey,
+                style: const TextStyle(color: Color(0xFFFBC02D), fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            flex: 3,
+            child: TextField(
+              controller: _controller,
+              style: const TextStyle(color: Colors.white, fontSize: 13),
+              decoration: InputDecoration(
+                isDense: true,
+                filled: true,
+                fillColor: const Color(0xFF202026),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Color(0xFF303038)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Color(0xFF303038)),
+                ),
+              ),
+              onChanged: widget.onChanged,
+            ),
+          ),
+          const SizedBox(width: 4),
+          IconButton(
+            icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+            onPressed: widget.onDeleted,
+          ),
+        ],
+      ),
+    );
   }
 }
