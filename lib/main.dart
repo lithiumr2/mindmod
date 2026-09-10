@@ -6,7 +6,6 @@ import 'screens/main_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Bloquea la orientación en horizontal
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
@@ -34,7 +33,7 @@ class MindmodApp extends StatelessWidget {
           surface: Color(0xFF202026),
         ),
       ),
-      home: const MainScreen(),
+      home: MainScreen(), // Removido el "const" de aquí
     );
   }
 }
