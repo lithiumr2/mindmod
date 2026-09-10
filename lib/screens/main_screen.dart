@@ -26,22 +26,48 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       appBar: AppBar(
         title: Text(activeFile?.name ?? 'Mindmod IDE'),
         actions: [
-          if (activeFile != null && !activeFile.isImage)
-            ToggleButtons(
-              isSelected: [!_isCodeView, _isCodeView],
-              onPressed: (index) {
-                setState(() {
-                  _isCodeView = index == 1;
-                });
-              },
-              color: Colors.white54,
-              selectedColor: Colors.black,
-              fillColor: const Color(0xFFFBC02D),
-              constraints: const BoxConstraints(minHeight: 32, minWidth: 64),
-              children: const [
-                Icon(Icons.edit_outlined, size: 18),
-                Icon(Icons.code, size: 18),
-              ],
+  // 1. Botones directos para cambiar vista (Visual / Código)
+  if (activeFile != null && !activeFile.isImage)
+    ToggleButtons(
+      isSelected: [!_isCodeView, _isCodeView],
+      onPressed: (index) => setState(() => _isCodeView = index == 1),
+      color: Colors.white54,
+      selectedColor: Colors.black,
+      fillColor: const Color(0xFFFBC02D),
+      constraints: const BoxConstraints(minHeight: 32, minWidth: 64),
+      children: const [
+        Icon(Icons.edit_outlined, size: 18),
+        Icon(Icons.code, size: 18),
+      ],
+    ),
+  
+  // 2. Menú de tres puntos SOLO para acciones globales (Exportar)
+  PopupMenuButton<String>(
+    onSelected: (value) async {
+      if (value == 'export_zip') {
+        final path = await ExportService.exportModToZip(ref.read(projectProvider).files);
+        if (context.mounted && path != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Mod exportado en: $path')),
+          );
+        }
+      }
+    },
+    itemBuilder: (context) => [
+      const PopupMenuItem(
+        value: 'export_zip',
+        child: Row(
+          children: [
+            Icon(Icons.download, color: Color(0xFFFBC02D), size: 18),
+            SizedBox(width: 10),
+            Text('Exportar ZIP', style: TextStyle(color: Colors.white)),
+          ],
+        ),
+      ),
+    ],
+  ),
+  const SizedBox(width: 12),
+],
             ),
           PopupMenuButton<String>(
             onSelected: (value) async {
