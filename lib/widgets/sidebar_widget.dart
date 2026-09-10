@@ -9,72 +9,71 @@ class SidebarWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final projectState = ref.watch(projectProvider);
-    final projectNotifier = ref.read(projectProvider.notifier);
 
     return Container(
-      width: 250,
+      width: 260,
       color: const Color(0xFF141418),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            alignment: Alignment.centerLeft,
-            child: const Text(
-              'Archivos del Mod',
-              style: TextStyle(
-                color: Color(0xFFFBC02D),
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
+          const Padding(
+            padding: EdgeInsets.all(12.0),
+            child: Text(
+              'Mod Folders',
+              style: TextStyle(color: Colors.white54, fontWeight: FontWeight.bold, fontSize: 12),
             ),
           ),
-          const Divider(height: 1, color: Color(0xFF303038)),
           Expanded(
-            child: ListView.builder(
-              itemCount: projectState.files.length,
-              itemBuilder: (context, index) {
-                final file = projectState.files[index];
-                final isActive = file.name == projectState.activeFileName;
-
-                return ListTile(
-                  dense: true,
-                  selected: isActive,
+            child: ListView(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.description, color: Color(0xFFFBC02D), size: 18),
+                  title: const Text('mod.json', style: TextStyle(color: Colors.white, fontSize: 13)),
+                  selected: projectState.activeFileName == 'mod.json',
                   selectedTileColor: const Color(0xFF202026),
-                  leading: Icon(
-                    file.isImage ? Icons.image : Icons.description,
-                    color: isActive ? const Color(0xFFFBC02D) : Colors.grey,
-                    size: 18,
-                  ),
-                  title: Text(
-                    file.name,
-                    style: TextStyle(
-                      color: isActive ? Colors.white : Colors.grey[300],
-                      fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                  onTap: () => ref.read(projectProvider.notifier).selectFile('mod.json'),
+                ),
+                ExpansionTile(
+                  leading: const Icon(Icons.folder, color: Color(0xFFFBC02D), size: 18),
+                  title: const Text('content', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                  children: [
+                    ExpansionTile(
+                      leading: const Icon(Icons.folder, color: Colors.blueAccent, size: 18),
+                      title: const Text('blocks', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                      children: projectState.files
+                          .where((f) => f.name != 'mod.json' && !f.isImage)
+                          .map((file) => ListTile(
+                                leading: const Icon(Icons.insert_drive_file, color: Colors.amber, size: 16),
+                                title: Text(file.name, style: const TextStyle(color: Colors.white, fontSize: 12)),
+                                selected: projectState.activeFileName == file.name,
+                                selectedTileColor: const Color(0xFF202026),
+                                onTap: () => ref.read(projectProvider.notifier).selectFile(file.name),
+                                trailing: file.name != 'mod.json'
+                                    ? IconButton(
+                                        icon: const Icon(Icons.delete_outline, size: 16, color: Colors.redAccent),
+                                        onPressed: () => ref.read(projectProvider.notifier).deleteFile(file.name),
+                                      )
+                                    : null,
+                              ))
+                          .toList(),
                     ),
-                  ),
-                  trailing: file.name == 'mod.json'
-                      ? null
-                      : IconButton(
-                          icon: const Icon(Icons.close, size: 16, color: Colors.redAccent),
-                          onPressed: () => projectNotifier.deleteFile(file.name),
-                        ),
-                  onTap: () => projectNotifier.selectFile(file.name),
-                );
-              },
+                  ],
+                ),
+              ],
             ),
           ),
-          const Divider(height: 1, color: Color(0xFF303038)),
           Padding(
             padding: const EdgeInsets.all(12.0),
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFBC02D),
-                foregroundColor: Colors.black,
-                minimumSize: const Size.fromHeight(40),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFBC02D), foregroundColor: Colors.black),
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('New Block', style: TextStyle(fontSize: 12)),
+                onPressed: () {
+                  _showNewBlockDialog(context, ref);
+                },
               ),
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('Nuevo Archivo'),
-              onPressed: () => _showNewFileDialog(context, projectNotifier),
             ),
           ),
         ],
@@ -82,40 +81,36 @@ class SidebarWidget extends ConsumerWidget {
     );
   }
 
-  void _showNewFileDialog(BuildContext context, ProjectNotifier notifier) {
-    final controller = TextEditingController();
+  void _showNewBlockDialog(BuildContext context, WidgetRef ref) {
+    final controller = TextEditingController(text: 'copper-wall.hjson');
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF202026),
-        title: const Text('Nuevo Elemento', style: TextStyle(color: Colors.white)),
+        title: const Text('Create New Block', style: TextStyle(color: Colors.white, fontSize: 16)),
         content: TextField(
           controller: controller,
           style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(
-            hintText: 'ej: mega-wall.hjson',
-            hintStyle: TextStyle(color: Colors.grey),
-          ),
+          decoration: const InputDecoration(hintText: 'filename.hjson', hintStyle: TextStyle(color: Colors.white54)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFBC02D), foregroundColor: Colors.black),
             onPressed: () {
-              if (controller.text.trim().isNotEmpty) {
-                var name = controller.text.trim().toLowerCase();
-                if (!name.endsWith('.hjson')) name += '.hjson';
-                notifier.addFile(
-                  name,
-                  FileType.hjson,
-                  content: '{\n  type: "Wall"\n  health: 300\n  size: 1\n}',
-                );
+              if (controller.text.isNotEmpty) {
+                ref.read(projectProvider.notifier).addFile(
+                      controller.text.trim(),
+                      FileType.hjson,
+                      content: '{\n  name: "${controller.text.split('.').first}"\n  type: "Wall"\n  health: 200\n  size: 1\n}',
+                    );
                 Navigator.pop(context);
               }
             },
-            child: const Text('Crear'),
+            child: const Text('Create'),
           ),
         ],
       ),
