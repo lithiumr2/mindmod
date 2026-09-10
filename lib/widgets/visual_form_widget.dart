@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import '../providers/project_provider.dart';
 
 class VisualFormWidget extends ConsumerStatefulWidget {
@@ -12,6 +13,21 @@ class VisualFormWidget extends ConsumerStatefulWidget {
 class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
   final Map<String, TextEditingController> _controllers = {};
 
+  // Esquema de propiedades según la categoría o tipo
+  final Map<String, List<String>> _categorySuggestions = {
+    'blocks': ['health', 'size', 'solid', 'destructible', 'canOverdrive', 'hasItems', 'hasLiquids'],
+    'items': ['cost', 'flammability', 'explosiveness', 'radioactivity', 'charge'],
+    'liquids': ['color', 'viscosity', 'temperature', 'heatCapacity', 'explosiveness', 'flammability'],
+  };
+
+  final List<String> _booleanKeys = [
+    'solid', 'destructible', 'canOverdrive', 'hasItems', 'hasLiquids', 'hasPower'
+  ];
+
+  final List<String> _numberKeys = [
+    'health', 'size', 'cost', 'flammability', 'explosiveness', 'radioactivity', 'charge', 'viscosity', 'temperature', 'heatCapacity'
+  ];
+
   @override
   void dispose() {
     for (var controller in _controllers.values) {
@@ -20,7 +36,6 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     super.dispose();
   }
 
-  // Parsear texto HJSON simple a Mapa clave-valor
   Map<String, String> _parseHjson(String content) {
     final Map<String, String> map = {};
     final lines = content.split('\n');
@@ -37,18 +52,21 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     return map;
   }
 
-  // Reconstruir HJSON desde el mapa actual
   String _toHjson(Map<String, String> map) {
     final buffer = StringBuffer('{\n');
     map.forEach((key, value) {
-      buffer.writeln('  $key: "$value"');
+      if (_booleanKeys.contains(key) || _numberKeys.contains(key)) {
+        buffer.writeln('  $key: $value');
+      } else {
+        buffer.writeln('  $key: "$value"');
+      }
     });
     buffer.write('}');
     return buffer.toString();
   }
 
   void _updateProperty(Map<String, String> map, String key, String newValue) {
-    map[key] = newValue; // Mantiene la clave con cadena vacía si se borra el texto
+    map[key] = newValue;
     ref.read(projectProvider.notifier).updateActiveFileContent(_toHjson(map));
   }
 
@@ -61,9 +79,56 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
 
   void _addProperty(Map<String, String> map, String key) {
     if (!map.containsKey(key)) {
-      map[key] = '';
+      if (_booleanKeys.contains(key)) {
+        map[key] = 'true';
+      } else if (_numberKeys.contains(key)) {
+        map[key] = '1';
+      } else if (key == 'color') {
+        map[key] = 'ff0000';
+      } else {
+        map[key] = '';
+      }
       ref.read(projectProvider.notifier).updateActiveFileContent(_toHjson(map));
     }
+  }
+
+  void _openColorPicker(BuildContext context, Map<String, String> map, String key, String currentColor) {
+    Color pickerColor = Colors.red;
+    try {
+      pickerColor = Color(int.parse('0xFF${currentColor.replaceAll('#', '')}'));
+    } catch (_) {}
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF202026),
+        title: const Text('Pick Color', style: TextStyle(color: Colors.white)),
+        content: SingleChildScrollView(
+          child: ColorPicker(
+            pickerColor: pickerColor,
+            onColorChanged: (color) {
+              pickerColor = color;
+            },
+            pickerAreaHeightPercent: 0.8,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFBC02D), foregroundColor: Colors.black),
+            onPressed: () {
+              final hexString = pickerColor.value.toRadixString(16).substring(2);
+              _updateProperty(map, key, hexString);
+              Navigator.pop(context);
+            },
+            child: const Text('Select'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -77,21 +142,30 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
 
     final properties = _parseHjson(activeFile.content);
 
+    // Determinar categoría por el nombre del archivo
+    String category = 'blocks';
+    if (activeFile.name.contains('item') || properties['type'] == 'Item') {
+      category = 'items';
+    } else if (activeFile.name.contains('liquid') || properties['type'] == 'Liquid') {
+      category = 'liquids';
+    }
+
+    final suggestions = _categorySuggestions[category] ?? [];
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Sugerencias rápidas
-          const Text(
-            'Recommended Properties:',
-            style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13),
+          Text(
+            'Recommended Properties (${category.toUpperCase()}):',
+            style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13),
           ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: ['health', 'size', 'chanceDeflect', 'flashHit'].map((prop) {
+            children: suggestions.map((prop) {
               final isAdded = properties.containsKey(prop);
               return ActionChip(
                 backgroundColor: isAdded ? Colors.amber.withOpacity(0.2) : const Color(0xFF202026),
@@ -108,23 +182,85 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
           ),
           const SizedBox(height: 20),
 
-          // Lista de Propiedades Clave-Valor
+          // Renderizado dinámico de controles
           ...properties.entries.map((entry) {
             final key = entry.key;
             final value = entry.value;
 
-            // Mantener sincronizado el TextEditingController para no perder foco
-            if (!_controllers.containsKey(key)) {
-              _controllers[key] = TextEditingController(text: value);
-            } else if (_controllers[key]!.text != value && value.isNotEmpty) {
-              _controllers[key]!.text = value;
+            Widget valueControl;
+
+            // 1. Caso Booleano: Switch Toggle
+            if (_booleanKeys.contains(key)) {
+              final boolVal = value.toLowerCase() == 'true';
+              valueControl = Container(
+                alignment: Alignment.centerLeft,
+                child: Switch(
+                  value: boolVal,
+                  activeColor: const Color(0xFFFBC02D),
+                  onChanged: (val) => _updateProperty(properties, key, val.toString()),
+                ),
+              );
+            } 
+            // 2. Caso Color: Color Picker Button
+            else if (key == 'color') {
+              valueControl = GestureDetector(
+                onTap: () => _openColorPicker(context, properties, key, value),
+                child: Container(
+                  height: 48,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF202026),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          color: Color(int.tryParse('0xFF${value.replaceAll('#', '')}') ?? 0xFFFF0000),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white24),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text('#$value', style: const TextStyle(color: Colors.white, fontSize: 13)),
+                    ],
+                  ),
+                ),
+              );
+            } 
+            // 3. Caso Numérico o Texto General
+            else {
+              if (!_controllers.containsKey(key)) {
+                _controllers[key] = TextEditingController(text: value);
+              } else if (_controllers[key]!.text != value && value.isNotEmpty) {
+                _controllers[key]!.text = value;
+              }
+
+              final isNumber = _numberKeys.contains(key);
+
+              valueControl = TextField(
+                controller: _controllers[key],
+                keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: const Color(0xFF202026),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(6),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                ),
+                onChanged: (val) => _updateProperty(properties, key, val),
+              );
             }
 
             return Padding(
               padding: const EdgeInsets.only(bottom: 12.0),
               child: Row(
                 children: [
-                  // Nombre de la Propiedad
                   Expanded(
                     flex: 2,
                     child: Container(
@@ -140,25 +276,10 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  // Valor de la Propiedad (Texto)
                   Expanded(
                     flex: 3,
-                    child: TextField(
-                      controller: _controllers[key],
-                      style: const TextStyle(color: Colors.white, fontSize: 13),
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: const Color(0xFF202026),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(6),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                      ),
-                      onChanged: (val) => _updateProperty(properties, key, val),
-                    ),
+                    child: valueControl,
                   ),
-                  // Botón explícito para Eliminar
                   IconButton(
                     icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
                     onPressed: () => _removeProperty(properties, key),
