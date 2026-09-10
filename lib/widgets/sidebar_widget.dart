@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:file_picker/file_picker.dart' as filePicker;
 import 'dart:convert';
 import '../providers/project_provider.dart';
 import '../models/project_file.dart';
@@ -160,8 +160,8 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
 
   Future<void> _showNewItemDialog(BuildContext context, WidgetRef ref, String folder) async {
     if (folder == 'sprites') {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.image,
+      filePicker.FilePickerResult? result = await filePicker.FilePicker.platform.pickFiles(
+        type: filePicker.FileType.image,
         withData: true,
       );
 
