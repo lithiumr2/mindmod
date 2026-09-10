@@ -1,27 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'screens/main_screen.dart';
 
-void main()
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'app.dart'; // O el archivo donde definas tu StatelessWidget principal (MyApp)
-
 void main() async {
-  // 1. Obligatorio para asegurar los enlaces de Flutter antes de llamadas nativas
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 2. Bloquea la orientación de la pantalla exclusivamente en horizontal (Landscape)
+  // Bloquea la orientación en horizontal
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
   ]);
 
-  // 3. Inicia la aplicación con ProviderScope para el manejo de estados
-  runApp(const ProviderScope(child: MyApp()));
-}
-{
   runApp(
     const ProviderScope(
       child: MindmodApp(),
