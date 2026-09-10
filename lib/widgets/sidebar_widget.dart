@@ -16,8 +16,9 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
   @override
   Widget build(BuildContext context) {
     final projectState = ref.watch(projectProvider);
+    final files = projectState.files;
 
-    // Determinar etiqueta dinámica para el botón inferior según la carpeta activa
+    // Etiqueta dinámica segura para el botón inferior
     String buttonLabel = 'New Block';
     if (selectedFolder == 'items') buttonLabel = 'New Item';
     if (selectedFolder == 'liquids') buttonLabel = 'New Liquid';
@@ -38,7 +39,9 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
           ),
           Expanded(
             child: ListView(
+              padding: EdgeInsets.zero,
               children: [
+                // Archivo mod.json principal
                 ListTile(
                   leading: const Icon(Icons.description, color: Color(0xFFFBC02D), size: 18),
                   title: const Text('mod.json', style: TextStyle(color: Colors.white, fontSize: 13)),
@@ -46,15 +49,18 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
                   selectedTileColor: const Color(0xFF202026),
                   onTap: () => ref.read(projectProvider.notifier).selectFile('mod.json'),
                 ),
+                // Categoría Content (Bloques, Items, Líquidos)
                 ExpansionTile(
                   leading: const Icon(Icons.folder, color: Color(0xFFFBC02D), size: 18),
                   title: const Text('content', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                  initiallyExpanded: true,
                   children: [
-                    _buildSubFolderCategory(projectState, 'blocks', 'blocks', Icons.folder, Colors.blueAccent),
-                    _buildSubFolderCategory(projectState, 'items', 'items', Icons.folder, Colors.orangeAccent),
-                    _buildSubFolderCategory(projectState, 'liquids', 'liquids', Icons.folder, Colors.cyanAccent),
+                    _buildSubFolderCategory(files, projectState, 'blocks', 'blocks', Icons.folder, Colors.blueAccent),
+                    _buildSubFolderCategory(files, projectState, 'items', 'items', Icons.folder, Colors.orangeAccent),
+                    _buildSubFolderCategory(files, projectState, 'liquids', 'liquids', Icons.folder, Colors.cyanAccent),
                   ],
                 ),
+                // Carpeta Sprites
                 ListTile(
                   leading: const Icon(Icons.folder, color: Colors.blue, size: 18),
                   title: const Text('sprites', style: TextStyle(color: Colors.white70, fontSize: 13)),
@@ -63,7 +69,7 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
                   onTap: () => setState(() => selectedFolder = 'sprites'),
                 ),
                 if (selectedFolder == 'sprites')
-                  ...projectState.files.where((f) => f.isImage).map((file) => ListTile(
+                  ...files.where((f) => f.isImage).map((file) => ListTile(
                         dense: true,
                         contentPadding: const EdgeInsets.only(left: 32.0, right: 16.0),
                         leading: const Icon(Icons.image, color: Colors.purpleAccent, size: 16),
@@ -79,12 +85,16 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
               ],
             ),
           ),
+          // Botón inferior para crear elementos
           Padding(
             padding: const EdgeInsets.all(12.0),
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFBC02D), foregroundColor: Colors.black),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFBC02D),
+                  foregroundColor: Colors.black,
+                ),
                 icon: const Icon(Icons.add, size: 16),
                 label: Text(buttonLabel, style: const TextStyle(fontSize: 12)),
                 onPressed: () {
@@ -98,19 +108,46 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
     );
   }
 
-  Widget _buildSubFolderCategory(dynamic projectState, String title, String folderKey, IconData icon, Color iconColor) {
-    final files = projectState.files.where((f) {
+  Widget _buildSubFolderCategory(
+    List<ProjectFile> files,
+    dynamic projectState,
+    String title,
+    String folderKey,
+    IconData icon,
+    Color iconColor,
+  ) {
+    // Filtrado seguro de archivos para evitar excepciones de tipo o nulos
+    final categoryFiles = files.where((f) {
       if (f.name == 'mod.json' || f.isImage) return false;
-      if (folderKey == 'items') return f.name.contains('item') || f.content.contains('type: "Item"');
-      if (folderKey == 'liquids') return f.name.contains('liquid') || f.content.contains('type: "Liquid"');
-      return !f.name.contains('item') && !f.name.contains('liquid') && !f.content.contains('type: "Item"') && !f.content.contains('type: "Liquid"');
+      final content = f.content.toLowerCase();
+      if (folderKey == 'items') {
+        return f.name.contains('item') || content.contains('type: "item"') || content.contains('type: "item"'.toLowerCase());
+      }
+      if (folderKey == 'liquids') {
+        return f.name.contains('liquid') || content.contains('type: "liquid"');
+      }
+      // Bloques por defecto (si no es item ni liquid)
+      return !f.name.contains('item') && 
+             !f.name.contains('liquid') && 
+             !content.contains('type: "item"') && 
+             !content.contains('type: "liquid"');
     }).toList();
 
     return ExpansionTile(
       leading: Icon(icon, color: iconColor, size: 18),
-      title: Text(title, style: TextStyle(color: selectedFolder == folderKey ? const Color(0xFFFBC02D) : Colors.white70, fontSize: 13)),
-      onExpansionChanged: (_) => setState(() => selectedFolder = folderKey),
-      children: files.map((file) => ListTile(
+      title: Text(
+        title,
+        style: TextStyle(
+          color: selectedFolder == folderKey ? const Color(0xFFFBC02D) : Colors.white70,
+          fontSize: 13,
+        ),
+      ),
+      onExpansionChanged: (expanded) {
+        if (expanded) {
+          setState(() => selectedFolder = folderKey);
+        }
+      },
+      children: categoryFiles.map((file) => ListTile(
             dense: true,
             contentPadding: const EdgeInsets.only(left: 32.0, right: 16.0),
             leading: const Icon(Icons.insert_drive_file, color: Colors.amber, size: 16),
@@ -163,10 +200,14 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFBC02D), foregroundColor: Colors.black),
             onPressed: () {
               if (controller.text.isNotEmpty) {
+                final baseName = controller.text.split('.').first;
                 ref.read(projectProvider.notifier).addFile(
                       controller.text.trim(),
-                      FileType.hjson,
-                      content: defaultContent.replaceAll('custom-item', controller.text.split('.').first).replaceAll('copper-wall', controller.text.split('.').first).replaceAll('custom-liquid', controller.text.split('.').first),
+                      folder == 'sprites' ? FileType.image : FileType.hjson,
+                      content: defaultContent
+                          .replaceAll('copper-wall', baseName)
+                          .replaceAll('custom-item', baseName)
+                          .replaceAll('custom-liquid', baseName),
                     );
                 Navigator.pop(context);
               }
