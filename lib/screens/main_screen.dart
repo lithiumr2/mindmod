@@ -6,6 +6,7 @@ import '../widgets/visual_form_widget.dart';
 import '../widgets/code_editor_widget.dart';
 import '../widgets/mod_json_form_widget.dart';
 import '../providers/project_provider.dart';
+import '../services/export_service.dart';
 
 class MainScreen extends ConsumerStatefulWidget {
   const MainScreen({super.key});
@@ -15,7 +16,7 @@ class MainScreen extends ConsumerStatefulWidget {
 }
 
 class _MainScreenState extends ConsumerState<MainScreen> {
-  bool _isCodeView = false;
+  bool isVisualMode = true;
 
   @override
   Widget build(BuildContext context) {
@@ -26,12 +27,17 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF18181C),
       appBar: AppBar(
-        title: Text(
-          activeFile != null ? 'Mindmod IDE - ${activeFile.name}' : 'Mindmod IDE',
-          style: const TextStyle(color: Color(0xFFFBC02D), fontSize: 16),
-        ),
         backgroundColor: const Color(0xFF202026),
         elevation: 0,
+        scrolledUnderElevation: 0,
+        title: const Text(
+          'Mindmod IDE',
+          style: TextStyle(
+            color: Color(0xFFFBC02D),
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
         actions: [
           if (activeFile != null && !activeFile.isImage)
             ToggleButtons(
@@ -50,6 +56,48 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                 Icon(Icons.code, size: 18),
               ],
             ),
+            onSelected: (value) async {
+              if (value == 'toggle_mode') {
+                setState(() => isVisualMode = !isVisualMode);
+              } else if (value == 'export_zip') {
+                final path = await ExportService.exportModToZip(projectState.files);
+                if (context.mounted && path != null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Mod exportado en Descargas: $path')),
+                  );
+                }
+              }
+            },
+            itemBuilder: (BuildContext context) => [
+              PopupMenuItem(
+                value: 'toggle_mode',
+                child: Row(
+                  children: [
+                    Icon(
+                      isVisualMode ? Icons.code : Icons.tune,
+                      color: const Color(0xFFFBC02D),
+                      size: 18,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      isVisualMode ? 'Ver Código' : 'Ver Formulario',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'export_zip',
+                child: Row(
+                  children: [
+                    Icon(Icons.download, color: Color(0xFFFBC02D), size: 18),
+                    SizedBox(width: 10),
+                    Text('Exportar ZIP', style: TextStyle(color: Colors.white)),
+                  ],
+                ),
+              ),
+            ],
+          ),
           const SizedBox(width: 12),
         ],
       ),
