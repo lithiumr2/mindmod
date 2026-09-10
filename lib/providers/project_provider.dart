@@ -33,7 +33,7 @@ class ProjectNotifier extends StateNotifier<ProjectState> {
 
   static const String _storageKey = 'mindmod_project_files';
 
-  // Cargar datos al iniciar
+  // Cargar datos persistentes al iniciar
   Future<void> _loadFromPrefs() async {
     final prefs = await SharedPreferences.getInstance();
     final jsonString = prefs.getString(_storageKey);
@@ -50,7 +50,6 @@ class ProjectNotifier extends StateNotifier<ProjectState> {
       } catch (_) {}
     }
 
-    // Datos iniciales por defecto si es la primera vez que abre la app
     _loadDefaultFiles();
   }
 
@@ -58,12 +57,12 @@ class ProjectNotifier extends StateNotifier<ProjectState> {
     final defaults = [
       ProjectFile(
         name: 'mod.json',
-        type: FileType.json,
+        type: FileType.modJson,
         content: '{\n  "name": "nuevo-mod",\n  "displayName": "Mi Super Mod",\n  "author": "Creador",\n  "description": "Un mod increíble para Mindustry",\n  "version": "1.0",\n  "minGameVersion": "146"\n}',
       ),
       ProjectFile(
         name: 'copper-wall.hjson',
-        type: FileType.hjson,
+        type: FileType.block,
         content: '{\n  name: "copper-wall"\n  type: "Wall"\n  health: 200\n  size: 1\n}',
       ),
     ];
@@ -71,7 +70,6 @@ class ProjectNotifier extends StateNotifier<ProjectState> {
     _saveToPrefs();
   }
 
-  // Guardar datos
   Future<void> _saveToPrefs() async {
     final prefs = await SharedPreferences.getInstance();
     final encodedData = jsonEncode(state.files.map((f) => f.toJson()).toList());
@@ -80,6 +78,10 @@ class ProjectNotifier extends StateNotifier<ProjectState> {
 
   void selectFile(String fileName) {
     state = state.copyWith(activeFileName: fileName);
+  }
+
+  void setActiveFile(ProjectFile file) {
+    selectFile(file.name);
   }
 
   void updateActiveFileContent(String newContent) {
@@ -95,11 +97,14 @@ class ProjectNotifier extends StateNotifier<ProjectState> {
     _saveToPrefs();
   }
 
-  void addFile(String name, FileType type, {String content = ''}) {
-    final newFile = ProjectFile(name: name, type: type, content: content);
-    final updatedFiles = [...state.files, newFile];
-    state = state.copyWith(files: updatedFiles, activeFileName: name);
+  void addFile(ProjectFile file) {
+    final updatedFiles = [...state.files, file];
+    state = state.copyWith(files: updatedFiles, activeFileName: file.name);
     _saveToPrefs();
+  }
+
+  void createNewFile(String name, FileType type, {String content = ''}) {
+    addFile(ProjectFile(name: name, type: type, content: content));
   }
 
   void deleteFile(String fileName) {
