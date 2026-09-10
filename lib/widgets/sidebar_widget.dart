@@ -163,10 +163,14 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFBC02D), foregroundColor: Colors.black),
             onPressed: () {
               if (controller.text.isNotEmpty) {
+                final baseName = controller.text.split('.').first;
                 ref.read(projectProvider.notifier).addFile(
                       controller.text.trim(),
-                      FileType.hjson,
-                      content: defaultContent.replaceAll('custom-item', controller.text.split('.').first).replaceAll('copper-wall', controller.text.split('.').first).replaceAll('custom-liquid', controller.text.split('.').first),
+                      folder == 'sprites' ? FileType.image : FileType.hjson,
+                      content: defaultContent
+                          .replaceAll('copper-wall', baseName)
+                          .replaceAll('custom-item', baseName)
+                          .replaceAll('custom-liquid', baseName),
                     );
                 Navigator.pop(context);
               }
