@@ -77,10 +77,19 @@ class ExportService {
     return await _saveFileToDisk('proyecto-backup.mindmod', Uint8List.fromList(bytes));
   }
 
-  /// Guarda el archivo directamente en el almacenamiento nativo del sistema
+  /// Guarda el archivo directamente en la carpeta pública de Descargas en Android
   static Future<String?> _saveFileToDisk(String fileName, Uint8List bytes) async {
-    if (Platform.isAndroid || Platform.isIOS) {
-      final directory = await getExternalStorageDirectory() ?? await getApplicationDocumentsDirectory();
+    if (Platform.isAndroid) {
+      Directory downloadDir = Directory('/storage/emulated/0/Download');
+      if (!await downloadDir.exists()) {
+        downloadDir = await getExternalStorageDirectory() ?? await getApplicationDocumentsDirectory();
+      }
+      final filePath = '${downloadDir.path}/$fileName';
+      final file = File(filePath);
+      await file.writeAsBytes(bytes);
+      return filePath;
+    } else if (Platform.isIOS) {
+      final directory = await getApplicationDocumentsDirectory();
       final filePath = '${directory.path}/$fileName';
       final file = File(filePath);
       await file.writeAsBytes(bytes);
