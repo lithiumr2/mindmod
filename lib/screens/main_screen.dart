@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../models/project_file.dart';
 import '../providers/project_provider.dart';
 import '../services/export_service.dart';
 import '../widgets/code_editor_widget.dart';
@@ -15,6 +16,74 @@ class MainScreen extends ConsumerStatefulWidget {
 
 class _MainScreenState extends ConsumerState<MainScreen> {
   bool _isCodeView = false;
+  String _activeCategory = 'items'; // 'blocks', 'items', 'liquids'
+
+  String get _buttonLabel {
+    switch (_activeCategory) {
+      case 'blocks':
+        return '+ New Block';
+      case 'liquids':
+        return '+ New Liquid';
+      case 'items':
+      default:
+        return '+ New Item';
+    }
+  }
+
+  FileType get _activeFileType {
+    switch (_activeCategory) {
+      case 'blocks':
+        return FileType.block;
+      case 'liquids':
+        return FileType.liquid;
+      case 'items':
+      default:
+        return FileType.item;
+    }
+  }
+
+  void _createNewFile() {
+    final TextEditingController nameController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF222228),
+        title: Text('Crear en $_activeCategory', style: const TextStyle(color: Colors.amber)),
+        content: TextField(
+          controller: nameController,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            hintText: 'Nombre del archivo (ej. custom-item)',
+            hintStyle: TextStyle(color: Colors.white38),
+            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.amber)),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFBC02D)),
+            onPressed: () {
+              if (nameController.text.trim().isNotEmpty) {
+                final fileName = '${nameController.text.trim()}.hjson';
+                ref.read(projectProvider.notifier).addFile(
+                  ProjectFile(
+                    name: fileName,
+                    content: 'name: "${nameController.text.trim()}"',
+                    type: _activeFileType,
+                  ),
+                );
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Crear', style: TextStyle(color: Colors.black)),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,83 +92,41 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     final isModJson = activeFile?.name == 'mod.json';
 
     return Scaffold(
+      backgroundColor: const Color(0xFF18181C),
       appBar: AppBar(
-        title: Text(activeFile?.name ?? 'Mindmod IDE'),
-        actions: [
-  // 1. Botones directos para cambiar vista (Visual / Código)
-  if (activeFile != null && !activeFile.isImage)
-    ToggleButtons(
-      isSelected: [!_isCodeView, _isCodeView],
-      onPressed: (index) => setState(() => _isCodeView = index == 1),
-      color: Colors.white54,
-      selectedColor: Colors.black,
-      fillColor: const Color(0xFFFBC02D),
-      constraints: const BoxConstraints(minHeight: 32, minWidth: 64),
-      children: const [
-        Icon(Icons.edit_outlined, size: 18),
-        Icon(Icons.code, size: 18),
-      ],
-    ),
-  
-  // 2. Menú de tres puntos SOLO para acciones globales (Exportar)
-  PopupMenuButton<String>(
-    onSelected: (value) async {
-      if (value == 'export_zip') {
-        final path = await ExportService.exportModToZip(ref.read(projectProvider).files);
-        if (context.mounted && path != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Mod exportado en: $path')),
-          );
-        }
-      }
-    },
-    itemBuilder: (context) => [
-      const PopupMenuItem(
-        value: 'export_zip',
-        child: Row(
-          children: [
-            Icon(Icons.download, color: Color(0xFFFBC02D), size: 18),
-            SizedBox(width: 10),
-            Text('Exportar ZIP', style: TextStyle(color: Colors.white)),
-          ],
+        backgroundColor: const Color(0xFF18181C),
+        elevation: 0,
+        title: Text(
+          activeFile != null ? 'Mindmod IDE - ${activeFile.name}' : 'Mindmod IDE',
+          style: const TextStyle(color: Colors.amber, fontSize: 16),
         ),
-      ),
-    ],
-  ),
-  const SizedBox(width: 12),
-],
+        actions: [
+          if (activeFile != null && !activeFile.isImage)
+            ToggleButtons(
+              isSelected: [!_isCodeView, _isCodeView],
+              onPressed: (index) => setState(() => _isCodeView = index == 1),
+              color: Colors.white54,
+              selectedColor: Colors.black,
+              fillColor: const Color(0xFFFBC02D),
+              constraints: const BoxConstraints(minHeight: 32, minWidth: 50),
+              children: const [
+                Icon(Icons.edit, size: 16),
+                Icon(Icons.code, size: 16),
+              ],
             ),
           PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: Colors.white70),
             onSelected: (value) async {
-              if (value == 'toggle_mode') {
-                setState(() => _isCodeView = !_isCodeView);
-              } else if (value == 'export_zip') {
-                final path = await ExportService.exportModToZip(ref.read(projectProvider).files);
+              if (value == 'export_zip') {
+                final path = await ExportService.exportModToZip(projectState.files);
                 if (context.mounted && path != null) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Mod exportado en Descargas: $path')),
+                    SnackBar(content: Text('Mod exportado en: $path')),
                   );
                 }
               }
             },
-            itemBuilder: (BuildContext context) => [
-              PopupMenuItem(
-                value: 'toggle_mode',
-                child: Row(
-                  children: [
-                    Icon(
-                      !_isCodeView ? Icons.code : Icons.tune,
-                      color: const Color(0xFFFBC02D),
-                      size: 18,
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      !_isCodeView ? 'Ver Código' : 'Ver Formulario',
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                  ],
-                ),
-              ),
+            itemBuilder: (context) => [
               const PopupMenuItem(
                 value: 'export_zip',
                 child: Row(
@@ -112,16 +139,109 @@ class _MainScreenState extends ConsumerState<MainScreen> {
               ),
             ],
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
         ],
       ),
-      body: activeFile == null
-          ? const Center(child: Text('Selecciona o crea un archivo', style: TextStyle(color: Colors.white)))
-          : activeFile.isImage
-              ? const Center(child: Text('Vista de imagen no disponible en este editor', style: TextStyle(color: Colors.white)))
-              : isModJson
-                  ? (_isCodeView ? const CodeEditorWidget() : const ModJsonFormWidget())
-                  : (_isCodeView ? const CodeEditorWidget() : const VisualFormWidget()),
+      body: Row(
+        children: [
+          // PANEL LATERAL IZQUIERDO (Mod Folders)
+          Container(
+            width: 250,
+            decoration: const BoxDecoration(
+              color: Color(0xFF121214),
+              border: Border(right: BorderSide(color: Colors.white12, width: 1)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.all(12.0),
+                  child: Text(
+                    'Mod Folders',
+                    style: TextStyle(color: Colors.white38, fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                ListTile(
+                  dense: true,
+                  leading: const Icon(Icons.insert_drive_file, color: Colors.amber, size: 18),
+                  title: const Text('mod.json', style: TextStyle(color: Colors.white)),
+                  onTap: () {
+                    final modFile = projectState.files.firstWhere(
+                      (f) => f.name == 'mod.json',
+                      orElse: () => ProjectFile(name: 'mod.json', content: '{}', type: FileType.modJson),
+                    );
+                    ref.read(projectProvider.notifier).setActiveFile(modFile);
+                  },
+                ),
+                const Divider(color: Colors.white12),
+                Expanded(
+                  child: ListView(
+                    children: [
+                      ExpansionTile(
+                        initiallyExpanded: true,
+                        leading: const Icon(Icons.folder, color: Colors.amber, size: 18),
+                        title: const Text('content', style: TextStyle(color: Colors.white)),
+                        childrenPadding: const EdgeInsets.only(left: 16),
+                        children: [
+                          _buildFolderTile('blocks', Icons.square_outlined, Colors.blue),
+                          _buildFolderTile('items', Icons.hexagon_outlined, Colors.orange),
+                          _buildFolderTile('liquids', Icons.water_drop_outlined, Colors.cyan),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                // Botón dinámico en el pie del panel lateral
+                Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 42,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFBC02D),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      ),
+                      onPressed: _createNewFile,
+                      child: Text(
+                        _buttonLabel,
+                        style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // VISTA PRINCIPAL DERECHA (Editor/Formulario)
+          Expanded(
+            child: activeFile == null
+                ? const Center(child: Text('Selecciona o crea un archivo', style: TextStyle(color: Colors.white54)))
+                : activeFile.isImage
+                    ? const Center(child: Text('Vista previa de imagen no soportada', style: TextStyle(color: Colors.white54)))
+                    : isModJson
+                        ? (_isCodeView ? const CodeEditorWidget() : const ModJsonFormWidget())
+                        : (_isCodeView ? const CodeEditorWidget() : const VisualFormWidget()),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFolderTile(String folderName, IconData icon, Color iconColor) {
+    final isSelected = _activeCategory == folderName;
+    return ListTile(
+      dense: true,
+      selected: isSelected,
+      selectedTileColor: Colors.white10,
+      leading: Icon(icon, color: iconColor, size: 18),
+      title: Text(folderName, style: const TextStyle(color: Colors.white70)),
+      onTap: () {
+        setState(() {
+          _activeCategory = folderName;
+        });
+      },
     );
   }
 }
