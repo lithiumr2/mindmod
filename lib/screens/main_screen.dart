@@ -96,8 +96,9 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                         ),
                       )
                     : isModJson
-                        ? (_isCodeView ? const CodeEditorWidget() : const ModJsonFormWidget())
-                        : (_isCodeView ? const CodeEditorWidget() : const VisualFormWidget()),
+                        // Eliminados los 'const' que provocaban el error de compilación
+                        ? (_isCodeView ? const CodeEditorWidget() : ModJsonFormWidget())
+                        : (_isCodeView ? const CodeEditorWidget() : VisualFormWidget()),
           ),
         ],
       ),
