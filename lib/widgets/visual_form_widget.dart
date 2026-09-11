@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import '../providers/project_provider.dart';
+import '../models/project_file.dart';
 
 class VisualFormWidget extends ConsumerStatefulWidget {
   const VisualFormWidget({super.key});
@@ -11,285 +11,337 @@ class VisualFormWidget extends ConsumerStatefulWidget {
 }
 
 class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
-  final Map<String, TextEditingController> _controllers = {};
+  Map<String, dynamic> _properties = {};
+  String? _lastLoadedFileName;
 
-  // Esquema de propiedades según la categoría o tipo
-  final Map<String, List<String>> _categorySuggestions = {
-    'blocks': ['health', 'size', 'solid', 'destructible', 'canOverdrive', 'hasItems', 'hasLiquids'],
-    'items': ['cost', 'flammability', 'explosiveness', 'radioactivity', 'charge'],
-    'liquids': ['color', 'viscosity', 'temperature', 'heatCapacity', 'explosiveness', 'flammability'],
+  // === DICCIONARIOS COMPLETOS DE MINDUSTRY ===
+
+  // 1. Propiedades base estrictas por categoría
+  final List<String> _itemProps = [
+    'color', 'explosiveness', 'flammability', 'radioactivity', 
+    'charge', 'cost', 'alwaysUnlocked', 'frames', 'transitionDamage'
+  ];
+
+  final List<String> _liquidProps = [
+    'color', 'temperature', 'flammability', 'explosiveness', 
+    'viscosity', 'heatCapacity', 'barColor', 'lightColor', 'effect'
+  ];
+
+  final List<String> _baseBlockProps = [
+    'type', 'health', 'size', 'requirements', 'category', 
+    'solid', 'destructible', 'hasItems', 'hasLiquids', 
+    'hasPower', 'consumesPower', 'outputsPower', 'itemCapacity', 'liquidCapacity'
+  ];
+
+  // 2. Tipos ampliados de bloques en Mindustry
+  final List<String> _blockTypes = [
+    'Wall', 'Drill', 'BeamDrill', 'Conveyor', 'Router', 'Junction', 
+    'BridgeConveyor', 'GenericCrafter', 'ItemTurret', 'LiquidTurret', 
+    'PowerNode', 'Battery', 'Generator', 'NuclearReactor', 'Mender', 'OverdriveProjector'
+  ];
+
+  // 3. Propiedades específicas por tipo de bloque
+  final Map<String, List<String>> _blockSpecificProps = {
+    'Wall': ['chanceDeflect', 'flashHit', 'insulated', 'absorbLasers'],
+    'Drill': ['tier', 'drillTime', 'warmupSpeed', 'liquidBoostIntensity', 'drawMineItem', 'updateEffect'],
+    'BeamDrill': ['tier', 'drillTime', 'range', 'sparkColor', 'pulse', 'consumeTime'],
+    'Conveyor': ['speed', 'displayedSpeed'],
+    'GenericCrafter': ['craftTime', 'outputItem', 'outputLiquid', 'consumes'],
+    'ItemTurret': ['range', 'reload', 'inaccuracy', 'targetAir', 'targetGround', 'shootSound', 'ammoTypes'],
+    'LiquidTurret': ['range', 'reload', 'inaccuracy', 'shootSound', 'ammoType'],
+    'PowerNode': ['maxNodes', 'laserRange'],
+    'Battery': ['emptyPower'],
+    'Generator': ['powerProduction', 'itemDuration'],
+    'NuclearReactor': ['heating', 'itemDuration', 'smokeThreshold'],
+    'Mender': ['range', 'reload', 'healPercent'],
+    'OverdriveProjector': ['range', 'speedBoost', 'useTime', 'phaseBoost', 'phaseRangeBoost'],
   };
 
-  final List<String> _booleanKeys = [
-    'solid', 'destructible', 'canOverdrive', 'hasItems', 'hasLiquids', 'hasPower'
-  ];
-
-  final List<String> _numberKeys = [
-    'health', 'size', 'cost', 'flammability', 'explosiveness', 'radioactivity', 'charge', 'viscosity', 'temperature', 'heatCapacity'
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _parseCurrentFile();
+  }
 
   @override
-  void dispose() {
-    for (var controller in _controllers.values) {
-      controller.dispose();
-    }
-    super.dispose();
+  void didUpdateWidget(covariant VisualFormWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _parseCurrentFile();
   }
 
-  Map<String, String> _parseHjson(String content) {
-    final Map<String, String> map = {};
-    final lines = content.split('\n');
+  // Analiza y limpia las propiedades estrictamente según el archivo actual
+  void _parseCurrentFile() {
+    final activeFile = ref.read(projectProvider).activeFile;
+    if (activeFile == null) return;
+
+    // Si cambió de archivo, forzamos recarga limpia
+    if (_lastLoadedFileName != activeFile.name) {
+      _lastLoadedFileName = activeFile.name;
+      _properties.clear();
+    }
+
+    final map = <String, dynamic>{};
+    final lines = activeFile.content.split('\n');
+    
     for (var line in lines) {
-      final trimmed = line.trim();
-      if (trimmed.startsWith('{') || trimmed.startsWith('}') || trimmed.isEmpty) continue;
-      final parts = trimmed.split(':');
-      if (parts.length >= 2) {
-        final key = parts[0].trim();
-        final value = parts.sublist(1).join(':').trim().replaceAll('"', '');
-        map[key] = value;
+      final colonIndex = line.indexOf(':');
+      if (colonIndex != -1) {
+        final key = line.substring(0, colonIndex).trim();
+        var valueStr = line.substring(colonIndex + 1).trim();
+        
+        if (valueStr.startsWith('"') && valueStr.endsWith('"')) {
+          map[key] = valueStr.substring(1, valueStr.length - 1);
+        } else if (valueStr == 'true') {
+          map[key] = true;
+        } else if (valueStr == 'false') {
+          map[key] = false;
+        } else {
+          map[key] = valueStr;
+        }
       }
     }
-    return map;
+    
+    // Asegurar propiedad name inicial
+    if (!map.containsKey('name')) {
+      map['name'] = activeFile.name.replaceAll('.hjson', '');
+    }
+
+    // Si es bloque y no tiene 'type', inicializarlo por defecto según su nombre o Wall
+    if (activeFile.type == FileType.block && !map.containsKey('type')) {
+      map['type'] = 'Wall';
+    }
+
+    setState(() {
+      _properties = map;
+    });
   }
 
-  String _toHjson(Map<String, String> map) {
-    final buffer = StringBuffer('{\n');
-    map.forEach((key, value) {
-      if (_booleanKeys.contains(key) || _numberKeys.contains(key)) {
-        buffer.writeln('  $key: $value');
+  void _saveToFile() {
+    final activeFile = ref.read(projectProvider).activeFile;
+    if (activeFile == null) return;
+
+    final buffer = StringBuffer();
+    _properties.forEach((key, value) {
+      if (value is bool) {
+        buffer.writeln('$key: $value');
+      } else if (key == 'name' || key == 'description' || key == 'color' || key == 'type' || key == 'shootSound') {
+        buffer.writeln('$key: "$value"');
       } else {
-        buffer.writeln('  $key: "$value"');
+        buffer.writeln('$key: $value');
       }
     });
-    buffer.write('}');
-    return buffer.toString();
+
+    ref.read(projectProvider.notifier).updateActiveFileContent(buffer.toString());
   }
 
-  void _updateProperty(Map<String, String> map, String key, String newValue) {
-    map[key] = newValue;
-    ref.read(projectProvider.notifier).updateActiveFileContent(_toHjson(map));
-  }
-
-  void _removeProperty(Map<String, String> map, String key) {
-    map.remove(key);
-    _controllers[key]?.dispose();
-    _controllers.remove(key);
-    ref.read(projectProvider.notifier).updateActiveFileContent(_toHjson(map));
-  }
-
-  void _addProperty(Map<String, String> map, String key) {
-    if (!map.containsKey(key)) {
-      if (_booleanKeys.contains(key)) {
-        map[key] = 'true';
-      } else if (_numberKeys.contains(key)) {
-        map[key] = '1';
-      } else if (key == 'color') {
-        map[key] = 'ff0000';
-      } else {
-        map[key] = '';
+  // Genera recomendaciones limpias y sin contaminación cruzada entre categorías
+  List<String> _getRecommendedProperties(FileType fileType) {
+    List<String> recommended = [];
+    
+    if (fileType == FileType.item) {
+      recommended = List.from(_itemProps);
+    } else if (fileType == FileType.liquid) {
+      recommended = List.from(_liquidProps);
+    } else if (fileType == FileType.block) {
+      recommended = List.from(_baseBlockProps);
+      
+      // Añadir propiedades específicas del tipo de bloque seleccionado
+      if (_properties.containsKey('type')) {
+        final currentType = _properties['type'].toString().replaceAll('"', '');
+        if (_blockSpecificProps.containsKey(currentType)) {
+          recommended.addAll(_blockSpecificProps[currentType]!);
+        }
       }
-      ref.read(projectProvider.notifier).updateActiveFileContent(_toHjson(map));
     }
+
+    // Retorna únicamente las propiedades que NO estén ya escritas en el mapa
+    return recommended.where((prop) => !_properties.containsKey(prop)).toList();
   }
 
-  void _openColorPicker(BuildContext context, Map<String, String> map, String key, String currentColor) {
-    Color pickerColor = Colors.red;
-    try {
-      pickerColor = Color(int.parse('0xFF${currentColor.replaceAll('#', '')}'));
-    } catch (_) {}
+  void _addProperty(String key) {
+    setState(() {
+      if (key == 'solid' || key == 'destructible' || key == 'hasItems' || key == 'hasLiquids' || key == 'hasPower' || key == 'consumesPower' || key == 'outputsPower' || key == 'alwaysUnlocked' || key == 'insulated' || key == 'absorbLasers' || key == 'flashHit') {
+        _properties[key] = true;
+      } else if (key == 'type') {
+        _properties[key] = 'Wall';
+      } else if (key == 'size' || key == 'tier' || key == 'drillTime' || key == 'health') {
+        _properties[key] = '1';
+      } else {
+        _properties[key] = '';
+      }
+    });
+    _saveToFile();
+  }
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF202026),
-        title: const Text('Pick Color', style: TextStyle(color: Colors.white)),
-        content: SingleChildScrollView(
-          child: ColorPicker(
-            pickerColor: pickerColor,
-            onColorChanged: (color) {
-              pickerColor = color;
-            },
-            pickerAreaHeightPercent: 0.8,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFBC02D), foregroundColor: Colors.black),
-            onPressed: () {
-              final hexString = pickerColor.value.toRadixString(16).substring(2);
-              _updateProperty(map, key, hexString);
-              Navigator.pop(context);
-            },
-            child: const Text('Select'),
-          ),
-        ],
-      ),
-    );
+  void _removeProperty(String key) {
+    setState(() {
+      _properties.remove(key);
+    });
+    _saveToFile();
   }
 
   @override
   Widget build(BuildContext context) {
-    final projectState = ref.watch(projectProvider);
-    final activeFile = projectState.activeFile;
+    final activeFile = ref.watch(projectProvider).activeFile;
+    if (activeFile == null) return const SizedBox.shrink();
 
-    if (activeFile == null) {
-      return const Center(child: Text('No file selected', style: TextStyle(color: Colors.white54)));
-    }
+    final recommendedProps = _getRecommendedProperties(activeFile.type);
+    
+    String categoryName = activeFile.type == FileType.item ? "ITEMS" 
+                        : activeFile.type == FileType.liquid ? "LIQUIDS" 
+                        : "BLOCKS";
 
-    final properties = _parseHjson(activeFile.content);
-
-    // Determinar categoría por el nombre del archivo
-    String category = 'blocks';
-    if (activeFile.name.contains('item') || properties['type'] == 'Item') {
-      category = 'items';
-    } else if (activeFile.name.contains('liquid') || properties['type'] == 'Liquid') {
-      category = 'liquids';
-    }
-
-    final suggestions = _categorySuggestions[category] ?? [];
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Recommended Properties (${category.toUpperCase()}):',
-            style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Panel de Recomendaciones dinámicas
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: const BoxDecoration(
+            border: Border(bottom: BorderSide(color: Colors.white12)),
           ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: suggestions.map((prop) {
-              final isAdded = properties.containsKey(prop);
-              return ActionChip(
-                backgroundColor: isAdded ? Colors.amber.withOpacity(0.2) : const Color(0xFF202026),
-                label: Text(
-                  '+ $prop',
-                  style: TextStyle(
-                    color: isAdded ? Colors.amber : Colors.white70,
-                    fontSize: 12,
-                  ),
-                ),
-                onPressed: isAdded ? null : () => _addProperty(properties, prop),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 20),
-
-          // Renderizado dinámico de controles
-          ...properties.entries.map((entry) {
-            final key = entry.key;
-            final value = entry.value;
-
-            Widget valueControl;
-
-            // 1. Caso Booleano: Switch Toggle
-            if (_booleanKeys.contains(key)) {
-              final boolVal = value.toLowerCase() == 'true';
-              valueControl = Container(
-                alignment: Alignment.centerLeft,
-                child: Switch(
-                  value: boolVal,
-                  activeColor: const Color(0xFFFBC02D),
-                  onChanged: (val) => _updateProperty(properties, key, val.toString()),
-                ),
-              );
-            } 
-            // 2. Caso Color: Color Picker Button
-            else if (key == 'color') {
-              valueControl = GestureDetector(
-                onTap: () => _openColorPicker(context, properties, key, value),
-                child: Container(
-                  height: 48,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF202026),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Recommended Properties ($categoryName):',
+                style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: recommendedProps.map((prop) {
+                  return InkWell(
+                    onTap: () => _addProperty(prop),
                     borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 24,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          color: Color(int.tryParse('0xFF${value.replaceAll('#', '')}') ?? 0xFFFF0000),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white24),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Text('#$value', style: const TextStyle(color: Colors.white, fontSize: 13)),
-                    ],
-                  ),
-                ),
-              );
-            } 
-            // 3. Caso Numérico o Texto General
-            else {
-              if (!_controllers.containsKey(key)) {
-                _controllers[key] = TextEditingController(text: value);
-              } else if (_controllers[key]!.text != value && value.isNotEmpty) {
-                _controllers[key]!.text = value;
-              }
-
-              final isNumber = _numberKeys.contains(key);
-
-              valueControl = TextField(
-                controller: _controllers[key],
-                keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-                style: const TextStyle(color: Colors.white, fontSize: 13),
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: const Color(0xFF202026),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(6),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                ),
-                onChanged: (val) => _updateProperty(properties, key, val),
-              );
-            }
-
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12.0),
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: 2,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF202026),
+                        color: Colors.white.withOpacity(0.05),
+                        border: Border.all(color: Colors.white24),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        key,
-                        style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13),
+                        '+ $prop',
+                        style: const TextStyle(color: Colors.white70, fontSize: 12),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    flex: 3,
-                    child: valueControl,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
-                    onPressed: () => _removeProperty(properties, key),
-                  ),
-                ],
+                  );
+                }).toList(),
               ),
+            ],
+          ),
+        ),
+
+        // Lista de propiedades actuales del archivo
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: _properties.entries.map((entry) {
+              final key = entry.key;
+              final value = entry.value;
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 140,
+                      padding: const EdgeInsets.only(top: 14),
+                      child: Text(
+                        key,
+                        style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF222228),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                        child: _buildInputField(key, value, activeFile.type),
+                      ),
+                    ),
+                    // Permitir borrar cualquier propiedad (incluso type o name si lo desean recrear)
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                      onPressed: () => _removeProperty(key),
+                      padding: const EdgeInsets.only(top: 8, left: 8),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInputField(String key, dynamic value, FileType fileType) {
+    // Selector Dropdown estricto para la propiedad 'type' en bloques
+    if (key == 'type' && fileType == FileType.block) {
+      String currentValue = value.toString().replaceAll('"', '');
+      if (!_blockTypes.contains(currentValue)) {
+        currentValue = _blockTypes.first;
+      }
+
+      return DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: currentValue,
+          dropdownColor: const Color(0xFF222228),
+          icon: const Icon(Icons.arrow_drop_down, color: Colors.amber),
+          isExpanded: true,
+          style: const TextStyle(color: Colors.white, fontSize: 14),
+          onChanged: (String? newValue) {
+            if (newValue != null) {
+              setState(() {
+                _properties[key] = newValue;
+              });
+              _saveToFile();
+            }
+          },
+          items: _blockTypes.map<DropdownMenuItem<String>>((String typeValue) {
+            return DropdownMenuItem<String>(
+              value: typeValue,
+              child: Text(typeValue),
             );
-          }),
-        ],
+          }).toList(),
+        ),
+      );
+    }
+
+    if (value is bool) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: Switch(
+          value: value,
+          activeColor: Colors.amber,
+          onChanged: (bool newValue) {
+            setState(() {
+              _properties[key] = newValue;
+            });
+            _saveToFile();
+          },
+        ),
+      );
+    }
+
+    return TextFormField(
+      initialValue: value.toString(),
+      style: const TextStyle(color: Colors.white, fontSize: 14),
+      decoration: const InputDecoration(
+        border: InputBorder.none,
+        isDense: true,
+        contentPadding: EdgeInsets.symmetric(vertical: 12),
       ),
+      onChanged: (newValue) {
+        _properties[key] = newValue;
+        _saveToFile();
+      },
     );
   }
 }

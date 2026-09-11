@@ -1,5 +1,5 @@
-import "dart:convert";
-import "dart:typed_data";
+import 'dart:convert';
+import 'dart:typed_data';
 
 enum FileType {
   block,
@@ -19,11 +19,11 @@ class ProjectFile {
 
   ProjectFile({
     required this.name,
-    this.content = "",
+    this.content = '',
     required this.type,
   });
 
-  bool get isImage => type == FileType.image || name.startsWith("sprites/");
+  bool get isImage => type == FileType.image || name.startsWith('sprites/');
 
   Uint8List? get binaryContent {
     if (!isImage || content.isEmpty) return null;
@@ -36,10 +36,10 @@ class ProjectFile {
 
   factory ProjectFile.fromJson(Map<String, dynamic> json) {
     return ProjectFile(
-      name: json["name"] as String? ?? "",
-      content: json["content"] as String? ?? "",
+      name: json['name'] as String? ?? '',
+      content: json['content'] as String? ?? '',
       type: FileType.values.firstWhere(
-        (e) => e.name == json["type"],
+        (e) => e.name == json['type'],
         orElse: () => FileType.other,
       ),
     );
@@ -47,9 +47,9 @@ class ProjectFile {
 
   Map<String, dynamic> toJson() {
     return {
-      "name": name,
-      "content": content,
-      "type": type.name,
+      'name': name,
+      'content': content,
+      'type': type.name,
     };
   }
 
