@@ -84,28 +84,28 @@ jobs:
           
           if target == kts_path:
               sign_block = '''
-    signingConfigs {
-        create(\"release\") {
-            storeFile = file(\"mindmod.jks\")
-            storePassword = \"mindmod\"
-            keyAlias = \"mindmod\"
-            keyPassword = \"mindmod\"
-        }
-    }
-'''
+              signingConfigs {
+                  create(\"release\") {
+                      storeFile = file(\"mindmod.jks\")
+                      storePassword = \"mindmod\"
+                      keyAlias = \"mindmod\"
+                      keyPassword = \"mindmod\"
+                  }
+              }
+              '''
               content = content.replace('buildTypes {', sign_block + '    buildTypes {')
               content = content.replace('signingConfig = signingConfigs.getByName(\"debug\")', 'signingConfig = signingConfigs.getByName(\"release\")')
           else:
               sign_block = '''
-    signingConfigs {
-        release {
-            storeFile file(\"mindmod.jks\")
-            storePassword \"mindmod\"
-            keyAlias \"mindmod\"
-            keyPassword \"mindmod\"
-        }
-    }
-'''
+              signingConfigs {
+                  release {
+                      storeFile file(\"mindmod.jks\")
+                      storePassword \"mindmod\"
+                      keyAlias \"mindmod\"
+                      keyPassword \"mindmod\"
+                  }
+              }
+              '''
               content = content.replace('buildTypes {', sign_block + '    buildTypes {')
               content = content.replace('signingConfig signingConfigs.debug', 'signingConfig signingConfigs.release')
           
