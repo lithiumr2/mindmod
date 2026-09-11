@@ -1,7 +1,11 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers/project_provider.dart';
-import '../models/project_file.dart';
+import "dart:convert";
+import "dart:typed_data";
+import "package:flutter/material.dart";
+import "package:flutter_riverpod/flutter_riverpod.dart";
+import "package:flutter_colorpicker/flutter_colorpicker.dart";
+import "../providers/project_provider.dart";
+import "../models/project_file.dart";
+import "../services/hjson_engine.dart";
 
 class VisualFormWidget extends ConsumerStatefulWidget {
   const VisualFormWidget({super.key});
@@ -12,172 +16,414 @@ class VisualFormWidget extends ConsumerStatefulWidget {
 
 class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
   Map<String, dynamic> _properties = {};
-  String? _lastLoadedFileName;
+  String? _loadedFileId;
+  List<String> _syntaxErrors = [];
 
-  // === DICCIONARIOS COMPLETOS DE MINDUSTRY ===
+  // ==========================================
+  // DEFINICIONES MASIVAS DE MINDUSTRY V7/V8
+  // ==========================================
 
-  // 1. Propiedades base estrictas por categoría
+  // 1. Tipos de bloques masivos ampliados
+  final List<String> _blockTypes = [
+    // Defensa
+    "Wall", "ShieldWall", "Door", "MendProjector", "OverdriveProjector", "ForceProjector", "ShockMine",
+    // Distribución
+    "Conveyor", "ArmoredConveyor", "Plastoconveyor", "StackConveyor", "Duct", "ArmoredDuct",
+    "Router", "Distributor", "Junction", "DuctJunction", "ItemBridge", "DuctBridge",
+    "Sorter", "InvertedSorter", "OverflowGate", "UnderflowGate", "MassDriver", "PayloadConveyor", "PayloadRouter",
+    // Líquidos
+    "Conduit", "ArmoredConduit", "PlatedConduit", "LiquidRouter", "LiquidJunction", "BridgeConduit", "LiquidTank",
+    // Producción y Minería
+    "Drill", "BurstDrill", "ImpactDrill", "BeamDrill", "GenericCrafter", "Separator", "Incinerator",
+    // Energía
+    "PowerNode", "SurgeTower", "BeamNode", "Battery", "SolarPanel", "CombustionGenerator", 
+    "ThermalGenerator", "SteamGenerator", "NuclearReactor", "ImpactReactor",
+    // Torretas
+    "ItemTurret", "LiquidTurret", "PowerTurret", "LaserTurret", "PointDefenseTurret", "TractorBeamTurret",
+    // Unidades y Cargas
+    "UnitFactory", "Reconstructor", "UnitAssembler", "PayloadLoader", "PayloadUnloader", "Constructor",
+    // Lógica e Interactivos
+    "MessageBlock", "SwitchBlock", "LogicProcessor", "MemoryBlock", "LogicDisplay", "Canvas"
+  ];
+
+  // 2. Propiedades por defecto / específicas según subtipo
+  final Map<String, List<String>> _blockSpecificProps = {
+    "Wall": ["chanceDeflect", "flashHit", "insulated", "absorbLasers"],
+    "ShieldWall": ["chanceDeflect", "flashHit", "insulated", "absorbLasers", "shieldHealth", "cooldown"],
+    "Door": ["openfx", "closefx"],
+    "MendProjector": ["range", "reload", "healPercent", "phaseRangeBoost", "phaseBoost"],
+    "OverdriveProjector": ["range", "speedBoost", "useTime", "phaseBoost", "phaseRangeBoost"],
+    "ForceProjector": ["radius", "shieldHealth", "cooldownNormal", "cooldownLiquid", "cooldownBrokenBase"],
+    "Conveyor": ["speed", "displayedSpeed"],
+    "ArmoredConveyor": ["speed"],
+    "Plastoconveyor": ["speed"],
+    "StackConveyor": ["speed", "itemCapacity"],
+    "Duct": ["speed", "transparent"],
+    "MassDriver": ["range", "rotateSpeed", "translation", "minDist", "bulletSpeed"],
+    "Drill": ["tier", "drillTime", "warmupSpeed", "liquidBoostIntensity", "drawMineItem"],
+    "BurstDrill": ["tier", "drillTime", "itemCapacity", "arrows"],
+    "ImpactDrill": ["tier", "drillTime"],
+    "BeamDrill": ["tier", "drillTime", "range", "sparkColor", "pulse", "consumeTime"],
+    "GenericCrafter": ["craftTime", "outputItem", "outputLiquid"],
+    "ItemTurret": ["range", "reload", "inaccuracy", "shootCone", "targetAir", "targetGround", "shootSound", "ammoTypes"],
+    "LiquidTurret": ["range", "reload", "inaccuracy", "shootCone", "targetAir", "targetGround", "shootSound", "ammoType"],
+    "PowerTurret": ["range", "reload", "shootType", "targetAir", "targetGround", "shootSound"],
+    "LaserTurret": ["range", "reload", "firingMoveFract", "shootDuration", "shootSound"],
+    "PowerNode": ["maxNodes", "laserRange", "laserColor1", "laserColor2"],
+    "SurgeTower": ["maxNodes", "laserRange"],
+    "BeamNode": ["range", "laserColor1"],
+    "Battery": ["emptyPower"],
+    "SolarPanel": ["powerProduction"],
+    "CombustionGenerator": ["powerProduction", "itemDuration"],
+    "ThermalGenerator": ["powerProduction", "generateEffect"],
+    "NuclearReactor": ["heating", "itemDuration", "smokeThreshold", "explosionRadius", "explosionDamage"],
+    "ImpactReactor": ["powerProduction", "itemDuration", "warmupSpeed"],
+    "UnitFactory": ["plans", "produceTime"],
+    "Reconstructor": ["constructTime", "upgrades"],
+    "LogicProcessor": ["instructionsPerTick", "range"],
+    "MemoryBlock": ["memoryCapacity"],
+    "LogicDisplay": ["displaySize"],
+    "MessageBlock": ["maxTextLength"],
+  };
+
+  // Listas de propiedades para Items y Líquidos
   final List<String> _itemProps = [
-    'color', 'explosiveness', 'flammability', 'radioactivity', 
-    'charge', 'cost', 'alwaysUnlocked', 'frames', 'transitionDamage'
+    "color", "explosiveness", "flammability", "radioactivity", "charge",
+    "hardness", "cost", "alwaysUnlocked", "frames", "transitionDamage"
   ];
 
   final List<String> _liquidProps = [
-    'color', 'temperature', 'flammability', 'explosiveness', 
-    'viscosity', 'heatCapacity', 'barColor', 'lightColor', 'effect'
+    "color", "temperature", "flammability", "explosiveness", "viscosity",
+    "heatCapacity", "barColor", "lightColor", "effect", "gas", "coolant"
   ];
 
   final List<String> _baseBlockProps = [
-    'type', 'health', 'size', 'requirements', 'category', 
-    'solid', 'destructible', 'hasItems', 'hasLiquids', 
-    'hasPower', 'consumesPower', 'outputsPower', 'itemCapacity', 'liquidCapacity'
+    "type", "health", "size", "requirements", "category",
+    "solid", "destructible", "hasItems", "hasLiquids",
+    "hasPower", "consumesPower", "outputsPower", "itemCapacity", "liquidCapacity"
   ];
 
-  // 2. Tipos ampliados de bloques en Mindustry
-  final List<String> _blockTypes = [
-    'Wall', 'Drill', 'BeamDrill', 'Conveyor', 'Router', 'Junction', 
-    'BridgeConveyor', 'GenericCrafter', 'ItemTurret', 'LiquidTurret', 
-    'PowerNode', 'Battery', 'Generator', 'NuclearReactor', 'Mender', 'OverdriveProjector'
-  ];
+  // Identificadores de tipos de datos estrictos
+  final Set<String> _numberProps = {
+    "health", "size", "tier", "drillTime", "speed", "displayedSpeed", "craftTime",
+    "range", "reload", "inaccuracy", "maxNodes", "laserRange", "powerProduction",
+    "itemDuration", "heating", "smokeThreshold", "emptyPower", "instructionsPerTick",
+    "memoryCapacity", "displaySize", "itemCapacity", "liquidCapacity", "hardness",
+    "cost", "explosiveness", "flammability", "radioactivity", "charge", "temperature",
+    "viscosity", "heatCapacity", "healPercent", "speedBoost", "radius", "shieldHealth"
+  };
 
-  // 3. Propiedades específicas por tipo de bloque
-  final Map<String, List<String>> _blockSpecificProps = {
-    'Wall': ['chanceDeflect', 'flashHit', 'insulated', 'absorbLasers'],
-    'Drill': ['tier', 'drillTime', 'warmupSpeed', 'liquidBoostIntensity', 'drawMineItem', 'updateEffect'],
-    'BeamDrill': ['tier', 'drillTime', 'range', 'sparkColor', 'pulse', 'consumeTime'],
-    'Conveyor': ['speed', 'displayedSpeed'],
-    'GenericCrafter': ['craftTime', 'outputItem', 'outputLiquid', 'consumes'],
-    'ItemTurret': ['range', 'reload', 'inaccuracy', 'targetAir', 'targetGround', 'shootSound', 'ammoTypes'],
-    'LiquidTurret': ['range', 'reload', 'inaccuracy', 'shootSound', 'ammoType'],
-    'PowerNode': ['maxNodes', 'laserRange'],
-    'Battery': ['emptyPower'],
-    'Generator': ['powerProduction', 'itemDuration'],
-    'NuclearReactor': ['heating', 'itemDuration', 'smokeThreshold'],
-    'Mender': ['range', 'reload', 'healPercent'],
-    'OverdriveProjector': ['range', 'speedBoost', 'useTime', 'phaseBoost', 'phaseRangeBoost'],
+  final Set<String> _boolProps = {
+    "solid", "destructible", "hasItems", "hasLiquids", "hasPower", "consumesPower",
+    "outputsPower", "alwaysUnlocked", "insulated", "absorbLasers", "flashHit",
+    "targetAir", "targetGround", "gas", "coolant", "transparent"
+  };
+
+  final Set<String> _colorProps = {
+    "color", "barColor", "lightColor", "laserColor1", "laserColor2", "sparkColor"
   };
 
   @override
   void initState() {
     super.initState();
-    _parseCurrentFile();
+    _loadFromActiveFile();
   }
 
   @override
   void didUpdateWidget(covariant VisualFormWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _parseCurrentFile();
+    _loadFromActiveFile();
   }
 
-  // Analiza y limpia las propiedades estrictamente según el archivo actual
-  void _parseCurrentFile() {
+  void _loadFromActiveFile() {
     final activeFile = ref.read(projectProvider).activeFile;
     if (activeFile == null) return;
 
-    // Si cambió de archivo, forzamos recarga limpia
-    if (_lastLoadedFileName != activeFile.name) {
-      _lastLoadedFileName = activeFile.name;
+    // Aislamiento estricto: Si cambió el archivo activo, limpiar todo el estado en memoria
+    if (_loadedFileId != activeFile.name) {
+      _loadedFileId = activeFile.name;
       _properties.clear();
+      _syntaxErrors.clear();
     }
 
-    final map = <String, dynamic>{};
-    final lines = activeFile.content.split('\n');
-    
-    for (var line in lines) {
-      final colonIndex = line.indexOf(':');
-      if (colonIndex != -1) {
-        final key = line.substring(0, colonIndex).trim();
-        var valueStr = line.substring(colonIndex + 1).trim();
-        
-        if (valueStr.startsWith('"') && valueStr.endsWith('"')) {
-          map[key] = valueStr.substring(1, valueStr.length - 1);
-        } else if (valueStr == 'true') {
-          map[key] = true;
-        } else if (valueStr == 'false') {
-          map[key] = false;
-        } else {
-          map[key] = valueStr;
-        }
-      }
-    }
-    
-    // Asegurar propiedad name inicial
-    if (!map.containsKey('name')) {
-      map['name'] = activeFile.name.replaceAll('.hjson', '');
-    }
+    _syntaxErrors = HjsonEngine.validateSyntax(activeFile.content);
+    final parsed = HjsonEngine.parse(activeFile.content);
 
-    // Si es bloque y no tiene 'type', inicializarlo por defecto según su nombre o Wall
-    if (activeFile.type == FileType.block && !map.containsKey('type')) {
-      map['type'] = 'Wall';
+    // Protección de campos vitales obligatorios
+    if (!parsed.containsKey("name") || parsed["name"].toString().trim().isEmpty) {
+      parsed["name"] = activeFile.name.replaceAll(".hjson", "");
+    }
+    if (activeFile.type == FileType.block && !parsed.containsKey("type")) {
+      parsed["type"] = "Wall";
     }
 
     setState(() {
-      _properties = map;
+      _properties = parsed;
     });
   }
 
-  void _saveToFile() {
+  void _saveChanges() {
     final activeFile = ref.read(projectProvider).activeFile;
     if (activeFile == null) return;
 
-    final buffer = StringBuffer();
-    _properties.forEach((key, value) {
-      if (value is bool) {
-        buffer.writeln('$key: $value');
-      } else if (key == 'name' || key == 'description' || key == 'color' || key == 'type' || key == 'shootSound') {
-        buffer.writeln('$key: "$value"');
+    // Garantizar que name y type (en bloques) nunca desaparezcan
+    if (!_properties.containsKey("name") || _properties["name"].toString().trim().isEmpty) {
+      _properties["name"] = activeFile.name.replaceAll(".hjson", "");
+    }
+    if (activeFile.type == FileType.block && !_properties.containsKey("type")) {
+      _properties["type"] = "Wall";
+    }
+
+    // Tipado estricto al momento de serializar
+    final cleaned = <String, dynamic>{};
+    _properties.forEach((k, v) {
+      if (_boolProps.contains(k)) {
+        cleaned[k] = v == true || v.toString() == "true";
+      } else if (_numberProps.contains(k)) {
+        if (v is num) {
+          cleaned[k] = v;
+        } else {
+          final str = v.toString().trim();
+          if (int.tryParse(str) != null) {
+            cleaned[k] = int.parse(str);
+          } else if (double.tryParse(str) != null) {
+            cleaned[k] = double.parse(str);
+          } else {
+            cleaned[k] = str.isEmpty ? 0 : str;
+          }
+        }
       } else {
-        buffer.writeln('$key: $value');
+        cleaned[k] = v;
       }
     });
 
-    ref.read(projectProvider.notifier).updateActiveFileContent(buffer.toString());
+    final serialized = HjsonEngine.stringify(cleaned);
+    _syntaxErrors = HjsonEngine.validateSyntax(serialized);
+    ref.read(projectProvider.notifier).updateActiveFileContent(serialized);
+
+    // Gestor automático de localización
+    _syncLocalizationKey(activeFile.name.replaceAll(".hjson", ""), _properties["description"]?.toString() ?? "");
   }
 
-  // Genera recomendaciones limpias y sin contaminación cruzada entre categorías
-  List<String> _getRecommendedProperties(FileType fileType) {
-    List<String> recommended = [];
-    
-    if (fileType == FileType.item) {
-      recommended = List.from(_itemProps);
-    } else if (fileType == FileType.liquid) {
-      recommended = List.from(_liquidProps);
-    } else if (fileType == FileType.block) {
-      recommended = List.from(_baseBlockProps);
-      
-      // Añadir propiedades específicas del tipo de bloque seleccionado
-      if (_properties.containsKey('type')) {
-        final currentType = _properties['type'].toString().replaceAll('"', '');
-        if (_blockSpecificProps.containsKey(currentType)) {
-          recommended.addAll(_blockSpecificProps[currentType]!);
-        }
+  void _syncLocalizationKey(String itemName, String desc) {
+    // Sincroniza bundle_es.properties o similar en el proyecto si existe
+    final files = ref.read(projectProvider).files;
+    final bundleFile = files.where((f) => f.name.endsWith(".properties") || f.name.contains("bundle")).firstOrNull;
+    if (bundleFile != null) {
+      final key = "item.$itemName.name = $itemName\nitem.$itemName.description = $desc";
+      if (!bundleFile.content.contains(itemName)) {
+        ref.read(projectProvider.notifier).addFile(bundleFile.copyWith(
+          content: "${bundleFile.content}\n$key"
+        ));
       }
     }
+  }
 
-    // Retorna únicamente las propiedades que NO estén ya escritas en el mapa
-    return recommended.where((prop) => !_properties.containsKey(prop)).toList();
+  void _applyPreset(String presetKey) {
+    final activeFile = ref.read(projectProvider).activeFile;
+    if (activeFile == null) return;
+    final cleanName = activeFile.name.replaceAll(".hjson", "");
+
+    setState(() {
+      if (presetKey == "drill") {
+        _properties = {
+          "name": cleanName,
+          "type": "Drill",
+          "size": 2,
+          "health": 240,
+          "tier": 2,
+          "drillTime": 400,
+          "hasPower": true,
+          "consumesPower": true,
+          "category": "production",
+          "requirements": "[copper/30, lead/20]"
+        };
+      } else if (presetKey == "turret") {
+        _properties = {
+          "name": cleanName,
+          "type": "ItemTurret",
+          "size": 2,
+          "health": 800,
+          "range": 160,
+          "reload": 20,
+          "inaccuracy": 2,
+          "targetAir": true,
+          "targetGround": true,
+          "shootSound": "shoot",
+          "category": "turret",
+          "requirements": "[copper/75, lead/50]"
+        };
+      } else if (presetKey == "crafter") {
+        _properties = {
+          "name": cleanName,
+          "type": "GenericCrafter",
+          "size": 2,
+          "health": 320,
+          "craftTime": 60,
+          "hasItems": true,
+          "hasPower": true,
+          "category": "crafting",
+          "requirements": "[lead/60, silicon/40]"
+        };
+      } else if (presetKey == "item_basic") {
+        _properties = {
+          "name": cleanName,
+          "cost": 1.0,
+          "color": "ffcc00",
+          "flammability": 0.0,
+          "explosiveness": 0.0,
+          "radioactivity": 0.0,
+          "charge": 0.0
+        };
+      }
+    });
+    _saveChanges();
+  }
+
+  void _openColorPicker(String key, String currentColorHex) {
+    Color pickerColor;
+    try {
+      final clean = currentColorHex.replaceAll("#", "").trim();
+      pickerColor = Color(int.parse(clean.length == 6 ? "FF$clean" : clean, radix: 16));
+    } catch (_) {
+      pickerColor = Colors.amber;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF222228),
+        title: Text("Seleccionar color ($key)", style: const TextStyle(color: Colors.amber, fontSize: 16)),
+        content: SingleChildScrollView(
+          child: ColorPicker(
+            pickerColor: pickerColor,
+            onColorChanged: (c) => pickerColor = c,
+            pickerAreaHeightPercent: 0.7,
+            enableAlpha: false,
+            labelTypes: const [],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancelar", style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.amber),
+            onPressed: () {
+              final hex = pickerColor.value.toRadixString(16).padLeft(8, "0").substring(2);
+              setState(() {
+                _properties[key] = hex;
+              });
+              _saveChanges();
+              Navigator.pop(context);
+            },
+            child: const Text("Aplicar", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _addProperty(String key) {
     setState(() {
-      if (key == 'solid' || key == 'destructible' || key == 'hasItems' || key == 'hasLiquids' || key == 'hasPower' || key == 'consumesPower' || key == 'outputsPower' || key == 'alwaysUnlocked' || key == 'insulated' || key == 'absorbLasers' || key == 'flashHit') {
+      if (_boolProps.contains(key)) {
         _properties[key] = true;
-      } else if (key == 'type') {
-        _properties[key] = 'Wall';
-      } else if (key == 'size' || key == 'tier' || key == 'drillTime' || key == 'health') {
-        _properties[key] = '1';
+      } else if (_numberProps.contains(key)) {
+        _properties[key] = (key == "size" || key == "tier") ? 1 : 100;
+      } else if (_colorProps.contains(key)) {
+        _properties[key] = "ffd37f";
       } else {
-        _properties[key] = '';
+        _properties[key] = "";
       }
     });
-    _saveToFile();
+    _saveChanges();
   }
 
   void _removeProperty(String key) {
+    // Bloqueo estricto de campos vitales
+    if (key == "name" || key == "type") {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("El campo obligatorio  no puede ser eliminado."),
+          backgroundColor: Colors.redAccent,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
     setState(() {
       _properties.remove(key);
     });
-    _saveToFile();
+    _saveChanges();
+  }
+
+  List<String> _getRecommendedProperties(FileType fileType) {
+    List<String> base = [];
+    if (fileType == FileType.item) {
+      base = List.from(_itemProps);
+    } else if (fileType == FileType.liquid) {
+      base = List.from(_liquidProps);
+    } else {
+      base = List.from(_baseBlockProps);
+      final currentType = _properties["type"]?.toString().replaceAll("\"", "") ?? "Wall";
+      if (_blockSpecificProps.containsKey(currentType)) {
+        base.addAll(_blockSpecificProps[currentType]!);
+      }
+    }
+    return base.where((p) => !_properties.containsKey(p)).toList();
+  }
+
+  Widget _buildSpriteLinkModule(String currentFileName) {
+    final cleanBase = currentFileName.replaceAll(".hjson", "");
+    final files = ref.watch(projectProvider).files;
+    final matchingSprite = files.where((f) => f.isImage && (f.name == "$cleanBase.png" || f.name == "sprites/$cleanBase.png")).firstOrNull;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E1E24),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: matchingSprite != null ? Colors.green.withOpacity(0.4) : Colors.white12),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xFF141418),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: Colors.white24),
+            ),
+            child: matchingSprite != null && matchingSprite.binaryContent != null
+                ? Image.memory(matchingSprite.binaryContent!, fit: BoxFit.contain)
+                : const Icon(Icons.image_not_supported_outlined, color: Colors.white30, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  matchingSprite != null ? "Sprite Vinculado: ${matchingSprite.name}" : "Sin Sprite específico ($cleanBase.png)",
+                  style: TextStyle(
+                    color: matchingSprite != null ? Colors.greenAccent : Colors.white70,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  matchingSprite != null ? "La textura se incluirá automáticamente en la exportación" : "Sube .png en la carpeta sprites",
+                  style: const TextStyle(color: Colors.white38, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -186,46 +432,89 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     if (activeFile == null) return const SizedBox.shrink();
 
     final recommendedProps = _getRecommendedProperties(activeFile.type);
-    
-    String categoryName = activeFile.type == FileType.item ? "ITEMS" 
-                        : activeFile.type == FileType.liquid ? "LIQUIDS" 
-                        : "BLOCKS";
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Panel de Recomendaciones dinámicas
+        // Barra de Validación Sintáctica si hay errores
+        if (_syntaxErrors.isNotEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            color: Colors.red.withOpacity(0.2),
+            child: Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _syntaxErrors.first,
+                    style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+        // Módulo de Asociación de Sprites
+        _buildSpriteLinkModule(activeFile.name),
+
+        // Barra de Presets Rápidos
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: const BoxDecoration(
+            border: Border(bottom: BorderSide(color: Colors.white12)),
+          ),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                const Text("Plantillas: ", style: TextStyle(color: Colors.white54, fontSize: 12)),
+                const SizedBox(width: 8),
+                if (activeFile.type == FileType.block) ...[
+                  _buildPresetChip("Taladro", () => _applyPreset("drill")),
+                  const SizedBox(width: 6),
+                  _buildPresetChip("Torreta", () => _applyPreset("turret")),
+                  const SizedBox(width: 6),
+                  _buildPresetChip("Fábrica", () => _applyPreset("crafter")),
+                ] else if (activeFile.type == FileType.item) ...[
+                  _buildPresetChip("Ítem Básico", () => _applyPreset("item_basic")),
+                ],
+              ],
+            ),
+          ),
+        ),
+
+        // Recomendaciones
+        Container(
+          padding: const EdgeInsets.all(12),
           decoration: const BoxDecoration(
             border: Border(bottom: BorderSide(color: Colors.white12)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Recommended Properties ($categoryName):',
-                style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13),
+              const Text(
+                "Propiedades recomendadas para añadir:",
+                style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 12),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: recommendedProps.map((prop) {
+                spacing: 6,
+                runSpacing: 6,
+                children: recommendedProps.take(12).map((prop) {
                   return InkWell(
                     onTap: () => _addProperty(prop),
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(4),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.05),
+                        color: Colors.white.withOpacity(0.06),
                         border: Border.all(color: Colors.white24),
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(4),
                       ),
-                      child: Text(
-                        '+ $prop',
-                        style: const TextStyle(color: Colors.white70, fontSize: 12),
-                      ),
+                      child: Text("+ $prop", style: const TextStyle(color: Colors.white70, fontSize: 11)),
                     ),
                   );
                 }).toList(),
@@ -234,25 +523,38 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
           ),
         ),
 
-        // Lista de propiedades actuales del archivo
+        // Lista de Propiedades Activas
         Expanded(
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: _properties.entries.map((entry) {
               final key = entry.key;
               final value = entry.value;
+              final isVital = key == "name" || (key == "type" && activeFile.type == FileType.block);
 
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Container(
+                    SizedBox(
                       width: 140,
-                      padding: const EdgeInsets.only(top: 14),
-                      child: Text(
-                        key,
-                        style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.w500),
+                      child: Row(
+                        children: [
+                          Text(
+                            key,
+                            style: TextStyle(
+                              color: isVital ? Colors.amber : Colors.white70,
+                              fontWeight: isVital ? FontWeight.bold : FontWeight.w500,
+                              fontSize: 13,
+                            ),
+                          ),
+                          if (isVital)
+                            const Padding(
+                              padding: EdgeInsets.only(left: 4),
+                              child: Icon(Icons.lock, size: 12, color: Colors.amber),
+                            ),
+                        ],
                       ),
                     ),
                     Expanded(
@@ -260,16 +562,19 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                         decoration: BoxDecoration(
                           color: const Color(0xFF222228),
                           borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.white12),
                         ),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                         child: _buildInputField(key, value, activeFile.type),
                       ),
                     ),
-                    // Permitir borrar cualquier propiedad (incluso type o name si lo desean recrear)
                     IconButton(
-                      icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
-                      onPressed: () => _removeProperty(key),
-                      padding: const EdgeInsets.only(top: 8, left: 8),
+                      icon: Icon(
+                        isVital ? Icons.lock_outline : Icons.delete_outline,
+                        color: isVital ? Colors.white24 : Colors.redAccent,
+                        size: 20,
+                      ),
+                      onPressed: isVital ? null : () => _removeProperty(key),
                     ),
                   ],
                 ),
@@ -281,66 +586,150 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     );
   }
 
-  Widget _buildInputField(String key, dynamic value, FileType fileType) {
-    // Selector Dropdown estricto para la propiedad 'type' en bloques
-    if (key == 'type' && fileType == FileType.block) {
-      String currentValue = value.toString().replaceAll('"', '');
-      if (!_blockTypes.contains(currentValue)) {
-        currentValue = _blockTypes.first;
-      }
+  Widget _buildPresetChip(String label, VoidCallback onTap) {
+    return ActionChip(
+      backgroundColor: const Color(0xFF2A2A32),
+      side: const BorderSide(color: Colors.amber, width: 0.8),
+      label: Text(label, style: const TextStyle(color: Colors.amber, fontSize: 11)),
+      onPressed: onTap,
+    );
+  }
 
+  Widget _buildInputField(String key, dynamic value, FileType fileType) {
+    // 1. Selector masivo para la propiedad type
+    if (key == "type" && fileType == FileType.block) {
+      String current = value.toString().replaceAll("\"", "");
+      if (!_blockTypes.contains(current)) {
+        current = _blockTypes.first;
+      }
       return DropdownButtonHideUnderline(
         child: DropdownButton<String>(
-          value: currentValue,
+          value: current,
           dropdownColor: const Color(0xFF222228),
           icon: const Icon(Icons.arrow_drop_down, color: Colors.amber),
           isExpanded: true,
-          style: const TextStyle(color: Colors.white, fontSize: 14),
-          onChanged: (String? newValue) {
-            if (newValue != null) {
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+          onChanged: (val) {
+            if (val != null) {
               setState(() {
-                _properties[key] = newValue;
+                _properties[key] = val;
               });
-              _saveToFile();
+              _saveChanges();
             }
           },
-          items: _blockTypes.map<DropdownMenuItem<String>>((String typeValue) {
-            return DropdownMenuItem<String>(
-              value: typeValue,
-              child: Text(typeValue),
-            );
-          }).toList(),
+          items: _blockTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
         ),
       );
     }
 
-    if (value is bool) {
+    // 2. Selector visual interactivo de color (ColorPicker)
+    if (_colorProps.contains(key)) {
+      final colorHex = value.toString().replaceAll("#", "").trim();
+      Color previewColor;
+      try {
+        previewColor = Color(int.parse(colorHex.length == 6 ? "FF$colorHex" : colorHex, radix: 16));
+      } catch (_) {
+        previewColor = Colors.amber;
+      }
+
+      return InkWell(
+        onTap: () => _openColorPicker(key, colorHex),
+        child: Row(
+          children: [
+            Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                color: previewColor,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white54),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              "#$colorHex",
+              style: const TextStyle(color: Colors.white, fontSize: 13, fontFamily: "monospace"),
+            ),
+            const Spacer(),
+            const Icon(Icons.palette_outlined, color: Colors.amber, size: 18),
+          ],
+        ),
+      );
+    }
+
+    // 3. Menú desplegable para referencias cruzadas (requirements, outputItem, etc.)
+    if (key == "outputItem" || key == "outputLiquid" || key == "ammoType") {
+      final allFiles = ref.watch(projectProvider).files;
+      final candidates = allFiles
+          .where((f) => f.type == FileType.item || f.type == FileType.liquid)
+          .map((f) => f.name.replaceAll(".hjson", ""))
+          .toList();
+
+      if (candidates.isNotEmpty) {
+        final current = value.toString();
+        return DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            value: candidates.contains(current) ? current : null,
+            hint: Text(current.isEmpty ? "Seleccionar ítem/líquido" : current, style: const TextStyle(color: Colors.white70)),
+            dropdownColor: const Color(0xFF222228),
+            isExpanded: true,
+            style: const TextStyle(color: Colors.white, fontSize: 13),
+            onChanged: (v) {
+              if (v != null) {
+                setState(() => _properties[key] = v);
+                _saveChanges();
+              }
+            },
+            items: candidates.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+          ),
+        );
+      }
+    }
+
+    // 4. Booleanos estrictos
+    if (value is bool || _boolProps.contains(key)) {
+      final bool val = value is bool ? value : value.toString().toLowerCase() == "true";
       return Align(
         alignment: Alignment.centerLeft,
         child: Switch(
-          value: value,
+          value: val,
           activeColor: Colors.amber,
-          onChanged: (bool newValue) {
+          onChanged: (bool newVal) {
             setState(() {
-              _properties[key] = newValue;
+              _properties[key] = newVal;
             });
-            _saveToFile();
+            _saveChanges();
           },
         ),
       );
     }
 
+    // 5. Entradas de texto o números puros
+    final isNum = _numberProps.contains(key);
     return TextFormField(
+      key: ValueKey("${_loadedFileId}_$key"),
       initialValue: value.toString(),
-      style: const TextStyle(color: Colors.white, fontSize: 14),
-      decoration: const InputDecoration(
+      keyboardType: isNum ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
+      style: const TextStyle(color: Colors.white, fontSize: 13),
+      decoration: InputDecoration(
         border: InputBorder.none,
         isDense: true,
-        contentPadding: EdgeInsets.symmetric(vertical: 12),
+        hintText: isNum ? "0" : "valor",
+        hintStyle: const TextStyle(color: Colors.white24),
       ),
-      onChanged: (newValue) {
-        _properties[key] = newValue;
-        _saveToFile();
+      onChanged: (newVal) {
+        if (isNum) {
+          if (int.tryParse(newVal) != null) {
+            _properties[key] = int.parse(newVal);
+          } else if (double.tryParse(newVal) != null) {
+            _properties[key] = double.parse(newVal);
+          } else {
+            _properties[key] = newVal;
+          }
+        } else {
+          _properties[key] = newVal;
+        }
+        _saveChanges();
       },
     );
   }
