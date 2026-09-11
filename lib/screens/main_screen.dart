@@ -20,23 +20,27 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
   String get _buttonLabel {
     switch (_activeCategory) {
-      case 'blocks':
-        return '+ New Block';
-      case 'liquids':
-        return '+ New Liquid';
-      case 'items':
+      case "blocks": return "+ New Block";
+      case "liquids": return "+ New Liquid";
+      case "units": return "+ New Unit";
+      case "status": return "+ New Status";
+      case "sectors": return "+ New Sector";
+      case "weathers": return "+ New Weather";
+      case "items":
       default:
-        return '+ New Item';
+        return "+ New Item";
     }
   }
 
   FileType get _activeFileType {
     switch (_activeCategory) {
-      case 'blocks':
-        return FileType.block;
-      case 'liquids':
-        return FileType.liquid;
-      case 'items':
+      case "blocks": return FileType.block;
+      case "liquids": return FileType.liquid;
+      case "units": return FileType.unit;
+      case "status": return FileType.status;
+      case "sectors": return FileType.sector;
+      case "weathers": return FileType.weather;
+      case "items":
       default:
         return FileType.item;
     }
@@ -236,10 +240,18 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   Widget _buildFolderTile(String folderName, IconData icon, Color iconColor, ProjectState projectState) {
     final isCategoryActive = _activeCategory == folderName;
     FileType targetType;
-    if (folderName == 'blocks') {
+    if (folderName == blocks) {
       targetType = FileType.block;
-    } else if (folderName == 'liquids') {
+    } else if (folderName == liquids) {
       targetType = FileType.liquid;
+    } else if (folderName == units) {
+      targetType = FileType.unit;
+    } else if (folderName == status) {
+      targetType = FileType.status;
+    } else if (folderName == sectors) {
+      targetType = FileType.sector;
+    } else if (folderName == weathers) {
+      targetType = FileType.weather;
     } else {
       targetType = FileType.item;
     }

@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'screens/main_screen.dart';
 
 void main() {
-  runApp(const ProviderScope(child: MindmodApp()));
+  WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setPreferredOrientations([
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ]).then((_) {
+    runApp(const ProviderScope(child: MindmodApp()));
+  });
 }
 
 class MindmodApp extends StatelessWidget {

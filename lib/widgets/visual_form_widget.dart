@@ -97,6 +97,20 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     "heatCapacity", "barColor", "lightColor", "effect", "gas", "coolant"
   ];
 
+  
+  final List<String> _unitProps = [
+    "type", "health", "speed", "flying", "range", "armor", "hitSize", "weapons", "abilities", "controller"
+  ];
+  final List<String> _statusProps = [
+    "color", "damage", "damageMultiplier", "speedMultiplier", "armorMultiplier", "effect"
+  ];
+  final List<String> _sectorProps = [
+    "sector", "planet", "captureWave", "difficulty", "alwaysUnlocked"
+  ];
+  final List<String> _weatherProps = [
+    "type", "color", "noiseColor", "opacity", "duration", "sound"
+  ];
+
   final List<String> _baseBlockProps = [
     "type", "health", "size", "requirements", "category",
     "solid", "destructible", "hasItems", "hasLiquids",
@@ -126,40 +140,32 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
   @override
   void initState() {
     super.initState();
-    _loadFromActiveFile();
   }
 
   @override
   void didUpdateWidget(covariant VisualFormWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _loadFromActiveFile();
   }
 
-  void _loadFromActiveFile() {
-    final activeFile = ref.read(projectProvider).activeFile;
-    if (activeFile == null) return;
-
-    // Aislamiento estricto: Si cambió el archivo activo, limpiar todo el estado en memoria
-    if (_loadedFileId != activeFile.name) {
-      _loadedFileId = activeFile.name;
-      _properties.clear();
-      _syntaxErrors.clear();
+  
+  void _cleanInvalidProperties(FileType type, Map<String, dynamic> parsed) {
+    if (type == FileType.item) {
+       parsed.removeWhere((k, v) => k != "name" && k != "description" && !_itemProps.contains(k));
+    } else if (type == FileType.liquid) {
+       parsed.removeWhere((k, v) => k != "name" && k != "description" && !_liquidProps.contains(k));
+    } else if (type == FileType.unit) {
+       parsed.removeWhere((k, v) => k != "name" && k != "description" && !_unitProps.contains(k));
+    } else if (type == FileType.status) {
+       parsed.removeWhere((k, v) => k != "name" && k != "description" && !_statusProps.contains(k));
+    } else if (type == FileType.sector) {
+       parsed.removeWhere((k, v) => k != "name" && k != "description" && !_sectorProps.contains(k));
+    } else if (type == FileType.weather) {
+       parsed.removeWhere((k, v) => k != "name" && k != "description" && !_weatherProps.contains(k));
+    } else if (type == FileType.block) {
+       final currentType = parsed["type"]?.toString().replaceAll("\"", "") ?? "Wall";
+       final allowed = Set<String>.from(_baseBlockProps)..addAll(_blockSpecificProps[currentType] ?? []);
+       parsed.removeWhere((k, v) => k != "name" && k != "description" && !allowed.contains(k));
     }
-
-    _syntaxErrors = HjsonEngine.validateSyntax(activeFile.content);
-    final parsed = HjsonEngine.parse(activeFile.content);
-
-    // Protección de campos vitales obligatorios
-    if (!parsed.containsKey("name") || parsed["name"].toString().trim().isEmpty) {
-      parsed["name"] = activeFile.name.replaceAll(".hjson", "");
-    }
-    if (activeFile.type == FileType.block && !parsed.containsKey("type")) {
-      parsed["type"] = "Wall";
-    }
-
-    setState(() {
-      _properties = parsed;
-    });
   }
 
   void _saveChanges() {
@@ -341,6 +347,8 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
   }
 
   void _removeProperty(String key) {
+    final activeFile = ref.read(projectProvider).activeFile;
+
     // Bloqueo estricto de campos vitales
     if (key == "name" || key == "type") {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -364,7 +372,15 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
       base = List.from(_itemProps);
     } else if (fileType == FileType.liquid) {
       base = List.from(_liquidProps);
-    } else {
+    } else if (fileType == FileType.unit) {
+      base = List.from(_unitProps);
+    } else if (fileType == FileType.status) {
+      base = List.from(_statusProps);
+    } else if (fileType == FileType.sector) {
+      base = List.from(_sectorProps);
+    } else if (fileType == FileType.weather) {
+      base = List.from(_weatherProps);
+    } else if (fileType == FileType.block) {
       base = List.from(_baseBlockProps);
       final currentType = _properties["type"]?.toString().replaceAll("\"", "") ?? "Wall";
       if (_blockSpecificProps.containsKey(currentType)) {
@@ -430,6 +446,31 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
   Widget build(BuildContext context) {
     final activeFile = ref.watch(projectProvider).activeFile;
     if (activeFile == null) return const SizedBox.shrink();
+
+    // AISLAMIENTO ESTRICTO: evaluar sincronamente si el archivo cambió
+    if (_loadedFileId != activeFile.name) {
+      _loadedFileId = activeFile.name;
+      _properties.clear();
+      _syntaxErrors.clear();
+      
+      _syntaxErrors = HjsonEngine.validateSyntax(activeFile.content);
+      final parsed = HjsonEngine.parse(activeFile.content);
+
+      // BLOQUEO Y LIMPIEZA DE HERENCIA: elimina propiedades que no corresponden a su tipo
+      _cleanInvalidProperties(activeFile.type, parsed);
+
+      if (!parsed.containsKey("name") || parsed["name"].toString().trim().isEmpty) {
+        parsed["name"] = activeFile.name.replaceAll(".hjson", "");
+      }
+      if (activeFile.type == FileType.block && !parsed.containsKey("type")) {
+        parsed["type"] = "Wall";
+      }
+
+      _properties = parsed;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+         if (mounted) setState(() {});
+      });
+    }
 
     final recommendedProps = _getRecommendedProperties(activeFile.type);
 
