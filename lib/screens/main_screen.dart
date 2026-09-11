@@ -240,17 +240,17 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   Widget _buildFolderTile(String folderName, IconData icon, Color iconColor, ProjectState projectState) {
     final isCategoryActive = _activeCategory == folderName;
     FileType targetType;
-    if (folderName == blocks) {
+    if (folderName == "blocks") {
       targetType = FileType.block;
-    } else if (folderName == liquids) {
+    } else if (folderName == "liquids") {
       targetType = FileType.liquid;
-    } else if (folderName == units) {
+    } else if (folderName == "units") {
       targetType = FileType.unit;
-    } else if (folderName == status) {
+    } else if (folderName == "status") {
       targetType = FileType.status;
-    } else if (folderName == sectors) {
+    } else if (folderName == "sectors") {
       targetType = FileType.sector;
-    } else if (folderName == weathers) {
+    } else if (folderName == "weathers") {
       targetType = FileType.weather;
     } else {
       targetType = FileType.item;
