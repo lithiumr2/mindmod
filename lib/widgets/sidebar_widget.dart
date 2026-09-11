@@ -211,10 +211,12 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
         final base64Image = base64Encode(bytes);
         
         ref.read(projectProvider.notifier).addFile(
-              fileName,
-              FileType.image,
-              content: base64Image,
-            );
+          ProjectFile(
+            name: fileName,
+            type: FileType.image,
+            content: base64Image,
+          ),
+        );
       }
       return;
     }
@@ -271,15 +273,17 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
                 if (folder == 'status') determinedType = FileType.status;
 
                 ref.read(projectProvider.notifier).addFile(
-                      controller.text.trim(),
-                      determinedType,
-                      content: defaultContent
-                          .replaceAll('copper-wall', baseName)
-                          .replaceAll('custom-item', baseName)
-                          .replaceAll('custom-liquid', baseName)
-                          .replaceAll('custom-unit', baseName)
-                          .replaceAll('custom-status', baseName),
-                    );
+                  ProjectFile(
+                    name: controller.text.trim(),
+                    type: determinedType,
+                    content: defaultContent
+                        .replaceAll('copper-wall', baseName)
+                        .replaceAll('custom-item', baseName)
+                        .replaceAll('custom-liquid', baseName)
+                        .replaceAll('custom-unit', baseName)
+                        .replaceAll('custom-status', baseName),
+                  ),
+                );
                 Navigator.pop(context);
               }
             },
