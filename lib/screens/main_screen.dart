@@ -6,6 +6,7 @@ import '../services/export_service.dart';
 import '../widgets/code_editor_widget.dart';
 import '../widgets/visual_form_widget.dart';
 import '../widgets/mod_json_form_widget.dart';
+import '../widgets/sidebar_widget.dart';
 
 class MainScreen extends ConsumerStatefulWidget {
   const MainScreen({super.key});
@@ -16,81 +17,6 @@ class MainScreen extends ConsumerStatefulWidget {
 
 class _MainScreenState extends ConsumerState<MainScreen> {
   bool _isCodeView = false;
-  String _activeCategory = 'items';
-
-  String get _buttonLabel {
-    switch (_activeCategory) {
-      case "blocks": return "+ New Block";
-      case "liquids": return "+ New Liquid";
-      case "units": return "+ New Unit";
-      case "status": return "+ New Status";
-      case "sectors": return "+ New Sector";
-      case "weathers": return "+ New Weather";
-      case "items":
-      default:
-        return "+ New Item";
-    }
-  }
-
-  FileType get _activeFileType {
-    switch (_activeCategory) {
-      case "blocks": return FileType.block;
-      case "liquids": return FileType.liquid;
-      case "units": return FileType.unit;
-      case "status": return FileType.status;
-      case "sectors": return FileType.sector;
-      case "weathers": return FileType.weather;
-      case "items":
-      default:
-        return FileType.item;
-    }
-  }
-
-  void _createNewFile() {
-    final TextEditingController nameController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF222228),
-        title: Text('Crear en $_activeCategory', style: const TextStyle(color: Colors.amber)),
-        content: TextField(
-          controller: nameController,
-          style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(
-            hintText: 'Nombre del archivo (ej. custom-item)',
-            hintStyle: TextStyle(color: Colors.white38),
-            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.amber)),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar', style: TextStyle(color: Colors.white54)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFBC02D)),
-            onPressed: () {
-              if (nameController.text.trim().isNotEmpty) {
-                final fileName = nameController.text.trim().endsWith('.hjson')
-                    ? nameController.text.trim()
-                    : '${nameController.text.trim()}.hjson';
-                
-                ref.read(projectProvider.notifier).addFile(
-                  ProjectFile(
-                    name: fileName,
-                    content: '{\n  name: "${nameController.text.trim()}"\n}',
-                    type: _activeFileType,
-                  ),
-                );
-                Navigator.pop(context);
-              }
-            },
-            child: const Text('Crear', style: TextStyle(color: Colors.black)),
-          ),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -152,77 +78,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       ),
       body: Row(
         children: [
-          // PANEL LATERAL IZQUIERDO
-          Container(
-            width: 250,
-            decoration: const BoxDecoration(
-              color: Color(0xFF121214),
-              border: Border(right: BorderSide(color: Colors.white12, width: 1)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Padding(
-                  padding: EdgeInsets.all(12.0),
-                  child: Text(
-                    'Mod Folders',
-                    style: TextStyle(color: Colors.white38, fontSize: 12, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                ListTile(
-                  dense: true,
-                  selected: activeFile?.name == 'mod.json',
-                  selectedTileColor: Colors.white10,
-                  leading: const Icon(Icons.insert_drive_file, color: Colors.amber, size: 18),
-                  title: const Text('mod.json', style: TextStyle(color: Colors.white)),
-                  onTap: () {
-                    final modFile = projectState.files.firstWhere(
-                      (f) => f.name == 'mod.json',
-                      orElse: () => ProjectFile(name: 'mod.json', content: '{}', type: FileType.modJson),
-                    );
-                    ref.read(projectProvider.notifier).setActiveFile(modFile);
-                  },
-                ),
-                const Divider(color: Colors.white12),
-                Expanded(
-                  child: ListView(
-                    children: [
-                      ExpansionTile(
-                        initiallyExpanded: true,
-                        leading: const Icon(Icons.folder, color: Colors.amber, size: 18),
-                        title: const Text('content', style: TextStyle(color: Colors.white)),
-                        childrenPadding: const EdgeInsets.only(left: 12),
-                        children: [
-                          _buildFolderTile('blocks', Icons.square_outlined, Colors.blue, projectState),
-                          _buildFolderTile('items', Icons.hexagon_outlined, Colors.orange, projectState),
-                          _buildFolderTile('liquids', Icons.water_drop_outlined, Colors.cyan, projectState),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: SizedBox(
-                    width: double.infinity,
-                    height: 42,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFBC02D),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                      ),
-                      onPressed: _createNewFile,
-                      child: Text(
-                        _buttonLabel,
-                        style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
+          const SidebarWidget(),
           // VISTA PRINCIPAL DERECHA
           Expanded(
             child: activeFile == null
@@ -238,64 +94,4 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     );
   }
 
-  Widget _buildFolderTile(String folderName, IconData icon, Color iconColor, ProjectState projectState) {
-    final isCategoryActive = _activeCategory == folderName;
-    FileType targetType;
-    if (folderName == "blocks") {
-      targetType = FileType.block;
-    } else if (folderName == "liquids") {
-      targetType = FileType.liquid;
-    } else if (folderName == "units") {
-      targetType = FileType.unit;
-    } else if (folderName == "status") {
-      targetType = FileType.status;
-    } else if (folderName == "sectors") {
-      targetType = FileType.sector;
-    } else if (folderName == "weathers") {
-      targetType = FileType.weather;
-    } else {
-      targetType = FileType.item;
-    }
-
-    final categoryFiles = projectState.files.where((f) => f.type == targetType).toList();
-
-    return ExpansionTile(
-      dense: true,
-      initiallyExpanded: isCategoryActive,
-      leading: Icon(icon, color: iconColor, size: 18),
-      title: Text(folderName, style: const TextStyle(color: Colors.white70)),
-      onExpansionChanged: (expanded) {
-        if (expanded) {
-          setState(() {
-            _activeCategory = folderName;
-          });
-        }
-      },
-      children: categoryFiles.map((file) {
-        final isFileActive = projectState.activeFile?.name == file.name;
-        return ListTile(
-          dense: true,
-          contentPadding: const EdgeInsets.only(left: 36, right: 12),
-          selected: isFileActive,
-          selectedTileColor: Colors.amber.withOpacity(0.15),
-          title: Text(
-            file.name,
-            style: TextStyle(
-              color: isFileActive ? Colors.amber : Colors.white60,
-              fontSize: 13,
-            ),
-          ),
-          trailing: IconButton(
-            icon: const Icon(Icons.close, size: 14, color: Colors.white24),
-            onPressed: () {
-              ref.read(projectProvider.notifier).deleteFile(file.name);
-            },
-          ),
-          onTap: () {
-            ref.read(projectProvider.notifier).selectFile(file.name);
-          },
-        );
-      }).toList(),
-    );
-  }
 }
