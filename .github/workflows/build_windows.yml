@@ -1,0 +1,51 @@
+name: Build Windows App
+
+on:
+  push:
+    branches: [ "experimental" ]
+  pull_request:
+    branches: [ "experimental" ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Habilitar plataforma Windows en Flutter
+        run: flutter config --enable-windows-desktop
+
+      - name: Generar soporte Windows dinámicamente
+        run: flutter create . --platforms=windows --org=com.mindmod
+
+      - name: Instalar dependencias
+        run: flutter pub get
+
+      - name: Compilar para Windows (Release)
+        run: flutter build windows --release
+
+      - name: Empaquetar distribución Windows
+        shell: pwsh
+        run: |
+          if (Test-Path "build\windows\x64\runner\Release") {
+            Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath "mindmod-windows-x64.zip" -Force
+          } elseif (Test-Path "build\windows\runner\Release") {
+            Compress-Archive -Path "build\windows\runner\Release\*" -DestinationPath "mindmod-windows-x64.zip" -Force
+          } else {
+            Write-Error "No se encontró el directorio de compilación de Windows."
+            exit 1
+          }
+
+      - name: Subir artefacto ejecutable Windows (.zip)
+        uses: actions/upload-artifact@v4
+        with:
+          name: mindmod-windows-x64
+          path: mindmod-windows-x64.zip
