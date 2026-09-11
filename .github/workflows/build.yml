@@ -70,6 +70,27 @@ jobs:
       - name: Instalar dependencias
         run: flutter pub get
 
+      - name: Configurar Firma de Release (Keystore)
+        run: |
+          keytool -genkey -v -keystore android/app/mindmod.jks -keyalg RSA -keysize 2048 -validity 10000 -alias mindmod -storepass mindmod -keypass mindmod -dname "CN=Mindmod, OU=Mindmod, O=Mindmod, L=Mindmod, ST=Mindmod, C=US"
+          
+          awk '
+          /buildTypes \{/ {
+            print "    signingConfigs {"
+            print "        release {"
+            print "            storeFile file(\"mindmod.jks\")"
+            print "            storePassword \"mindmod\""
+            print "            keyAlias \"mindmod\""
+            print "            keyPassword \"mindmod\""
+            print "        }"
+            print "    }"
+          }
+          {
+            gsub(/signingConfig signingConfigs.debug/, "signingConfig signingConfigs.release")
+            print $0
+          }' android/app/build.gradle > android/app/build.gradle.tmp
+          mv android/app/build.gradle.tmp android/app/build.gradle
+
       - name: Compilar APK release
         run: flutter build apk --release --no-tree-shake-icons
 
