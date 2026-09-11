@@ -70,6 +70,48 @@ jobs:
       - name: Instalar dependencias
         run: flutter pub get
 
+      - name: Configurar Firma de Release (Keystore)
+        run: |
+          keytool -genkey -v -keystore android/app/mindmod.jks -keyalg RSA -keysize 2048 -validity 10000 -alias mindmod -storepass mindmod -keypass mindmod -dname "CN=Mindmod, OU=Mindmod, O=Mindmod, L=Mindmod, ST=Mindmod, C=US"
+          
+          python3 -c "
+          import os
+          import re
+          gradle_path = 'android/app/build.gradle'
+          kts_path = 'android/app/build.gradle.kts'
+          target = kts_path if os.path.exists(kts_path) else gradle_path
+          with open(target, 'r') as f: content = f.read()
+          
+          if target == kts_path:
+              sign_block = '''
+              signingConfigs {
+                  create(\"release\") {
+                      storeFile = file(\"mindmod.jks\")
+                      storePassword = \"mindmod\"
+                      keyAlias = \"mindmod\"
+                      keyPassword = \"mindmod\"
+                  }
+              }
+              '''
+              content = content.replace('buildTypes {', sign_block + '    buildTypes {')
+              content = content.replace('signingConfig = signingConfigs.getByName(\"debug\")', 'signingConfig = signingConfigs.getByName(\"release\")')
+          else:
+              sign_block = '''
+              signingConfigs {
+                  release {
+                      storeFile file(\"mindmod.jks\")
+                      storePassword \"mindmod\"
+                      keyAlias \"mindmod\"
+                      keyPassword \"mindmod\"
+                  }
+              }
+              '''
+              content = content.replace('buildTypes {', sign_block + '    buildTypes {')
+              content = content.replace('signingConfig signingConfigs.debug', 'signingConfig signingConfigs.release')
+          
+          with open(target, 'w') as f: f.write(content)
+          "
+
       - name: Compilar APK release
         run: flutter build apk --release --no-tree-shake-icons
 

@@ -1,6 +1,8 @@
+import 'package:file_picker/file_picker.dart' as filePicker;
 import "dart:convert";
 import "dart:typed_data";
 import "package:flutter/material.dart";
+import "package:flutter/services.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:flutter_colorpicker/flutter_colorpicker.dart";
 import "../providers/project_provider.dart";
@@ -88,13 +90,28 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
 
   // Listas de propiedades para Items y Líquidos
   final List<String> _itemProps = [
-    "color", "explosiveness", "flammability", "radioactivity", "charge",
-    "hardness", "cost", "alwaysUnlocked", "frames", "transitionDamage"
+    "description", "details", "color", "explosiveness", "flammability", "radioactivity", "charge",
+    "hardness", "cost", "alwaysUnlocked", "frames", "transitionDamage", "buildable", "hidden"
   ];
 
   final List<String> _liquidProps = [
-    "color", "temperature", "flammability", "explosiveness", "viscosity",
-    "heatCapacity", "barColor", "lightColor", "effect", "gas", "coolant"
+    "description", "details", "color", "temperature", "flammability", "explosiveness", "viscosity",
+    "heatCapacity", "barColor", "lightColor", "effect", "gas", "coolant", "hidden", "incinerable"
+  ];
+
+  
+  final List<String> _unitProps = [
+    "description", "details", "type", "health", "speed", "flying", "range", "armor", "hitSize", 
+    "weapons", "abilities", "controller", "hovering", "shadowElevation", "drag", "accel", "itemCapacity"
+  ];
+  final List<String> _statusProps = [
+    "color", "damage", "damageMultiplier", "speedMultiplier", "armorMultiplier", "effect"
+  ];
+  final List<String> _sectorProps = [
+    "sector", "planet", "captureWave", "difficulty", "alwaysUnlocked"
+  ];
+  final List<String> _weatherProps = [
+    "type", "color", "noiseColor", "opacity", "duration", "sound"
   ];
 
   final List<String> _baseBlockProps = [
@@ -126,40 +143,32 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
   @override
   void initState() {
     super.initState();
-    _loadFromActiveFile();
   }
 
   @override
   void didUpdateWidget(covariant VisualFormWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _loadFromActiveFile();
   }
 
-  void _loadFromActiveFile() {
-    final activeFile = ref.read(projectProvider).activeFile;
-    if (activeFile == null) return;
-
-    // Aislamiento estricto: Si cambió el archivo activo, limpiar todo el estado en memoria
-    if (_loadedFileId != activeFile.name) {
-      _loadedFileId = activeFile.name;
-      _properties.clear();
-      _syntaxErrors.clear();
+  
+  void _cleanInvalidProperties(FileType type, Map<String, dynamic> parsed) {
+    if (type == FileType.item) {
+       parsed.removeWhere((k, v) => k != "name" && k != "description" && !_itemProps.contains(k));
+    } else if (type == FileType.liquid) {
+       parsed.removeWhere((k, v) => k != "name" && k != "description" && !_liquidProps.contains(k));
+    } else if (type == FileType.unit) {
+       parsed.removeWhere((k, v) => k != "name" && k != "description" && !_unitProps.contains(k));
+    } else if (type == FileType.status) {
+       parsed.removeWhere((k, v) => k != "name" && k != "description" && !_statusProps.contains(k));
+    } else if (type == FileType.sector) {
+       parsed.removeWhere((k, v) => k != "name" && k != "description" && !_sectorProps.contains(k));
+    } else if (type == FileType.weather) {
+       parsed.removeWhere((k, v) => k != "name" && k != "description" && !_weatherProps.contains(k));
+    } else if (type == FileType.block) {
+       final currentType = parsed["type"]?.toString().replaceAll("\"", "") ?? "Wall";
+       final allowed = Set<String>.from(_baseBlockProps)..addAll(_blockSpecificProps[currentType] ?? []);
+       parsed.removeWhere((k, v) => k != "name" && k != "description" && !allowed.contains(k));
     }
-
-    _syntaxErrors = HjsonEngine.validateSyntax(activeFile.content);
-    final parsed = HjsonEngine.parse(activeFile.content);
-
-    // Protección de campos vitales obligatorios
-    if (!parsed.containsKey("name") || parsed["name"].toString().trim().isEmpty) {
-      parsed["name"] = activeFile.name.replaceAll(".hjson", "");
-    }
-    if (activeFile.type == FileType.block && !parsed.containsKey("type")) {
-      parsed["type"] = "Wall";
-    }
-
-    setState(() {
-      _properties = parsed;
-    });
   }
 
   void _saveChanges() {
@@ -189,7 +198,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
           } else if (double.tryParse(str) != null) {
             cleaned[k] = double.parse(str);
           } else {
-            cleaned[k] = str.isEmpty ? 0 : str;
+            cleaned[k] = 0; // Forced strict numeric fallback to prevent crashes
           }
         }
       } else {
@@ -341,6 +350,8 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
   }
 
   void _removeProperty(String key) {
+    final activeFile = ref.read(projectProvider).activeFile;
+
     // Bloqueo estricto de campos vitales
     if (key == "name" || key == "type") {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -364,7 +375,15 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
       base = List.from(_itemProps);
     } else if (fileType == FileType.liquid) {
       base = List.from(_liquidProps);
-    } else {
+    } else if (fileType == FileType.unit) {
+      base = List.from(_unitProps);
+    } else if (fileType == FileType.status) {
+      base = List.from(_statusProps);
+    } else if (fileType == FileType.sector) {
+      base = List.from(_sectorProps);
+    } else if (fileType == FileType.weather) {
+      base = List.from(_weatherProps);
+    } else if (fileType == FileType.block) {
       base = List.from(_baseBlockProps);
       final currentType = _properties["type"]?.toString().replaceAll("\"", "") ?? "Wall";
       if (_blockSpecificProps.containsKey(currentType)) {
@@ -421,6 +440,27 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
               ],
             ),
           ),
+          TextButton.icon(
+            icon: const Icon(Icons.upload_file, size: 16, color: Colors.amber),
+            label: const Text("Subir", style: TextStyle(color: Colors.amber, fontSize: 12)),
+            onPressed: () async {
+              filePicker.FilePickerResult? result = await filePicker.FilePicker.platform.pickFiles(
+                type: filePicker.FileType.image,
+                withData: true,
+              );
+              if (result != null && result.files.single.bytes != null) {
+                final bytes = result.files.single.bytes!;
+                final base64Image = base64Encode(bytes);
+                ref.read(projectProvider.notifier).addFile(
+                  ProjectFile(
+                    name: '$cleanBase.png',
+                    type: FileType.image,
+                    content: base64Image,
+                  ),
+                );
+              }
+            },
+          ),
         ],
       ),
     );
@@ -431,6 +471,31 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     final activeFile = ref.watch(projectProvider).activeFile;
     if (activeFile == null) return const SizedBox.shrink();
 
+    // AISLAMIENTO ESTRICTO: evaluar sincronamente si el archivo cambió
+    if (_loadedFileId != activeFile.name) {
+      _loadedFileId = activeFile.name;
+      _properties.clear();
+      _syntaxErrors.clear();
+      
+      _syntaxErrors = HjsonEngine.validateSyntax(activeFile.content);
+      final parsed = HjsonEngine.parse(activeFile.content);
+
+      // BLOQUEO Y LIMPIEZA DE HERENCIA: elimina propiedades que no corresponden a su tipo
+      _cleanInvalidProperties(activeFile.type, parsed);
+
+      if (!parsed.containsKey("name") || parsed["name"].toString().trim().isEmpty) {
+        parsed["name"] = activeFile.name.replaceAll(".hjson", "");
+      }
+      if (activeFile.type == FileType.block && !parsed.containsKey("type")) {
+        parsed["type"] = "Wall";
+      }
+
+      _properties = parsed;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+         if (mounted) setState(() {});
+      });
+    }
+
     final recommendedProps = _getRecommendedProperties(activeFile.type);
 
     return Column(
@@ -440,7 +505,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
         if (_syntaxErrors.isNotEmpty)
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             color: Colors.red.withOpacity(0.2),
             child: Row(
               children: [
@@ -488,7 +553,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
 
         // Recomendaciones
         Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: const BoxDecoration(
             border: Border(bottom: BorderSide(color: Colors.white12)),
           ),
@@ -552,7 +617,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                           if (isVital)
                             const Padding(
                               padding: EdgeInsets.only(left: 4),
-                              child: Icon(Icons.lock, size: 12, color: Colors.amber),
+                              child: Icon(Icons.lock_outline, size: 12, color: Colors.amber),
                             ),
                         ],
                       ),
@@ -706,31 +771,43 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
 
     // 5. Entradas de texto o números puros
     final isNum = _numberProps.contains(key);
-    return TextFormField(
-      key: ValueKey("${_loadedFileId}_$key"),
-      initialValue: value.toString(),
-      keyboardType: isNum ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
-      style: const TextStyle(color: Colors.white, fontSize: 13),
-      decoration: InputDecoration(
-        border: InputBorder.none,
-        isDense: true,
-        hintText: isNum ? "0" : "valor",
-        hintStyle: const TextStyle(color: Colors.white24),
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C1C24),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: Colors.white12, width: 1),
       ),
-      onChanged: (newVal) {
-        if (isNum) {
-          if (int.tryParse(newVal) != null) {
-            _properties[key] = int.parse(newVal);
-          } else if (double.tryParse(newVal) != null) {
-            _properties[key] = double.parse(newVal);
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      child: TextFormField(
+        key: ValueKey("${_loadedFileId}_$key"),
+        initialValue: value.toString(),
+        keyboardType: isNum ? const TextInputType.numberWithOptions(decimal: true, signed: true) : TextInputType.text,
+        inputFormatters: isNum 
+            ? [FilteringTextInputFormatter.allow(RegExp(r'^-?[0-9]*\.?[0-9]*'))] 
+            : null,
+        style: const TextStyle(color: Colors.white, fontSize: 13, fontFamily: 'monospace'),
+        decoration: InputDecoration(
+          border: InputBorder.none,
+          isDense: true,
+          hintText: isNum ? "0" : "valor",
+          hintStyle: const TextStyle(color: Colors.white24),
+        ),
+        onChanged: (newVal) {
+          if (isNum) {
+            final cleanVal = (newVal.isEmpty || newVal == '-') ? '0' : newVal;
+            if (int.tryParse(cleanVal) != null) {
+              _properties[key] = int.parse(cleanVal);
+            } else if (double.tryParse(cleanVal) != null) {
+              _properties[key] = double.parse(cleanVal);
+            } else {
+              _properties[key] = cleanVal;
+            }
           } else {
             _properties[key] = newVal;
           }
-        } else {
-          _properties[key] = newVal;
-        }
-        _saveChanges();
-      },
+          _saveChanges();
+        },
+      ),
     );
   }
 }
