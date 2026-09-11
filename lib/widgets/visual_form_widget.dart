@@ -439,6 +439,27 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
               ],
             ),
           ),
+          TextButton.icon(
+            icon: const Icon(Icons.upload_file, size: 16, color: Colors.amber),
+            label: const Text("Subir", style: TextStyle(color: Colors.amber, fontSize: 12)),
+            onPressed: () async {
+              filePicker.FilePickerResult? result = await filePicker.FilePicker.platform.pickFiles(
+                type: filePicker.FileType.image,
+                withData: true,
+              );
+              if (result != null && result.files.single.bytes != null) {
+                final bytes = result.files.single.bytes!;
+                final base64Image = base64Encode(bytes);
+                ref.read(projectProvider.notifier).addFile(
+                  ProjectFile(
+                    name: '$cleanBase.png',
+                    type: FileType.image,
+                    content: base64Image,
+                  ),
+                );
+              }
+            },
+          ),
         ],
       ),
     );

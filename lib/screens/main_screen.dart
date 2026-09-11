@@ -19,80 +19,96 @@ class MainScreen extends ConsumerStatefulWidget {
 class _MainScreenState extends ConsumerState<MainScreen> {
   bool _isCodeView = false;
 
-  @override
+    @override
   Widget build(BuildContext context) {
     final projectState = ref.watch(projectProvider);
     final activeFile = projectState.activeFile;
     final isModJson = activeFile?.name == 'mod.json';
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF18181C),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF18181C),
-        elevation: 0,
-        toolbarHeight: 48,
-        title: Text(
-          activeFile != null ? '${activeFile.name}' : 'Selecciona un archivo',
-          style: const TextStyle(color: Colors.amber, fontSize: 14),
-        ),
-        actions: [
-          if (activeFile != null && !activeFile.isImage)
-            ToggleButtons(
-              isSelected: [!_isCodeView, _isCodeView],
-              onPressed: (index) => setState(() => _isCodeView = index == 1),
-              color: Colors.white54,
-              selectedColor: Colors.black,
-              fillColor: const Color(0xFFFBC02D),
-              constraints: const BoxConstraints(minHeight: 32, minWidth: 50),
-              children: const [
-                Icon(Icons.edit, size: 16),
-                Icon(Icons.code, size: 16),
-              ],
-            ),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert, color: Colors.white70),
-            onSelected: (value) async {
-              if (value == 'export_zip') {
-                final path = await ExportService.exportModToZip(projectState.files);
-                if (context.mounted && path != null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Mod exportado en: $path')),
-                  );
-                }
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'export_zip',
-                child: Row(
-                  children: [
-                    Icon(Icons.download, color: Color(0xFFFBC02D), size: 18),
-                    SizedBox(width: 10),
-                    Text('Exportar ZIP', style: TextStyle(color: Colors.white)),
+    final topBar = Container(
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      color: const Color(0xFF18181C),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            activeFile != null ? '${activeFile.name.replaceAll(".hjson", "")}' : 'Selecciona un archivo',
+            style: const TextStyle(color: Colors.amber, fontSize: 14),
+          ),
+          Row(
+            children: [
+              if (activeFile != null && !activeFile.isImage)
+                ToggleButtons(
+                  isSelected: [!_isCodeView, _isCodeView],
+                  onPressed: (index) => setState(() => _isCodeView = index == 1),
+                  color: Colors.white54,
+                  selectedColor: Colors.black,
+                  fillColor: const Color(0xFFFBC02D),
+                  constraints: const BoxConstraints(minHeight: 32, minWidth: 50),
+                  children: const [
+                    Icon(Icons.edit, size: 16),
+                    Icon(Icons.code, size: 16),
                   ],
                 ),
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert, color: Colors.white70),
+                color: const Color(0xFF202026),
+                onSelected: (value) async {
+                  if (value == 'export_zip') {
+                    final path = await ExportService.exportModToZip(projectState.files);
+                    if (context.mounted && path != null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Mod exportado en: $path')),
+                      );
+                    }
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'export_zip',
+                    child: Row(
+                      children: [
+                        Icon(Icons.download, color: Color(0xFFFBC02D), size: 18),
+                        SizedBox(width: 10),
+                        Text('Exportar ZIP', style: TextStyle(color: Colors.white)),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ],
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: Row(
-        children: [
-          const SidebarWidget(),
-          // VISTA PRINCIPAL DERECHA
-          Expanded(
-            child: activeFile == null
-                ? const Center(child: Text('Selecciona o crea un archivo', style: TextStyle(color: Colors.white54)))
-                : activeFile.isImage
-                    ? Center(child: Image.memory(base64Decode(activeFile.content), fit: BoxFit.contain, errorBuilder: (c,e,s) => const Text('Error al cargar imagen', style: TextStyle(color: Colors.red))))
-                    : isModJson
-                        ? (_isCodeView ? const CodeEditorWidget() : const ModJsonFormWidget())
-                        : (_isCodeView ? const CodeEditorWidget() : const VisualFormWidget()),
           ),
         ],
       ),
     );
-  }
 
+    return Scaffold(
+      backgroundColor: const Color(0xFF18181C),
+      body: SafeArea(
+        child: Row(
+          children: [
+            const SidebarWidget(),
+            Expanded(
+              child: Column(
+                children: [
+                  topBar,
+                  Expanded(
+                    child: activeFile == null
+                        ? const Center(child: Text('Selecciona o crea un archivo', style: TextStyle(color: Colors.white54)))
+                        : activeFile.isImage
+                            ? Center(child: Image.memory(base64Decode(activeFile.content), fit: BoxFit.contain, errorBuilder: (c,e,s) => const Text('Error al cargar imagen', style: TextStyle(color: Colors.red))))
+                            : isModJson
+                                ? (_isCodeView ? const CodeEditorWidget() : const ModJsonFormWidget())
+                                : (_isCodeView ? const CodeEditorWidget() : const VisualFormWidget()),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
+

@@ -109,7 +109,7 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
                           dense: true,
                           contentPadding: const EdgeInsets.only(left: 32.0, right: 16.0),
                           leading: const Icon(Icons.image, color: Colors.purpleAccent, size: 16),
-                          title: Text(file.name, style: const TextStyle(color: Colors.white, fontSize: 12)),
+                          title: Text(file.name.replaceAll('.hjson', ''), style: const TextStyle(color: Colors.white, fontSize: 12)),
                           selected: projectState.activeFileName == file.name,
                           selectedTileColor: const Color(0xFF202026),
                           onTap: () => ref.read(projectProvider.notifier).selectFile(file.name),
@@ -176,7 +176,7 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
               dense: true,
               contentPadding: const EdgeInsets.only(left: 32.0, right: 16.0),
               leading: const Icon(Icons.insert_drive_file, color: Colors.amber, size: 16),
-              title: Text(file.name, style: const TextStyle(color: Colors.white, fontSize: 12)),
+              title: Text(file.name.replaceAll('.hjson', ''), style: const TextStyle(color: Colors.white, fontSize: 12)),
               selected: projectState.activeFileName == file.name,
               selectedTileColor: const Color(0xFF202026),
               onTap: () => ref.read(projectProvider.notifier).selectFile(file.name),
@@ -189,7 +189,7 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
           dense: true,
           contentPadding: const EdgeInsets.only(left: 32.0, right: 16.0),
           leading: const Icon(Icons.add_circle_outline, color: Colors.amber, size: 16),
-          title: Text('New \${title.substring(0, title.length - 1)}', style: const TextStyle(color: Colors.amber, fontSize: 12)),
+          title: Text('New ' + (folderKey == 'items' ? 'Item' : folderKey == 'liquids' ? 'Liquid' : folderKey == 'units' ? 'Unit' : folderKey == 'status' ? 'Status' : folderKey == 'blocks' ? 'Block' : folderKey), style: const TextStyle(color: Colors.amber, fontSize: 12)),
           onTap: () {
              setState(() => selectedFolder = folderKey);
             _showNewItemDialog(context, ref, folderKey);
@@ -221,24 +221,24 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
       return;
     }
 
-    String defaultName = 'copper-wall.hjson';
+    String defaultName = 'copper-wall';
     String title = 'Create New Block';
     String defaultContent = '{\n  name: "copper-wall"\n  type: "Wall"\n  health: 200\n  size: 1\n}';
 
     if (folder == 'items') {
-      defaultName = 'custom-item.hjson';
+      defaultName = 'custom-item';
       title = 'Create New Item';
       defaultContent = '{\n  name: "custom-item"\n  cost: 1\n}';
     } else if (folder == 'liquids') {
-      defaultName = 'custom-liquid.hjson';
+      defaultName = 'custom-liquid';
       title = 'Create New Liquid';
       defaultContent = '{\n  name: "custom-liquid"\n  color: "ff0000"\n}';
     } else if (folder == 'units') {
-      defaultName = 'custom-unit.hjson';
+      defaultName = 'custom-unit';
       title = 'Create New Unit';
       defaultContent = '{\n  name: "custom-unit"\n  type: "flying"\n  health: 150\n}';
     } else if (folder == 'status') {
-      defaultName = 'custom-status.hjson';
+      defaultName = 'custom-status';
       title = 'Create New Status';
       defaultContent = '{\n  name: "custom-status"\n  damage: 0.5\n}';
     }
@@ -253,7 +253,7 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
         content: TextField(
           controller: controller,
           style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(hintText: 'filename.hjson', hintStyle: TextStyle(color: Colors.white54)),
+          decoration: const InputDecoration(hintText: 'filename', hintStyle: TextStyle(color: Colors.white54)),
         ),
         actions: [
           TextButton(
@@ -274,7 +274,7 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
 
                 ref.read(projectProvider.notifier).addFile(
                   ProjectFile(
-                    name: controller.text.trim(),
+                    name: controller.text.trim().endsWith('.hjson') ? controller.text.trim() : '${controller.text.trim()}.hjson',
                     type: determinedType,
                     content: defaultContent
                         .replaceAll('copper-wall', baseName)
