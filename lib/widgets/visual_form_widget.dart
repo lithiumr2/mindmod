@@ -12,25 +12,49 @@ class VisualFormWidget extends ConsumerStatefulWidget {
 
 class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
   Map<String, dynamic> _properties = {};
+  String? _lastLoadedFileName;
 
-  // === DICCIONARIOS DE PROPIEDADES ===
+  // === DICCIONARIOS COMPLETOS DE MINDUSTRY ===
 
-  // 1. Propiedades base por categoría
-  final List<String> _itemProps = ['color', 'explosiveness', 'flammability', 'radioactivity', 'charge', 'hardness', 'cost', 'alwaysUnlocked'];
-  final List<String> _liquidProps = ['color', 'temperature', 'flammability', 'explosiveness', 'viscosity', 'heatCapacity', 'barColor', 'lightColor'];
-  final List<String> _baseBlockProps = ['type', 'health', 'size', 'requirements', 'category', 'solid', 'destructible', 'hasItems', 'hasLiquids', 'hasPower', 'consumesPower', 'outputsPower'];
+  // 1. Propiedades base estrictas por categoría
+  final List<String> _itemProps = [
+    'color', 'explosiveness', 'flammability', 'radioactivity', 
+    'charge', 'cost', 'alwaysUnlocked', 'frames', 'transitionDamage'
+  ];
 
-  // 2. Tipos de bloques disponibles para el seleccionador (Dropdown)
-  final List<String> _blockTypes = ['Wall', 'Drill', 'BeamDrill', 'Conveyor', 'GenericCrafter', 'ItemTurret', 'PowerNode', 'Battery', 'Router', 'Junction'];
+  final List<String> _liquidProps = [
+    'color', 'temperature', 'flammability', 'explosiveness', 
+    'viscosity', 'heatCapacity', 'barColor', 'lightColor', 'effect'
+  ];
 
-  // 3. Propiedades específicas dependiendo del 'type' del bloque
+  final List<String> _baseBlockProps = [
+    'type', 'health', 'size', 'requirements', 'category', 
+    'solid', 'destructible', 'hasItems', 'hasLiquids', 
+    'hasPower', 'consumesPower', 'outputsPower', 'itemCapacity', 'liquidCapacity'
+  ];
+
+  // 2. Tipos ampliados de bloques en Mindustry
+  final List<String> _blockTypes = [
+    'Wall', 'Drill', 'BeamDrill', 'Conveyor', 'Router', 'Junction', 
+    'BridgeConveyor', 'GenericCrafter', 'ItemTurret', 'LiquidTurret', 
+    'PowerNode', 'Battery', 'Generator', 'NuclearReactor', 'Mender', 'OverdriveProjector'
+  ];
+
+  // 3. Propiedades específicas por tipo de bloque
   final Map<String, List<String>> _blockSpecificProps = {
-    'Wall': ['chanceDeflect', 'flashHit'],
-    'Drill': ['tier', 'drillTime', 'drawMineItem', 'liquidBoostIntensity', 'warmupSpeed'],
-    'BeamDrill': ['tier', 'drillTime', 'range', 'sparkColor'],
+    'Wall': ['chanceDeflect', 'flashHit', 'insulated', 'absorbLasers'],
+    'Drill': ['tier', 'drillTime', 'warmupSpeed', 'liquidBoostIntensity', 'drawMineItem', 'updateEffect'],
+    'BeamDrill': ['tier', 'drillTime', 'range', 'sparkColor', 'pulse', 'consumeTime'],
     'Conveyor': ['speed', 'displayedSpeed'],
-    'GenericCrafter': ['craftTime', 'itemCapacity', 'outputItem'],
-    'ItemTurret': ['range', 'reload', 'inaccuracy', 'ammoTypes'],
+    'GenericCrafter': ['craftTime', 'outputItem', 'outputLiquid', 'consumes'],
+    'ItemTurret': ['range', 'reload', 'inaccuracy', 'targetAir', 'targetGround', 'shootSound', 'ammoTypes'],
+    'LiquidTurret': ['range', 'reload', 'inaccuracy', 'shootSound', 'ammoType'],
+    'PowerNode': ['maxNodes', 'laserRange'],
+    'Battery': ['emptyPower'],
+    'Generator': ['powerProduction', 'itemDuration'],
+    'NuclearReactor': ['heating', 'itemDuration', 'smokeThreshold'],
+    'Mender': ['range', 'reload', 'healPercent'],
+    'OverdriveProjector': ['range', 'speedBoost', 'useTime', 'phaseBoost', 'phaseRangeBoost'],
   };
 
   @override
@@ -45,10 +69,16 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     _parseCurrentFile();
   }
 
-  // Analiza el texto HJSON plano y lo convierte en un mapa para la UI
+  // Analiza y limpia las propiedades estrictamente según el archivo actual
   void _parseCurrentFile() {
     final activeFile = ref.read(projectProvider).activeFile;
     if (activeFile == null) return;
+
+    // Si cambió de archivo, forzamos recarga limpia
+    if (_lastLoadedFileName != activeFile.name) {
+      _lastLoadedFileName = activeFile.name;
+      _properties.clear();
+    }
 
     final map = <String, dynamic>{};
     final lines = activeFile.content.split('\n');
@@ -66,14 +96,19 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
         } else if (valueStr == 'false') {
           map[key] = false;
         } else {
-          map[key] = valueStr; // Números o strings sin comillas
+          map[key] = valueStr;
         }
       }
     }
     
-    // Asegurar que siempre exista la propiedad 'name'
+    // Asegurar propiedad name inicial
     if (!map.containsKey('name')) {
       map['name'] = activeFile.name.replaceAll('.hjson', '');
+    }
+
+    // Si es bloque y no tiene 'type', inicializarlo por defecto según su nombre o Wall
+    if (activeFile.type == FileType.block && !map.containsKey('type')) {
+      map['type'] = 'Wall';
     }
 
     setState(() {
@@ -81,7 +116,6 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     });
   }
 
-  // Convierte el mapa modificado de vuelta a texto HJSON y lo guarda
   void _saveToFile() {
     final activeFile = ref.read(projectProvider).activeFile;
     if (activeFile == null) return;
@@ -90,8 +124,8 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     _properties.forEach((key, value) {
       if (value is bool) {
         buffer.writeln('$key: $value');
-      } else if (key == 'name' || key == 'description' || key == 'color' || key == 'type') {
-        buffer.writeln('$key: "$value"'); // Forzar comillas en textos comunes
+      } else if (key == 'name' || key == 'description' || key == 'color' || key == 'type' || key == 'shootSound') {
+        buffer.writeln('$key: "$value"');
       } else {
         buffer.writeln('$key: $value');
       }
@@ -100,7 +134,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     ref.read(projectProvider.notifier).updateActiveFileContent(buffer.toString());
   }
 
-  // Genera la lista de propiedades recomendadas según el tipo de archivo y bloque
+  // Genera recomendaciones limpias y sin contaminación cruzada entre categorías
   List<String> _getRecommendedProperties(FileType fileType) {
     List<String> recommended = [];
     
@@ -111,7 +145,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     } else if (fileType == FileType.block) {
       recommended = List.from(_baseBlockProps);
       
-      // Si es un bloque y tiene un 'type' definido, añadir sus propiedades específicas
+      // Añadir propiedades específicas del tipo de bloque seleccionado
       if (_properties.containsKey('type')) {
         final currentType = _properties['type'].toString().replaceAll('"', '');
         if (_blockSpecificProps.containsKey(currentType)) {
@@ -120,18 +154,20 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
       }
     }
 
-    // Filtrar las que ya están agregadas en el mapa actual
+    // Retorna únicamente las propiedades que NO estén ya escritas en el mapa
     return recommended.where((prop) => !_properties.containsKey(prop)).toList();
   }
 
   void _addProperty(String key) {
     setState(() {
-      if (key == 'solid' || key == 'destructible' || key == 'hasItems' || key == 'hasLiquids' || key == 'alwaysUnlocked') {
-        _properties[key] = true; // Por defecto booleanos a true
+      if (key == 'solid' || key == 'destructible' || key == 'hasItems' || key == 'hasLiquids' || key == 'hasPower' || key == 'consumesPower' || key == 'outputsPower' || key == 'alwaysUnlocked' || key == 'insulated' || key == 'absorbLasers' || key == 'flashHit') {
+        _properties[key] = true;
       } else if (key == 'type') {
-        _properties[key] = 'Wall'; // Por defecto Wall
+        _properties[key] = 'Wall';
+      } else if (key == 'size' || key == 'tier' || key == 'drillTime' || key == 'health') {
+        _properties[key] = '1';
       } else {
-        _properties[key] = ''; // Por defecto string vacío
+        _properties[key] = '';
       }
     });
     _saveToFile();
@@ -151,7 +187,6 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
 
     final recommendedProps = _getRecommendedProperties(activeFile.type);
     
-    // Título dinámico para la sección de recomendaciones
     String categoryName = activeFile.type == FileType.item ? "ITEMS" 
                         : activeFile.type == FileType.liquid ? "LIQUIDS" 
                         : "BLOCKS";
@@ -159,7 +194,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // === PANEL DE RECOMENDACIONES DEDICADO ===
+        // Panel de Recomendaciones dinámicas
         Container(
           padding: const EdgeInsets.all(16),
           decoration: const BoxDecoration(
@@ -199,7 +234,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
           ),
         ),
 
-        // === LISTA DE CAMPOS ACTUALES ===
+        // Lista de propiedades actuales del archivo
         Expanded(
           child: ListView(
             padding: const EdgeInsets.all(16),
@@ -212,7 +247,6 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Nombre de la propiedad
                     Container(
                       width: 140,
                       padding: const EdgeInsets.only(top: 14),
@@ -221,8 +255,6 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                         style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.w500),
                       ),
                     ),
-                    
-                    // Input / Dropdown / Switch
                     Expanded(
                       child: Container(
                         decoration: BoxDecoration(
@@ -233,16 +265,12 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                         child: _buildInputField(key, value, activeFile.type),
                       ),
                     ),
-
-                    // Botón para eliminar propiedad (excepto el nombre base)
-                    if (key != 'name')
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
-                        onPressed: () => _removeProperty(key),
-                        padding: const EdgeInsets.only(top: 8, left: 8),
-                      )
-                    else
-                      const SizedBox(width: 48), // Espacio compensatorio
+                    // Permitir borrar cualquier propiedad (incluso type o name si lo desean recrear)
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                      onPressed: () => _removeProperty(key),
+                      padding: const EdgeInsets.only(top: 8, left: 8),
+                    ),
                   ],
                 ),
               );
@@ -253,13 +281,12 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     );
   }
 
-  // Constructor dinámico de campos según el tipo de dato y clave
   Widget _buildInputField(String key, dynamic value, FileType fileType) {
-    // 1. Si es la propiedad 'type' y es un Bloque -> Mostrar DROPDOWN (Seleccionador)
+    // Selector Dropdown estricto para la propiedad 'type' en bloques
     if (key == 'type' && fileType == FileType.block) {
       String currentValue = value.toString().replaceAll('"', '');
       if (!_blockTypes.contains(currentValue)) {
-        currentValue = _blockTypes.first; // Fallback por si escribieron algo raro a mano
+        currentValue = _blockTypes.first;
       }
 
       return DropdownButtonHideUnderline(
@@ -287,7 +314,6 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
       );
     }
 
-    // 2. Si es un booleano -> Mostrar SWITCH
     if (value is bool) {
       return Align(
         alignment: Alignment.centerLeft,
@@ -304,7 +330,6 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
       );
     }
 
-    // 3. Por defecto -> Mostrar TEXTFIELD normal
     return TextFormField(
       initialValue: value.toString(),
       style: const TextStyle(color: Colors.white, fontSize: 14),
