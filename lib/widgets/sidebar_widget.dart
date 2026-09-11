@@ -31,11 +31,37 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.all(12.0),
-            child: Text(
-              'Mod Folders',
-              style: TextStyle(color: Colors.white54, fontWeight: FontWeight.bold, fontSize: 12),
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Mindmod Workspace',
+                  style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.settings, color: Colors.white54, size: 18),
+                  color: const Color(0xFF222228),
+                  onSelected: (value) {
+                    if (value == 'import') {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Importación próximamente...')));
+                    } else if (value == 'data') {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Config. de Datos próximamente...')));
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 'import',
+                      child: Text('Importar Mod', style: TextStyle(color: Colors.white)),
+                    ),
+                    const PopupMenuItem(
+                      value: 'data',
+                      child: Text('Configuración de Datos', style: TextStyle(color: Colors.white)),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
           Expanded(
@@ -57,6 +83,20 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
                     _buildSubFolderCategory(files, projectState, 'blocks', 'blocks', Icons.folder, Colors.blueAccent),
                     _buildSubFolderCategory(files, projectState, 'items', 'items', Icons.folder, Colors.orangeAccent),
                     _buildSubFolderCategory(files, projectState, 'liquids', 'liquids', Icons.folder, Colors.cyanAccent),
+                    _buildSubFolderCategory(files, projectState, 'units', 'units', Icons.folder, Colors.redAccent),
+                    _buildSubFolderCategory(files, projectState, 'status', 'status', Icons.folder, Colors.purpleAccent),
+                  ],
+                ),
+                ExpansionTile(
+                  leading: const Icon(Icons.code, color: Colors.green, size: 18),
+                  title: const Text('scripts', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                  initiallyExpanded: false,
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.add, color: Colors.green, size: 16),
+                      title: const Text('New Script (.js)', style: TextStyle(color: Colors.green, fontSize: 12)),
+                      onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Soporte para JS próximamente'))),
+                    )
                   ],
                 ),
                 ListTile(
@@ -83,23 +123,7 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFBC02D),
-                  foregroundColor: Colors.black,
-                ),
-                icon: const Icon(Icons.add, size: 16),
-                label: Text(buttonLabel, style: const TextStyle(fontSize: 12)),
-                onPressed: () {
-                  _showNewItemDialog(context, ref, selectedFolder);
-                },
-              ),
-            ),
-          ),
+
         ],
       ),
     );
@@ -142,7 +166,8 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
           setState(() => selectedFolder = folderKey);
         }
       },
-      children: categoryFiles.map((file) => ListTile(
+      children: [
+        ...categoryFiles.map((file) => ListTile(
             dense: true,
             contentPadding: const EdgeInsets.only(left: 32.0, right: 16.0),
             leading: const Icon(Icons.insert_drive_file, color: Colors.amber, size: 16),
@@ -154,7 +179,18 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
               icon: const Icon(Icons.delete_outline, size: 16, color: Colors.redAccent),
               onPressed: () => ref.read(projectProvider.notifier).deleteFile(file.name),
             ),
-          )).toList(),
+          )),
+        ListTile(
+          dense: true,
+          contentPadding: const EdgeInsets.only(left: 32.0, right: 16.0),
+          leading: const Icon(Icons.add_circle_outline, color: Colors.amber, size: 16),
+          title: Text('New ${title.substring(0, title.length - 1)}', style: const TextStyle(color: Colors.amber, fontSize: 12)),
+          onTap: () {
+             setState(() => selectedFolder = folderKey);
+            _showNewItemDialog(context, ref, folderKey);
+          },
+        ),
+      ],
     );
   }
 

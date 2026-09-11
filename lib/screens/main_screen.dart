@@ -103,9 +103,10 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF18181C),
         elevation: 0,
+        toolbarHeight: 48,
         title: Text(
-          activeFile != null ? 'Mindmod IDE - ${activeFile.name}' : 'Mindmod IDE',
-          style: const TextStyle(color: Colors.amber, fontSize: 16),
+          activeFile != null ? '${activeFile.name}' : 'Selecciona un archivo',
+          style: const TextStyle(color: Colors.amber, fontSize: 14),
         ),
         actions: [
           if (activeFile != null && !activeFile.isImage)
