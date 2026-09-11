@@ -1,6 +1,7 @@
 import "dart:convert";
 import "dart:typed_data";
 import "package:flutter/material.dart";
+import "package:flutter/services.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:flutter_colorpicker/flutter_colorpicker.dart";
 import "../providers/project_provider.dart";
@@ -195,7 +196,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
           } else if (double.tryParse(str) != null) {
             cleaned[k] = double.parse(str);
           } else {
-            cleaned[k] = str.isEmpty ? 0 : str;
+            cleaned[k] = 0; // Forced strict numeric fallback to prevent crashes
           }
         }
       } else {
@@ -747,31 +748,43 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
 
     // 5. Entradas de texto o números puros
     final isNum = _numberProps.contains(key);
-    return TextFormField(
-      key: ValueKey("${_loadedFileId}_$key"),
-      initialValue: value.toString(),
-      keyboardType: isNum ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
-      style: const TextStyle(color: Colors.white, fontSize: 13),
-      decoration: InputDecoration(
-        border: InputBorder.none,
-        isDense: true,
-        hintText: isNum ? "0" : "valor",
-        hintStyle: const TextStyle(color: Colors.white24),
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C1C24),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: Colors.white12, width: 1),
       ),
-      onChanged: (newVal) {
-        if (isNum) {
-          if (int.tryParse(newVal) != null) {
-            _properties[key] = int.parse(newVal);
-          } else if (double.tryParse(newVal) != null) {
-            _properties[key] = double.parse(newVal);
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      child: TextFormField(
+        key: ValueKey("${_loadedFileId}_$key"),
+        initialValue: value.toString(),
+        keyboardType: isNum ? const TextInputType.numberWithOptions(decimal: true, signed: true) : TextInputType.text,
+        inputFormatters: isNum 
+            ? [FilteringTextInputFormatter.allow(RegExp(r'^-?[0-9]*\.?[0-9]*'))] 
+            : null,
+        style: const TextStyle(color: Colors.white, fontSize: 13, fontFamily: 'monospace'),
+        decoration: InputDecoration(
+          border: InputBorder.none,
+          isDense: true,
+          hintText: isNum ? "0" : "valor",
+          hintStyle: const TextStyle(color: Colors.white24),
+        ),
+        onChanged: (newVal) {
+          if (isNum) {
+            final cleanVal = (newVal.isEmpty || newVal == '-') ? '0' : newVal;
+            if (int.tryParse(cleanVal) != null) {
+              _properties[key] = int.parse(cleanVal);
+            } else if (double.tryParse(cleanVal) != null) {
+              _properties[key] = double.parse(cleanVal);
+            } else {
+              _properties[key] = cleanVal;
+            }
           } else {
             _properties[key] = newVal;
           }
-        } else {
-          _properties[key] = newVal;
-        }
-        _saveChanges();
-      },
+          _saveChanges();
+        },
+      ),
     );
   }
 }
