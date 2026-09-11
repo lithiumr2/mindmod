@@ -1,37 +1,67 @@
-enum FileType { json, hjson, image }
+import "dart:convert";
+import "dart:typed_data";
+
+enum FileType {
+  block,
+  item,
+  liquid,
+  modJson,
+  image,
+  json,
+  hjson,
+  other,
+}
 
 class ProjectFile {
   final String name;
+  String content;
   final FileType type;
-  final String content;
 
   ProjectFile({
     required this.name,
+    this.content = "",
     required this.type,
-    required this.content,
   });
 
-  bool get isImage => type == FileType.image;
+  bool get isImage => type == FileType.image || name.startsWith("sprites/");
 
-  ProjectFile copyWith({String? name, FileType? type, String? content}) {
+  Uint8List? get binaryContent {
+    if (!isImage || content.isEmpty) return null;
+    try {
+      return base64Decode(content);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  factory ProjectFile.fromJson(Map<String, dynamic> json) {
     return ProjectFile(
-      name: name ?? this.name,
-      type: type ?? this.type,
-      content: content ?? this.content,
+      name: json["name"] as String? ?? "",
+      content: json["content"] as String? ?? "",
+      type: FileType.values.firstWhere(
+        (e) => e.name == json["type"],
+        orElse: () => FileType.other,
+      ),
     );
   }
 
-  // Convierte el objeto a JSON para guardarlo
-  Map<String, dynamic> toJson() => {
-        'name': name,
-        'type': type.index,
-        'content': content,
-      };
+  Map<String, dynamic> toJson() {
+    return {
+      "name": name,
+      "content": content,
+      "type": type.name,
+    };
+  }
 
-  // Crea el objeto desde el JSON guardado
-  factory ProjectFile.fromJson(Map<String, dynamic> json) => ProjectFile(
-        name: json['name'],
-        type: FileType.values[json['type']],
-        content: json['content'],
-      );
+  ProjectFile copyWith({
+    String? name,
+    String? content,
+    FileType? type,
+  }) {
+    return ProjectFile(
+      name: name ?? this.name,
+      content: content ?? this.content,
+      type: type ?? this.type,
+    );
+  }
 }
