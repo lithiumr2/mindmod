@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/project_file.dart';
 import '../providers/project_provider.dart';
@@ -84,7 +85,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
             child: activeFile == null
                 ? const Center(child: Text('Selecciona o crea un archivo', style: TextStyle(color: Colors.white54)))
                 : activeFile.isImage
-                    ? const Center(child: Text('Vista previa de imagen no soportada', style: TextStyle(color: Colors.white54)))
+                    ? Center(child: Image.memory(base64Decode(activeFile.content), fit: BoxFit.contain, errorBuilder: (c,e,s) => const Text('Error al cargar imagen', style: TextStyle(color: Colors.red))))
                     : isModJson
                         ? (_isCodeView ? const CodeEditorWidget() : const ModJsonFormWidget())
                         : (_isCodeView ? const CodeEditorWidget() : const VisualFormWidget()),
