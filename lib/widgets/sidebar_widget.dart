@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart' as filePicker;
 import 'dart:convert';
+
 import '../providers/project_provider.dart';
 import '../models/project_file.dart';
 
@@ -13,17 +14,12 @@ class SidebarWidget extends ConsumerStatefulWidget {
 }
 
 class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
-  String selectedFolder = 'blocks'; // 'blocks', 'items', 'liquids', 'sprites'
+  String selectedFolder = 'blocks';
 
   @override
   Widget build(BuildContext context) {
     final projectState = ref.watch(projectProvider);
     final files = projectState.files;
-
-    String buttonLabel = 'New Block';
-    if (selectedFolder == 'items') buttonLabel = 'New Item';
-    if (selectedFolder == 'liquids') buttonLabel = 'New Liquid';
-    if (selectedFolder == 'sprites') buttonLabel = 'New Sprite';
 
     return Container(
       width: 260,
@@ -93,37 +89,50 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
                   initiallyExpanded: false,
                   children: [
                     ListTile(
-                      leading: const Icon(Icons.add, color: Colors.green, size: 16),
+                      dense: true,
+                      contentPadding: const EdgeInsets.only(left: 32.0, right: 16.0),
+                      leading: const Icon(Icons.add_circle_outline, color: Colors.green, size: 16),
                       title: const Text('New Script (.js)', style: TextStyle(color: Colors.green, fontSize: 12)),
                       onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Soporte para JS próximamente'))),
                     )
                   ],
                 ),
-                ListTile(
+                ExpansionTile(
                   leading: const Icon(Icons.folder, color: Colors.blue, size: 18),
                   title: const Text('sprites', style: TextStyle(color: Colors.white70, fontSize: 13)),
-                  selected: selectedFolder == 'sprites',
-                  selectedTileColor: const Color(0xFF202026),
-                  onTap: () => setState(() => selectedFolder = 'sprites'),
+                  initiallyExpanded: selectedFolder == 'sprites',
+                  onExpansionChanged: (exp) {
+                     if (exp) setState(() => selectedFolder = 'sprites');
+                  },
+                  children: [
+                    ...files.where((f) => f.isImage).map((file) => ListTile(
+                          dense: true,
+                          contentPadding: const EdgeInsets.only(left: 32.0, right: 16.0),
+                          leading: const Icon(Icons.image, color: Colors.purpleAccent, size: 16),
+                          title: Text(file.name, style: const TextStyle(color: Colors.white, fontSize: 12)),
+                          selected: projectState.activeFileName == file.name,
+                          selectedTileColor: const Color(0xFF202026),
+                          onTap: () => ref.read(projectProvider.notifier).selectFile(file.name),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete_outline, size: 16, color: Colors.redAccent),
+                            onPressed: () => ref.read(projectProvider.notifier).deleteFile(file.name),
+                          ),
+                        )),
+                    ListTile(
+                      dense: true,
+                      contentPadding: const EdgeInsets.only(left: 32.0, right: 16.0),
+                      leading: const Icon(Icons.add_circle_outline, color: Colors.amber, size: 16),
+                      title: const Text('New Sprite', style: TextStyle(color: Colors.amber, fontSize: 12)),
+                      onTap: () {
+                        setState(() => selectedFolder = 'sprites');
+                        _showNewItemDialog(context, ref, 'sprites');
+                      },
+                    ),
+                  ],
                 ),
-                if (selectedFolder == 'sprites')
-                  ...files.where((f) => f.isImage).map((file) => ListTile(
-                        dense: true,
-                        contentPadding: const EdgeInsets.only(left: 32.0, right: 16.0),
-                        leading: const Icon(Icons.image, color: Colors.purpleAccent, size: 16),
-                        title: Text(file.name, style: const TextStyle(color: Colors.white, fontSize: 12)),
-                        selected: projectState.activeFileName == file.name,
-                        selectedTileColor: const Color(0xFF202026),
-                        onTap: () => ref.read(projectProvider.notifier).selectFile(file.name),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete_outline, size: 16, color: Colors.redAccent),
-                          onPressed: () => ref.read(projectProvider.notifier).deleteFile(file.name),
-                        ),
-                      )),
               ],
             ),
           ),
-
         ],
       ),
     );
@@ -139,17 +148,13 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
   ) {
     final categoryFiles = files.where((f) {
       if (f.name == 'mod.json' || f.isImage) return false;
-      final content = f.content.toLowerCase();
-      if (folderKey == 'items') {
-        return f.name.contains('item') || content.contains('type: "item"');
-      }
-      if (folderKey == 'liquids') {
-        return f.name.contains('liquid') || content.contains('type: "liquid"');
-      }
-      return !f.name.contains('item') && 
-             !f.name.contains('liquid') && 
-             !content.contains('type: "item"') && 
-             !content.contains('type: "liquid"');
+      
+      if (folderKey == 'items') return f.type == FileType.item;
+      if (folderKey == 'liquids') return f.type == FileType.liquid;
+      if (folderKey == 'units') return f.type == FileType.unit;
+      if (folderKey == 'status') return f.type == FileType.status;
+      if (folderKey == 'blocks') return f.type == FileType.block;
+      return false;
     }).toList();
 
     return ExpansionTile(
@@ -168,23 +173,23 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
       },
       children: [
         ...categoryFiles.map((file) => ListTile(
-            dense: true,
-            contentPadding: const EdgeInsets.only(left: 32.0, right: 16.0),
-            leading: const Icon(Icons.insert_drive_file, color: Colors.amber, size: 16),
-            title: Text(file.name, style: const TextStyle(color: Colors.white, fontSize: 12)),
-            selected: projectState.activeFileName == file.name,
-            selectedTileColor: const Color(0xFF202026),
-            onTap: () => ref.read(projectProvider.notifier).selectFile(file.name),
-            trailing: IconButton(
-              icon: const Icon(Icons.delete_outline, size: 16, color: Colors.redAccent),
-              onPressed: () => ref.read(projectProvider.notifier).deleteFile(file.name),
-            ),
-          )),
+              dense: true,
+              contentPadding: const EdgeInsets.only(left: 32.0, right: 16.0),
+              leading: const Icon(Icons.insert_drive_file, color: Colors.amber, size: 16),
+              title: Text(file.name, style: const TextStyle(color: Colors.white, fontSize: 12)),
+              selected: projectState.activeFileName == file.name,
+              selectedTileColor: const Color(0xFF202026),
+              onTap: () => ref.read(projectProvider.notifier).selectFile(file.name),
+              trailing: IconButton(
+                icon: const Icon(Icons.delete_outline, size: 16, color: Colors.redAccent),
+                onPressed: () => ref.read(projectProvider.notifier).deleteFile(file.name),
+              ),
+            )),
         ListTile(
           dense: true,
           contentPadding: const EdgeInsets.only(left: 32.0, right: 16.0),
           leading: const Icon(Icons.add_circle_outline, color: Colors.amber, size: 16),
-          title: Text('New ${title.substring(0, title.length - 1)}', style: const TextStyle(color: Colors.amber, fontSize: 12)),
+          title: Text('New \${title.substring(0, title.length - 1)}', style: const TextStyle(color: Colors.amber, fontSize: 12)),
           onTap: () {
              setState(() => selectedFolder = folderKey);
             _showNewItemDialog(context, ref, folderKey);
@@ -200,7 +205,6 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
         type: filePicker.FileType.image,
         withData: true,
       );
-
       if (result != null && result.files.single.bytes != null) {
         final fileName = result.files.single.name;
         final bytes = result.files.single.bytes!;
@@ -227,9 +231,18 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
       defaultName = 'custom-liquid.hjson';
       title = 'Create New Liquid';
       defaultContent = '{\n  name: "custom-liquid"\n  color: "ff0000"\n}';
+    } else if (folder == 'units') {
+      defaultName = 'custom-unit.hjson';
+      title = 'Create New Unit';
+      defaultContent = '{\n  name: "custom-unit"\n  type: "flying"\n  health: 150\n}';
+    } else if (folder == 'status') {
+      defaultName = 'custom-status.hjson';
+      title = 'Create New Status';
+      defaultContent = '{\n  name: "custom-status"\n  damage: 0.5\n}';
     }
 
     final controller = TextEditingController(text: defaultName);
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -250,13 +263,22 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
             onPressed: () {
               if (controller.text.isNotEmpty) {
                 final baseName = controller.text.split('.').first;
+                
+                FileType determinedType = FileType.block;
+                if (folder == 'items') determinedType = FileType.item;
+                if (folder == 'liquids') determinedType = FileType.liquid;
+                if (folder == 'units') determinedType = FileType.unit;
+                if (folder == 'status') determinedType = FileType.status;
+
                 ref.read(projectProvider.notifier).addFile(
                       controller.text.trim(),
-                      FileType.hjson,
+                      determinedType,
                       content: defaultContent
                           .replaceAll('copper-wall', baseName)
                           .replaceAll('custom-item', baseName)
-                          .replaceAll('custom-liquid', baseName),
+                          .replaceAll('custom-liquid', baseName)
+                          .replaceAll('custom-unit', baseName)
+                          .replaceAll('custom-status', baseName),
                     );
                 Navigator.pop(context);
               }
