@@ -6,6 +6,15 @@ import '../services/hjson_engine.dart';
 class ModJsonFormWidget extends ConsumerWidget {
   const ModJsonFormWidget({super.key});
 
+  void _updateFieldList(WidgetRef ref, Map<String, dynamic> data, String key, String value) {
+    if (value.trim().isEmpty) {
+      data.remove(key);
+    } else {
+      data[key] = value.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    }
+    ref.read(projectProvider.notifier).updateActiveFileContent(HjsonEngine.stringify(data));
+  }
+
   void _updateField(WidgetRef ref, Map<String, dynamic> data, String key, String value) {
     data[key] = value;
     ref.read(projectProvider.notifier).updateActiveFileContent(HjsonEngine.stringify(data));
@@ -54,6 +63,9 @@ class ModJsonFormWidget extends ConsumerWidget {
               ),
             ],
           ),
+          _buildTextField('Dependencias (separadas por coma)', 'ej. core-mod, multi-crafter', 
+            (parsedData['dependencies'] as List<dynamic>?)?.join(', ') ?? '', 
+            (v) => _updateFieldList(ref, parsedData, 'dependencies', v)),
         ],
       ),
     );
@@ -61,7 +73,7 @@ class ModJsonFormWidget extends ConsumerWidget {
 
   Widget _buildTextField(String label, String hint, String? initial, Function(String) onChanged, {int maxLines = 1}) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 12),
       child: TextFormField(
         initialValue: initial ?? '',
         maxLines: maxLines,
@@ -69,12 +81,14 @@ class ModJsonFormWidget extends ConsumerWidget {
         decoration: InputDecoration(
           labelText: label,
           hintText: hint,
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           hintStyle: const TextStyle(color: Colors.white24),
-          labelStyle: const TextStyle(color: Colors.white70),
-          enabledBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
-          focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.amber)),
+          labelStyle: const TextStyle(color: Colors.white70, fontSize: 13),
+          enabledBorder: OutlineInputBorder(borderSide: const BorderSide(color: Colors.white12), borderRadius: BorderRadius.circular(6)),
+          focusedBorder: OutlineInputBorder(borderSide: const BorderSide(color: Colors.amber), borderRadius: BorderRadius.circular(6)),
           filled: true,
-          fillColor: const Color(0xFF222228),
+          fillColor: const Color(0xFF1C1C24),
         ),
         onChanged: onChanged,
       ),

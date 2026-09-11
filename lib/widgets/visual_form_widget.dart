@@ -89,18 +89,19 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
 
   // Listas de propiedades para Items y Líquidos
   final List<String> _itemProps = [
-    "color", "explosiveness", "flammability", "radioactivity", "charge",
-    "hardness", "cost", "alwaysUnlocked", "frames", "transitionDamage"
+    "description", "details", "color", "explosiveness", "flammability", "radioactivity", "charge",
+    "hardness", "cost", "alwaysUnlocked", "frames", "transitionDamage", "buildable", "hidden"
   ];
 
   final List<String> _liquidProps = [
-    "color", "temperature", "flammability", "explosiveness", "viscosity",
-    "heatCapacity", "barColor", "lightColor", "effect", "gas", "coolant"
+    "description", "details", "color", "temperature", "flammability", "explosiveness", "viscosity",
+    "heatCapacity", "barColor", "lightColor", "effect", "gas", "coolant", "hidden", "incinerable"
   ];
 
   
   final List<String> _unitProps = [
-    "type", "health", "speed", "flying", "range", "armor", "hitSize", "weapons", "abilities", "controller"
+    "description", "details", "type", "health", "speed", "flying", "range", "armor", "hitSize", 
+    "weapons", "abilities", "controller", "hovering", "shadowElevation", "drag", "accel", "itemCapacity"
   ];
   final List<String> _statusProps = [
     "color", "damage", "damageMultiplier", "speedMultiplier", "armorMultiplier", "effect"
@@ -482,7 +483,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
         if (_syntaxErrors.isNotEmpty)
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             color: Colors.red.withOpacity(0.2),
             child: Row(
               children: [
@@ -530,7 +531,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
 
         // Recomendaciones
         Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: const BoxDecoration(
             border: Border(bottom: BorderSide(color: Colors.white12)),
           ),
@@ -594,7 +595,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                           if (isVital)
                             const Padding(
                               padding: EdgeInsets.only(left: 4),
-                              child: Icon(Icons.lock, size: 12, color: Colors.amber),
+                              child: Icon(Icons.lock_outline, size: 12, color: Colors.amber),
                             ),
                         ],
                       ),
