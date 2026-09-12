@@ -70,19 +70,34 @@ async function run() {
   `;
 
   try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { response_mime_type: "application/json" }
-      })
-    });
+        const models = ["gemini-3.6-flash", "gemini-2.5-flash", "gemini-1.5-flash"];
+    let data = null;
+    for (const model of models) {
+      try {
+        console.log(`Trying Gemini model: ${model}...`);
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { response_mime_type: "application/json" }
+          })
+        });
+        const resJson = await response.json();
+        if (!resJson.error) {
+          data = resJson;
+          console.log(`Model ${model} succeeded!`);
+          break;
+        } else {
+          console.warn(`Model ${model} returned error:`, resJson.error.message);
+        }
+      } catch (err) {
+        console.warn(`Failed with ${model}:`, err.message);
+      }
+    }
 
-    const data = await response.json();
-    
-    if (data.error) {
-      console.error("Gemini API Error:", data.error);
+    if (!data || !data.candidates || data.candidates.length === 0) {
+      console.error("No valid response from any Gemini model.");
       process.exit(1);
     }
 
