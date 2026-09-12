@@ -48,6 +48,82 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     "MessageBlock", "SwitchBlock", "LogicProcessor", "MemoryBlock", "LogicDisplay", "Canvas"
   ];
 
+  // 1.b Tipos de unidades oficiales para Mindustry V7/V8
+  final List<String> _unitTypes = [
+    "flying",
+    "mech",
+    "legs",
+    "naval",
+    "payload",
+    "tether",
+    "crawl",
+    "missile",
+    "hover",
+  ];
+
+  // Recursos oficiales de Mindustry V7/V8 con prefijo @
+  static const List<String> _vanillaItems = [
+    "@copper",
+    "@lead",
+    "@metaglass",
+    "@graphite",
+    "@sand",
+    "@coal",
+    "@titanium",
+    "@thorium",
+    "@scrap",
+    "@silicon",
+    "@plastanium",
+    "@phase-fabric",
+    "@surge-alloy",
+    "@spore-pod",
+    "@blast-compound",
+    "@pyratite",
+    "@beryllium",
+    "@tungsten",
+    "@oxide",
+    "@carbide",
+    "@fissile-matter",
+    "@dormant-cyst",
+  ];
+
+  static const List<String> _vanillaLiquids = [
+    "@water",
+    "@slag",
+    "@oil",
+    "@cryofluid",
+    "@arkycite",
+    "@gallium",
+    "@neoplasm",
+    "@ozone",
+    "@hydrogen",
+    "@nitrogen",
+  ];
+
+  List<String> _getItemCandidates() {
+    final allFiles = ref.watch(projectProvider).files;
+    final modItems = allFiles
+        .where((f) => f.type == FileType.item)
+        .map((f) {
+          final clean = f.name.replaceAll(".hjson", "").replaceAll(".json", "");
+          return clean.startsWith("@") ? clean : "@$clean";
+        })
+        .toList();
+    return [..._vanillaItems, ...modItems];
+  }
+
+  List<String> _getLiquidCandidates() {
+    final allFiles = ref.watch(projectProvider).files;
+    final modLiquids = allFiles
+        .where((f) => f.type == FileType.liquid)
+        .map((f) {
+          final clean = f.name.replaceAll(".hjson", "").replaceAll(".json", "");
+          return clean.startsWith("@") ? clean : "@$clean";
+        })
+        .toList();
+    return [..._vanillaLiquids, ...modLiquids];
+  }
+
   // 2. Propiedades por defecto / específicas según subtipo
   final Map<String, List<String>> _blockSpecificProps = {
     "Wall": ["chanceDeflect", "flashHit", "insulated", "absorbLasers"],
@@ -62,13 +138,13 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     "StackConveyor": ["speed", "itemCapacity"],
     "Duct": ["speed", "transparent"],
     "MassDriver": ["range", "rotateSpeed", "translation", "minDist", "bulletSpeed"],
-    "Drill": ["tier", "drillTime", "warmupSpeed", "liquidBoostIntensity", "drawMineItem"],
+    "Drill": ["tier", "drillTime", "warmupSpeed", "liquidBoostIntensity", "drawMineItem", "itemCapacity", "liquidCapacity"],
     "BurstDrill": ["tier", "drillTime", "itemCapacity", "arrows"],
     "ImpactDrill": ["tier", "drillTime"],
     "BeamDrill": ["tier", "drillTime", "range", "sparkColor", "pulse", "consumeTime"],
-    "GenericCrafter": ["craftTime", "outputItem", "outputLiquid"],
-    "ItemTurret": ["range", "reload", "inaccuracy", "shootCone", "targetAir", "targetGround", "shootSound", "ammoTypes"],
-    "LiquidTurret": ["range", "reload", "inaccuracy", "shootCone", "targetAir", "targetGround", "shootSound", "ammoType"],
+    "GenericCrafter": ["craftTime", "outputItem", "outputLiquid", "consumeItem", "consumeLiquid", "itemCapacity", "liquidCapacity"],
+    "ItemTurret": ["range", "reload", "inaccuracy", "shootCone", "targetAir", "targetGround", "shootSound", "ammoTypes", "itemCapacity"],
+    "LiquidTurret": ["range", "reload", "inaccuracy", "shootCone", "targetAir", "targetGround", "shootSound", "ammoType", "liquidCapacity"],
     "PowerTurret": ["range", "reload", "shootType", "targetAir", "targetGround", "shootSound"],
     "LaserTurret": ["range", "reload", "firingMoveFract", "shootDuration", "shootSound"],
     "PowerNode": ["maxNodes", "laserRange", "laserColor1", "laserColor2"],
@@ -80,7 +156,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     "ThermalGenerator": ["powerProduction", "generateEffect"],
     "NuclearReactor": ["heating", "itemDuration", "smokeThreshold", "explosionRadius", "explosionDamage"],
     "ImpactReactor": ["powerProduction", "itemDuration", "warmupSpeed"],
-    "UnitFactory": ["plans", "produceTime"],
+    "UnitFactory": ["plans", "produceTime", "itemCapacity", "liquidCapacity"],
     "Reconstructor": ["constructTime", "upgrades"],
     "LogicProcessor": ["instructionsPerTick", "range"],
     "MemoryBlock": ["memoryCapacity"],
@@ -117,7 +193,8 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
   final List<String> _baseBlockProps = [
     "type", "health", "size", "requirements", "category",
     "solid", "destructible", "hasItems", "hasLiquids",
-    "hasPower", "consumesPower", "outputsPower", "itemCapacity", "liquidCapacity"
+    "hasPower", "consumesPower", "outputsPower", "itemCapacity", "liquidCapacity",
+    "consumeItem", "consumeLiquid", "outputItem", "outputLiquid"
   ];
 
   // Identificadores de tipos de datos estrictos
@@ -245,7 +322,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
           "hasPower": true,
           "consumesPower": true,
           "category": "production",
-          "requirements": "[copper/30, lead/20]"
+          "requirements": "[@copper/30, @lead/20]"
         };
       } else if (presetKey == "turret") {
         _properties = {
@@ -260,7 +337,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
           "targetGround": true,
           "shootSound": "shoot",
           "category": "turret",
-          "requirements": "[copper/75, lead/50]"
+          "requirements": "[@copper/75, @lead/50]"
         };
       } else if (presetKey == "crafter") {
         _properties = {
@@ -391,6 +468,61 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
       }
     }
     return base.where((p) => !_properties.containsKey(p)).toList();
+  }
+
+  void _showAddRequirementDialog(String item) {
+    final amountController = TextEditingController(text: "20");
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF222228),
+        title: Text("Requisito: $item", style: const TextStyle(color: Colors.white, fontSize: 15)),
+        content: TextField(
+          controller: amountController,
+          keyboardType: TextInputType.number,
+          autofocus: true,
+          style: const TextStyle(color: Colors.white, fontSize: 14),
+          decoration: const InputDecoration(
+            labelText: "Cantidad (amount)",
+            labelStyle: TextStyle(color: Colors.white70),
+            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.amber)),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancelar", style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.amber, foregroundColor: Colors.black),
+            onPressed: () {
+              final amt = int.tryParse(amountController.text.trim()) ?? 10;
+              final entry = "$item/$amt";
+              setState(() {
+                final current = _properties["requirements"]?.toString().trim() ?? "";
+                if (current.isEmpty || current == "[]") {
+                  _properties["requirements"] = "[$entry]";
+                } else if (current.endsWith("]")) {
+                  final inside = current.substring(0, current.length - 1).trim();
+                  if (inside.endsWith(",")) {
+                    _properties["requirements"] = "$inside $entry]";
+                  } else if (inside == "[") {
+                    _properties["requirements"] = "[$entry]";
+                  } else {
+                    _properties["requirements"] = "$inside, $entry]";
+                  }
+                } else {
+                  _properties["requirements"] = "$current, $entry";
+                }
+              });
+              _saveChanges();
+              Navigator.pop(ctx);
+            },
+            child: const Text("Añadir", style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildSpriteLinkModule(String currentFileName) {
@@ -661,7 +793,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
   }
 
   Widget _buildInputField(String key, dynamic value, FileType fileType) {
-    // 1. Selector masivo para la propiedad type
+    // 1. Selector para la propiedad type en Bloques
     if (key == "type" && fileType == FileType.block) {
       String current = value.toString().replaceAll("\"", "");
       if (!_blockTypes.contains(current)) {
@@ -687,6 +819,106 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
       );
     }
 
+    // 1.b Selector para la propiedad type en Unidades
+    if (key == "type" && fileType == FileType.unit) {
+      String current = value.toString().replaceAll("\"", "").trim();
+      if (!_unitTypes.contains(current)) {
+        current = _unitTypes.first;
+      }
+      return DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: current,
+          dropdownColor: const Color(0xFF222228),
+          icon: const Icon(Icons.arrow_drop_down, color: Colors.amber),
+          isExpanded: true,
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+          onChanged: (val) {
+            if (val != null) {
+              setState(() {
+                _properties[key] = val;
+              });
+              _saveChanges();
+            }
+          },
+          items: _unitTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+        ),
+      );
+    }
+
+    // 1.c Selector de categoría oficial en Bloques
+    const blockCategories = [
+      "defense", "production", "distribution", "liquid", "power", "turret", "units", "effect", "logic"
+    ];
+    if (key == "category" && fileType == FileType.block) {
+      String current = value.toString().replaceAll("\"", "").trim();
+      if (!blockCategories.contains(current)) {
+        current = "defense";
+      }
+      return DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: current,
+          dropdownColor: const Color(0xFF222228),
+          icon: const Icon(Icons.arrow_drop_down, color: Colors.amber),
+          isExpanded: true,
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+          onChanged: (val) {
+            if (val != null) {
+              setState(() {
+                _properties[key] = val;
+              });
+              _saveChanges();
+            }
+          },
+          items: blockCategories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+        ),
+      );
+    }
+
+    // 1.d Selector asistido para requirements con prefijo @
+    if (key == "requirements") {
+      final currentText = value.toString();
+      final allItems = _getItemCandidates();
+
+      return Row(
+        children: [
+          Expanded(
+            child: TextFormField(
+              key: ValueKey("${_loadedFileId}_$key"),
+              initialValue: currentText,
+              style: const TextStyle(color: Colors.white, fontSize: 13, fontFamily: "monospace"),
+              decoration: const InputDecoration(
+                border: InputBorder.none,
+                isDense: true,
+                hintText: "[@copper/30, @lead/20]",
+                hintStyle: TextStyle(color: Colors.white24),
+              ),
+              onChanged: (newVal) {
+                _properties[key] = newVal;
+                _saveChanges();
+              },
+            ),
+          ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.add_circle_outline, color: Colors.amber, size: 18),
+            tooltip: "Añadir recurso @ a requisitos",
+            color: const Color(0xFF2A2A32),
+            onSelected: (selectedItem) {
+              _showAddRequirementDialog(selectedItem);
+            },
+            itemBuilder: (context) {
+              return allItems.map((item) {
+                return PopupMenuItem<String>(
+                  value: item,
+                  height: 32,
+                  child: Text(item, style: const TextStyle(color: Colors.white, fontSize: 12)),
+                );
+              }).toList();
+            },
+          ),
+        ],
+      );
+    }
+
     // 2. Selector visual interactivo de color (ColorPicker)
     if (_colorProps.contains(key)) {
       final colorHex = value.toString().replaceAll("#", "").trim();
@@ -696,7 +928,6 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
       } catch (_) {
         previewColor = Colors.amber;
       }
-
       return InkWell(
         onTap: () => _openColorPicker(key, colorHex),
         child: Row(
@@ -722,33 +953,36 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
       );
     }
 
-    // 3. Menú desplegable para referencias cruzadas (requirements, outputItem, etc.)
-    if (key == "outputItem" || key == "outputLiquid" || key == "ammoType") {
-      final allFiles = ref.watch(projectProvider).files;
-      final candidates = allFiles
-          .where((f) => f.type == FileType.item || f.type == FileType.liquid)
-          .map((f) => f.name.replaceAll(".hjson", ""))
-          .toList();
+    // 3. Menú desplegable para referencias a recursos (@ Ítems y Líquidos nativos y del mod)
+    final isItemProp = key == "outputItem" || key == "consumeItem" || key == "item" || key == "ammoType" || key == "drawMineItem";
+    final isLiquidProp = key == "outputLiquid" || key == "consumeLiquid" || key == "liquid";
 
-      if (candidates.isNotEmpty) {
-        final current = value.toString();
-        return DropdownButtonHideUnderline(
-          child: DropdownButton<String>(
-            value: candidates.contains(current) ? current : null,
-            hint: Text(current.isEmpty ? "Seleccionar ítem/líquido" : current, style: const TextStyle(color: Colors.white70)),
-            dropdownColor: const Color(0xFF222228),
-            isExpanded: true,
-            style: const TextStyle(color: Colors.white, fontSize: 13),
-            onChanged: (v) {
-              if (v != null) {
-                setState(() => _properties[key] = v);
-                _saveChanges();
-              }
-            },
-            items: candidates.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+    if (isItemProp || isLiquidProp) {
+      final candidates = isLiquidProp ? _getLiquidCandidates() : _getItemCandidates();
+      final current = value.toString().replaceAll("\"", "").trim();
+      final selectedValue = candidates.contains(current)
+          ? current
+          : (candidates.contains("@$current") ? "@$current" : null);
+
+      return DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: selectedValue,
+          hint: Text(
+            current.isEmpty ? (isLiquidProp ? "Seleccionar líquido (@)" : "Seleccionar ítem (@)") : current,
+            style: const TextStyle(color: Colors.white70, fontSize: 13),
           ),
-        );
-      }
+          dropdownColor: const Color(0xFF222228),
+          isExpanded: true,
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+          onChanged: (v) {
+            if (v != null) {
+              setState(() => _properties[key] = v);
+              _saveChanges();
+            }
+          },
+          items: candidates.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+        ),
+      );
     }
 
     // 4. Booleanos estrictos
@@ -783,9 +1017,9 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
         initialValue: value.toString(),
         keyboardType: isNum ? const TextInputType.numberWithOptions(decimal: true, signed: true) : TextInputType.text,
         inputFormatters: isNum 
-            ? [FilteringTextInputFormatter.allow(RegExp(r'^-?[0-9]*\.?[0-9]*'))] 
+            ? [FilteringTextInputFormatter.allow(RegExp(r^-?[0-9]*.?[0-9]*))] 
             : null,
-        style: const TextStyle(color: Colors.white, fontSize: 13, fontFamily: 'monospace'),
+        style: const TextStyle(color: Colors.white, fontSize: 13, fontFamily: monospace),
         decoration: InputDecoration(
           border: InputBorder.none,
           isDense: true,
@@ -794,7 +1028,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
         ),
         onChanged: (newVal) {
           if (isNum) {
-            final cleanVal = (newVal.isEmpty || newVal == '-') ? '0' : newVal;
+            final cleanVal = (newVal.isEmpty || newVal == -) ? 0 : newVal;
             if (int.tryParse(cleanVal) != null) {
               _properties[key] = int.parse(cleanVal);
             } else if (double.tryParse(cleanVal) != null) {
