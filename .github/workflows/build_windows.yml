@@ -49,3 +49,19 @@ jobs:
         with:
           name: mindmod-windows-x64
           path: mindmod-windows-x64.zip
+
+      - name: Trigger Auto-Heal on failure
+        if: failure() && github.ref == 'refs/heads/experimental'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'autofix.yml',
+              ref: 'experimental',
+              inputs: {
+                failed_run_id: String(context.runId)
+              }
+            });
