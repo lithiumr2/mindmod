@@ -1017,9 +1017,9 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
         initialValue: value.toString(),
         keyboardType: isNum ? const TextInputType.numberWithOptions(decimal: true, signed: true) : TextInputType.text,
         inputFormatters: isNum 
-            ? [FilteringTextInputFormatter.allow(RegExp(r^-?[0-9]*.?[0-9]*))] 
+            ? [FilteringTextInputFormatter.allow(RegExp(r'^-?[0-9]*\.?[0-9]*'))] 
             : null,
-        style: const TextStyle(color: Colors.white, fontSize: 13, fontFamily: monospace),
+        style: const TextStyle(color: Colors.white, fontSize: 13, fontFamily: "monospace"),
         decoration: InputDecoration(
           border: InputBorder.none,
           isDense: true,
@@ -1028,7 +1028,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
         ),
         onChanged: (newVal) {
           if (isNum) {
-            final cleanVal = (newVal.isEmpty || newVal == -) ? 0 : newVal;
+            final cleanVal = (newVal.isEmpty || newVal == "-") ? "0" : newVal;
             if (int.tryParse(cleanVal) != null) {
               _properties[key] = int.parse(cleanVal);
             } else if (double.tryParse(cleanVal) != null) {
