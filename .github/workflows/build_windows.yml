@@ -2,9 +2,9 @@ name: Build Windows App
 
 on:
   push:
-    branches: [ "experimental" ]
+    branches: [ "main", "experimental" ]
   pull_request:
-    branches: [ "experimental" ]
+    branches: [ "main", "experimental" ]
   workflow_dispatch:
 
 jobs:
@@ -23,8 +23,11 @@ jobs:
       - name: Habilitar plataforma Windows en Flutter
         run: flutter config --enable-windows-desktop
 
-      - name: Generar soporte Windows dinámicamente
-        run: flutter create . --platforms=windows --org=com.mindmod
+      - name: Generar soporte Windows limpio
+        run: |
+          if (Test-Path "windows") { Remove-Item -Recurse -Force "windows" }
+          flutter create . --platforms=windows --org=com.mindmod
+        shell: pwsh
 
       - name: Instalar dependencias
         run: flutter pub get
@@ -35,10 +38,13 @@ jobs:
       - name: Empaquetar distribución Windows
         shell: pwsh
         run: |
-          if (Test-Path "build\windows\x64\runner\Release") {
-            Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath "mindmod-windows-x64.zip" -Force
-          } elseif (Test-Path "build\windows\runner\Release") {
-            Compress-Archive -Path "build\windows\runner\Release\*" -DestinationPath "mindmod-windows-x64.zip" -Force
+          $releaseDir = "build/windows/x64/runner/Release"
+          if (!(Test-Path $releaseDir)) {
+            $releaseDir = "build/windows/runner/Release"
+          }
+          
+          if (Test-Path $releaseDir) {
+            Compress-Archive -Path "$releaseDir/*" -DestinationPath "mindmod-windows-x64.zip" -Force
           } else {
             Write-Error "No se encontró el directorio de compilación de Windows."
             exit 1
