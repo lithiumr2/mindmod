@@ -1,13 +1,11 @@
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart' as filePicker;
-import "dart:convert";
-import "dart:typed_data";
-import "package:flutter/material.dart";
-import "package:flutter/services.dart";
-import "package:flutter_riverpod/flutter_riverpod.dart";
-import "package:flutter_colorpicker/flutter_colorpicker.dart";
-import "../providers/project_provider.dart";
-import "../models/project_file.dart";
-import "../services/hjson_engine.dart";
+import '../models/project_file.dart';
+import '../providers/project_provider.dart';
+import '../services/hjson_engine.dart';
 
 class VisualFormWidget extends ConsumerStatefulWidget {
   const VisualFormWidget({super.key});
@@ -18,37 +16,38 @@ class VisualFormWidget extends ConsumerStatefulWidget {
 
 class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
   Map<String, dynamic> _properties = {};
-  String? _loadedFileId;
   List<String> _syntaxErrors = [];
+  String _loadedFileId = "";
 
-  // ==========================================
-  // DEFINICIONES MASIVAS DE MINDUSTRY V7/V8
-  // ==========================================
-
-  // 1. Tipos de bloques masivos ampliados
+  // 30 tipos de bloques nativos de Mindustry
   final List<String> _blockTypes = [
-    // Defensa
-    "Wall", "ShieldWall", "Door", "MendProjector", "OverdriveProjector", "ForceProjector", "ShockMine",
-    // Distribución
-    "Conveyor", "ArmoredConveyor", "Plastoconveyor", "StackConveyor", "Duct", "ArmoredDuct",
-    "Router", "Distributor", "Junction", "DuctJunction", "ItemBridge", "DuctBridge",
-    "Sorter", "InvertedSorter", "OverflowGate", "UnderflowGate", "MassDriver", "PayloadConveyor", "PayloadRouter",
-    // Líquidos
-    "Conduit", "ArmoredConduit", "PlatedConduit", "LiquidRouter", "LiquidJunction", "BridgeConduit", "LiquidTank",
-    // Producción y Minería
-    "Drill", "BurstDrill", "ImpactDrill", "BeamDrill", "GenericCrafter", "Separator", "Incinerator",
-    // Energía
-    "PowerNode", "SurgeTower", "BeamNode", "Battery", "SolarPanel", "CombustionGenerator", 
-    "ThermalGenerator", "SteamGenerator", "NuclearReactor", "ImpactReactor",
-    // Torretas
-    "ItemTurret", "LiquidTurret", "PowerTurret", "LaserTurret", "PointDefenseTurret", "TractorBeamTurret",
-    // Unidades y Cargas
-    "UnitFactory", "Reconstructor", "UnitAssembler", "PayloadLoader", "PayloadUnloader", "Constructor",
-    // Lógica e Interactivos
-    "MessageBlock", "SwitchBlock", "LogicProcessor", "MemoryBlock", "LogicDisplay", "Canvas"
+    "Wall", "ShieldWall", "Door", "MendProjector", "OverdriveProjector",
+    "ForceProjector", "Conveyor", "ArmoredConveyor", "Plastoconveyor", "StackConveyor",
+    "Duct", "MassDriver", "Drill", "BurstDrill", "ImpactDrill",
+    "BeamDrill", "GenericCrafter", "ItemTurret", "LiquidTurret", "PowerTurret",
+    "LaserTurret", "PowerNode", "SurgeTower", "BeamNode", "Battery",
+    "SolarPanel", "NuclearReactor", "ImpactReactor", "LiquidRouter", "LiquidJunction"
   ];
 
-  // 2. Propiedades por defecto / específicas según subtipo
+  // Tipos de unidades de Mindustry
+  final List<String> _unitTypes = [
+    "flying", "mech", "legs", "naval", "payload", "crawl", "tether", "unit"
+  ];
+
+  // Ítems vanilla nativos de Mindustry con prefijo @
+  static const List<String> _vanillaItems = [
+    "@copper", "@lead", "@metaglass", "@graphite", "@sand", "@coal",
+    "@titanium", "@thorium", "@silicon", "@plastanium", "@phase-fabric",
+    "@surge-alloy", "@spore-pod", "@blast-compound", "@pyratite",
+    "@beryllium", "@tungsten", "@oxide", "@carbide"
+  ];
+
+  // Líquidos vanilla nativos de Mindustry con prefijo @
+  static const List<String> _vanillaLiquids = [
+    "@water", "@slag", "@oil", "@cryofluid", "@neoplasm", "@arkycite",
+    "@ozone", "@hydrogen", "@nitrogen", "@gallium"
+  ];
+
   final Map<String, List<String>> _blockSpecificProps = {
     "Wall": ["chanceDeflect", "flashHit", "insulated", "absorbLasers"],
     "ShieldWall": ["chanceDeflect", "flashHit", "insulated", "absorbLasers", "shieldHealth", "cooldown"],
@@ -66,7 +65,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     "BurstDrill": ["tier", "drillTime", "itemCapacity", "arrows"],
     "ImpactDrill": ["tier", "drillTime"],
     "BeamDrill": ["tier", "drillTime", "range", "sparkColor", "pulse", "consumeTime"],
-    "GenericCrafter": ["craftTime", "outputItem", "outputLiquid"],
+    "GenericCrafter": ["craftTime", "outputItem", "outputLiquid", "hasItems", "itemCapacity", "hasLiquids", "liquidCapacity"],
     "ItemTurret": ["range", "reload", "inaccuracy", "shootCone", "targetAir", "targetGround", "shootSound", "ammoTypes"],
     "LiquidTurret": ["range", "reload", "inaccuracy", "shootCone", "targetAir", "targetGround", "shootSound", "ammoType"],
     "PowerTurret": ["range", "reload", "shootType", "targetAir", "targetGround", "shootSound"],
@@ -76,163 +75,149 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     "BeamNode": ["range", "laserColor1"],
     "Battery": ["emptyPower"],
     "SolarPanel": ["powerProduction"],
-    "CombustionGenerator": ["powerProduction", "itemDuration"],
-    "ThermalGenerator": ["powerProduction", "generateEffect"],
-    "NuclearReactor": ["heating", "itemDuration", "smokeThreshold", "explosionRadius", "explosionDamage"],
-    "ImpactReactor": ["powerProduction", "itemDuration", "warmupSpeed"],
-    "UnitFactory": ["plans", "produceTime"],
-    "Reconstructor": ["constructTime", "upgrades"],
-    "LogicProcessor": ["instructionsPerTick", "range"],
-    "MemoryBlock": ["memoryCapacity"],
-    "LogicDisplay": ["displaySize"],
-    "MessageBlock": ["maxTextLength"],
+    "NuclearReactor": ["itemDuration", "heating", "smokeThreshold", "explosionRadius", "explosionDamage", "fuelItem"],
+    "ImpactReactor": ["warmupSpeed", "itemDuration", "powerProduction"],
+    "LiquidRouter": ["liquidCapacity"],
+    "LiquidJunction": ["capacity"]
   };
 
-  // Listas de propiedades para Items y Líquidos
   final List<String> _itemProps = [
-    "description", "details", "color", "explosiveness", "flammability", "radioactivity", "charge",
-    "hardness", "cost", "alwaysUnlocked", "frames", "transitionDamage", "buildable", "hidden"
+    "cost", "color", "flammability", "explosiveness", "radioactivity", "charge", "hardness"
   ];
 
   final List<String> _liquidProps = [
-    "description", "details", "color", "temperature", "flammability", "explosiveness", "viscosity",
-    "heatCapacity", "barColor", "lightColor", "effect", "gas", "coolant", "hidden", "incinerable"
+    "temperature", "viscosity", "flammability", "explosiveness", "heatCapacity", "color", "gas", "coolant"
   ];
 
-  
   final List<String> _unitProps = [
-    "description", "details", "type", "health", "speed", "flying", "range", "armor", "hitSize", 
-    "weapons", "abilities", "controller", "hovering", "shadowElevation", "drag", "accel", "itemCapacity"
+    "type", "health", "speed", "flying", "range", "armor", "hitSize",
+    "itemCapacity", "hasItems", "hasLiquids", "liquidCapacity", "requirements",
+    "weapons", "abilities", "controller", "hovering", "shadowElevation", "drag", "accel", "description", "details"
   ];
+
   final List<String> _statusProps = [
     "color", "damage", "damageMultiplier", "speedMultiplier", "armorMultiplier", "effect"
   ];
+
   final List<String> _sectorProps = [
     "sector", "planet", "captureWave", "difficulty", "alwaysUnlocked"
   ];
+
   final List<String> _weatherProps = [
     "type", "color", "noiseColor", "opacity", "duration", "sound"
   ];
 
   final List<String> _baseBlockProps = [
     "type", "health", "size", "requirements", "category",
-    "solid", "destructible", "hasItems", "hasLiquids",
-    "hasPower", "consumesPower", "outputsPower", "itemCapacity", "liquidCapacity"
+    "solid", "destructible", "hasItems", "itemCapacity", "hasLiquids", "liquidCapacity",
+    "hasPower", "consumesPower", "outputsPower", "outputItem", "outputLiquid"
   ];
 
-  // Identificadores de tipos de datos estrictos
   final Set<String> _numberProps = {
     "health", "size", "tier", "drillTime", "speed", "displayedSpeed", "craftTime",
     "range", "reload", "inaccuracy", "maxNodes", "laserRange", "powerProduction",
     "itemDuration", "heating", "smokeThreshold", "emptyPower", "instructionsPerTick",
     "memoryCapacity", "displaySize", "itemCapacity", "liquidCapacity", "hardness",
     "cost", "explosiveness", "flammability", "radioactivity", "charge", "temperature",
-    "viscosity", "heatCapacity", "healPercent", "speedBoost", "radius", "shieldHealth"
+    "viscosity", "heatCapacity", "healPercent", "speedBoost", "radius", "shieldHealth",
+    "armor", "hitSize", "drag", "accel", "capacity", "amount"
   };
 
   final Set<String> _boolProps = {
     "solid", "destructible", "hasItems", "hasLiquids", "hasPower", "consumesPower",
     "outputsPower", "alwaysUnlocked", "insulated", "absorbLasers", "flashHit",
-    "targetAir", "targetGround", "gas", "coolant", "transparent"
+    "targetAir", "targetGround", "gas", "coolant", "transparent", "flying", "hovering"
   };
 
   final Set<String> _colorProps = {
     "color", "barColor", "lightColor", "laserColor1", "laserColor2", "sparkColor"
   };
 
-  @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
-  void didUpdateWidget(covariant VisualFormWidget oldWidget) {
-    super.didUpdateWidget(oldWidget);
-  }
-
-  
   void _cleanInvalidProperties(FileType type, Map<String, dynamic> parsed) {
     if (type == FileType.item) {
-       parsed.removeWhere((k, v) => k != "name" && k != "description" && !_itemProps.contains(k));
+      parsed.removeWhere((k, v) => k != "name" && k != "description" && !_itemProps.contains(k));
     } else if (type == FileType.liquid) {
-       parsed.removeWhere((k, v) => k != "name" && k != "description" && !_liquidProps.contains(k));
+      parsed.removeWhere((k, v) => k != "name" && k != "description" && !_liquidProps.contains(k));
     } else if (type == FileType.unit) {
-       parsed.removeWhere((k, v) => k != "name" && k != "description" && !_unitProps.contains(k));
+      parsed.removeWhere((k, v) => k != "name" && k != "description" && !_unitProps.contains(k));
     } else if (type == FileType.status) {
-       parsed.removeWhere((k, v) => k != "name" && k != "description" && !_statusProps.contains(k));
+      parsed.removeWhere((k, v) => k != "name" && k != "description" && !_statusProps.contains(k));
     } else if (type == FileType.sector) {
-       parsed.removeWhere((k, v) => k != "name" && k != "description" && !_sectorProps.contains(k));
+      parsed.removeWhere((k, v) => k != "name" && k != "description" && !_sectorProps.contains(k));
     } else if (type == FileType.weather) {
-       parsed.removeWhere((k, v) => k != "name" && k != "description" && !_weatherProps.contains(k));
+      parsed.removeWhere((k, v) => k != "name" && k != "description" && !_weatherProps.contains(k));
     } else if (type == FileType.block) {
-       final currentType = parsed["type"]?.toString().replaceAll("\"", "") ?? "Wall";
-       final allowed = Set<String>.from(_baseBlockProps)..addAll(_blockSpecificProps[currentType] ?? []);
-       parsed.removeWhere((k, v) => k != "name" && k != "description" && !allowed.contains(k));
+      final currentType = parsed["type"]?.toString().replaceAll("\"", "") ?? "Wall";
+      final allowed = Set<String>.from(_baseBlockProps)..addAll(_blockSpecificProps[currentType] ?? []);
+      parsed.removeWhere((k, v) => k != "name" && k != "description" && !allowed.contains(k));
     }
   }
 
   void _saveChanges() {
     final activeFile = ref.read(projectProvider).activeFile;
-    if (activeFile == null) return;
-
-    // Garantizar que name y type (en bloques) nunca desaparezcan
-    if (!_properties.containsKey("name") || _properties["name"].toString().trim().isEmpty) {
-      _properties["name"] = activeFile.name.replaceAll(".hjson", "");
+    if (activeFile != null) {
+      final hjsonString = HjsonEngine.stringify(_properties);
+      ref.read(projectProvider.notifier).updateFileContent(activeFile.name, hjsonString);
+      setState(() {
+        _syntaxErrors = HjsonEngine.validateSyntax(hjsonString);
+      });
     }
-    if (activeFile.type == FileType.block && !_properties.containsKey("type")) {
-      _properties["type"] = "Wall";
-    }
-
-    // Tipado estricto al momento de serializar
-    final cleaned = <String, dynamic>{};
-    _properties.forEach((k, v) {
-      if (_boolProps.contains(k)) {
-        cleaned[k] = v == true || v.toString() == "true";
-      } else if (_numberProps.contains(k)) {
-        if (v is num) {
-          cleaned[k] = v;
-        } else {
-          final str = v.toString().trim();
-          if (int.tryParse(str) != null) {
-            cleaned[k] = int.parse(str);
-          } else if (double.tryParse(str) != null) {
-            cleaned[k] = double.parse(str);
-          } else {
-            cleaned[k] = 0; // Forced strict numeric fallback to prevent crashes
-          }
-        }
-      } else {
-        cleaned[k] = v;
-      }
-    });
-
-    final serialized = HjsonEngine.stringify(cleaned);
-    _syntaxErrors = HjsonEngine.validateSyntax(serialized);
-    ref.read(projectProvider.notifier).updateActiveFileContent(serialized);
-
-    // Gestor automático de localización
-    _syncLocalizationKey(activeFile.name.replaceAll(".hjson", ""), _properties["description"]?.toString() ?? "");
   }
 
-  void _syncLocalizationKey(String itemName, String desc) {
-    // Sincroniza bundle_es.properties o similar en el proyecto si existe
-    final files = ref.read(projectProvider).files;
-    final bundleFile = files.where((f) => f.name.endsWith(".properties") || f.name.contains("bundle")).firstOrNull;
-    if (bundleFile != null) {
-      final key = "item.$itemName.name = $itemName\nitem.$itemName.description = $desc";
-      if (!bundleFile.content.contains(itemName)) {
-        ref.read(projectProvider.notifier).addFile(bundleFile.copyWith(
-          content: "${bundleFile.content}\n$key"
-        ));
+  void _addProperty(String key) {
+    setState(() {
+      if (_numberProps.contains(key)) {
+        _properties[key] = 0;
+      } else if (_boolProps.contains(key)) {
+        _properties[key] = false;
+      } else if (_colorProps.contains(key)) {
+        _properties[key] = "ffffff";
+      } else if (key == "requirements") {
+        _properties[key] = ["@copper/20"];
+      } else {
+        _properties[key] = "";
+      }
+    });
+    _saveChanges();
+  }
+
+  void _removeProperty(String key) {
+    setState(() {
+      _properties.remove(key);
+    });
+    _saveChanges();
+  }
+
+  List<String> _getAllAvailableItems() {
+    final files = ref.watch(projectProvider).files;
+    final Set<String> items = Set.from(_vanillaItems);
+    for (var f in files) {
+      if (f.type == FileType.item) {
+        final clean = f.name.replaceAll(".hjson", "");
+        items.add("@$clean");
+        items.add(clean);
       }
     }
+    return items.toList();
+  }
+
+  List<String> _getAllAvailableLiquids() {
+    final files = ref.watch(projectProvider).files;
+    final Set<String> liquids = Set.from(_vanillaLiquids);
+    for (var f in files) {
+      if (f.type == FileType.liquid) {
+        final clean = f.name.replaceAll(".hjson", "");
+        liquids.add("@$clean");
+        liquids.add(clean);
+      }
+    }
+    return liquids.toList();
   }
 
   void _applyPreset(String presetKey) {
     final activeFile = ref.read(projectProvider).activeFile;
     if (activeFile == null) return;
     final cleanName = activeFile.name.replaceAll(".hjson", "");
-
     setState(() {
       if (presetKey == "drill") {
         _properties = {
@@ -245,7 +230,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
           "hasPower": true,
           "consumesPower": true,
           "category": "production",
-          "requirements": "[copper/30, lead/20]"
+          "requirements": ["@copper/30", "@lead/20"]
         };
       } else if (presetKey == "turret") {
         _properties = {
@@ -260,7 +245,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
           "targetGround": true,
           "shootSound": "shoot",
           "category": "turret",
-          "requirements": "[copper/75, lead/50]"
+          "requirements": ["@copper/75", "@lead/50"]
         };
       } else if (presetKey == "crafter") {
         _properties = {
@@ -270,9 +255,39 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
           "health": 320,
           "craftTime": 60,
           "hasItems": true,
+          "itemCapacity": 20,
+          "hasLiquids": true,
+          "liquidCapacity": 20,
           "hasPower": true,
           "category": "crafting",
-          "requirements": "[lead/60, silicon/40]"
+          "outputItem": "@silicon",
+          "requirements": ["@lead/60", "@copper/40"]
+        };
+      } else if (presetKey == "unit_flying") {
+        _properties = {
+          "name": cleanName,
+          "type": "flying",
+          "flying": true,
+          "speed": 2.5,
+          "health": 150,
+          "range": 80,
+          "hitSize": 8,
+          "itemCapacity": 20,
+          "hasItems": true,
+          "requirements": ["@silicon/15"]
+        };
+      } else if (presetKey == "unit_mech") {
+        _properties = {
+          "name": cleanName,
+          "type": "mech",
+          "flying": false,
+          "speed": 0.6,
+          "health": 220,
+          "range": 100,
+          "hitSize": 10,
+          "itemCapacity": 10,
+          "hasItems": true,
+          "requirements": ["@silicon/20", "@graphite/10"]
         };
       } else if (presetKey == "item_basic") {
         _properties = {
@@ -300,73 +315,52 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF222228),
-        title: Text("Seleccionar color ($key)", style: const TextStyle(color: Colors.amber, fontSize: 16)),
-        content: SingleChildScrollView(
-          child: ColorPicker(
-            pickerColor: pickerColor,
-            onColorChanged: (c) => pickerColor = c,
-            pickerAreaHeightPercent: 0.7,
-            enableAlpha: false,
-            labelTypes: const [],
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF222228),
+          title: Text("Color para $key", style: const TextStyle(color: Colors.white, fontSize: 16)),
+          content: SingleChildScrollView(
+            child: Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                Colors.amber, Colors.orange, Colors.redAccent, Colors.pinkAccent,
+                Colors.purpleAccent, Colors.deepPurpleAccent, Colors.indigoAccent,
+                Colors.blueAccent, Colors.cyanAccent, Colors.tealAccent,
+                Colors.greenAccent, Colors.lightGreenAccent, Colors.limeAccent,
+                Colors.yellowAccent, Colors.brown, Colors.white, Colors.grey,
+              ].map((c) {
+                return InkWell(
+                  onTap: () {
+                    final hex = c.value.toRadixString(16).substring(2);
+                    setState(() {
+                      _properties[key] = hex;
+                    });
+                    _saveChanges();
+                    Navigator.of(ctx).pop();
+                  },
+                  child: Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: c,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white30),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancelar", style: TextStyle(color: Colors.white54)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.amber),
-            onPressed: () {
-              final hex = pickerColor.value.toRadixString(16).padLeft(8, "0").substring(2);
-              setState(() {
-                _properties[key] = hex;
-              });
-              _saveChanges();
-              Navigator.pop(context);
-            },
-            child: const Text("Aplicar", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text("Cerrar", style: TextStyle(color: Colors.white70)),
+            ),
+          ],
+        );
+      },
     );
-  }
-
-  void _addProperty(String key) {
-    setState(() {
-      if (_boolProps.contains(key)) {
-        _properties[key] = true;
-      } else if (_numberProps.contains(key)) {
-        _properties[key] = (key == "size" || key == "tier") ? 1 : 100;
-      } else if (_colorProps.contains(key)) {
-        _properties[key] = "ffd37f";
-      } else {
-        _properties[key] = "";
-      }
-    });
-    _saveChanges();
-  }
-
-  void _removeProperty(String key) {
-    final activeFile = ref.read(projectProvider).activeFile;
-
-    // Bloqueo estricto de campos vitales
-    if (key == "name" || key == "type") {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("El campo obligatorio  no puede ser eliminado."),
-          backgroundColor: Colors.redAccent,
-          duration: const Duration(seconds: 2),
-        ),
-      );
-      return;
-    }
-    setState(() {
-      _properties.remove(key);
-    });
-    _saveChanges();
   }
 
   List<String> _getRecommendedProperties(FileType fileType) {
@@ -393,77 +387,23 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     return base.where((p) => !_properties.containsKey(p)).toList();
   }
 
-  Widget _buildSpriteLinkModule(String currentFileName) {
-    final cleanBase = currentFileName.replaceAll(".hjson", "");
-    final files = ref.watch(projectProvider).files;
-    final matchingSprite = files.where((f) => f.isImage && (f.name == "$cleanBase.png" || f.name == "sprites/$cleanBase.png")).firstOrNull;
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E1E24),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: matchingSprite != null ? Colors.green.withOpacity(0.4) : Colors.white12),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: const Color(0xFF141418),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: Colors.white24),
-            ),
-            child: matchingSprite != null && matchingSprite.binaryContent != null
-                ? Image.memory(matchingSprite.binaryContent!, fit: BoxFit.contain)
-                : const Icon(Icons.image_not_supported_outlined, color: Colors.white30, size: 22),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  matchingSprite != null ? "Sprite Vinculado: ${matchingSprite.name}" : "Sin Sprite específico ($cleanBase.png)",
-                  style: TextStyle(
-                    color: matchingSprite != null ? Colors.greenAccent : Colors.white70,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  matchingSprite != null ? "La textura se incluirá automáticamente en la exportación" : "Sube .png en la carpeta sprites",
-                  style: const TextStyle(color: Colors.white38, fontSize: 11),
-                ),
-              ],
-            ),
-          ),
-          TextButton.icon(
-            icon: const Icon(Icons.upload_file, size: 16, color: Colors.amber),
-            label: const Text("Subir", style: TextStyle(color: Colors.amber, fontSize: 12)),
-            onPressed: () async {
-              filePicker.FilePickerResult? result = await filePicker.FilePicker.platform.pickFiles(
-                type: filePicker.FileType.image,
-                withData: true,
-              );
-              if (result != null && result.files.single.bytes != null) {
-                final bytes = result.files.single.bytes!;
-                final base64Image = base64Encode(bytes);
-                ref.read(projectProvider.notifier).addFile(
-                  ProjectFile(
-                    name: '$cleanBase.png',
-                    type: FileType.image,
-                    content: base64Image,
-                  ),
-                );
-              }
-            },
-          ),
-        ],
-      ),
+  Future<void> _pickSprite(String cleanBase) async {
+    filePicker.FilePickerResult? result = await filePicker.FilePicker.platform.pickFiles(
+      type: filePicker.FileType.image,
+      withData: true,
     );
+    if (result != null && result.files.single.bytes != null) {
+      final bytes = result.files.single.bytes!;
+      final base64Image = base64Encode(bytes);
+      ref.read(projectProvider.notifier).addFile(
+        ProjectFile(
+          name: '$cleanBase.png',
+          type: FileType.image,
+          content: base64Image,
+        ),
+      );
+      if (mounted) setState(() {});
+    }
   }
 
   @override
@@ -471,16 +411,13 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     final activeFile = ref.watch(projectProvider).activeFile;
     if (activeFile == null) return const SizedBox.shrink();
 
-    // AISLAMIENTO ESTRICTO: evaluar sincronamente si el archivo cambió
     if (_loadedFileId != activeFile.name) {
       _loadedFileId = activeFile.name;
       _properties.clear();
       _syntaxErrors.clear();
-      
+
       _syntaxErrors = HjsonEngine.validateSyntax(activeFile.content);
       final parsed = HjsonEngine.parse(activeFile.content);
-
-      // BLOQUEO Y LIMPIEZA DE HERENCIA: elimina propiedades que no corresponden a su tipo
       _cleanInvalidProperties(activeFile.type, parsed);
 
       if (!parsed.containsKey("name") || parsed["name"].toString().trim().isEmpty) {
@@ -489,19 +426,24 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
       if (activeFile.type == FileType.block && !parsed.containsKey("type")) {
         parsed["type"] = "Wall";
       }
-
+      if (activeFile.type == FileType.unit && !parsed.containsKey("type")) {
+        parsed["type"] = "flying";
+      }
       _properties = parsed;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-         if (mounted) setState(() {});
+        if (mounted) setState(() {});
       });
     }
 
     final recommendedProps = _getRecommendedProperties(activeFile.type);
+    final cleanBase = activeFile.name.replaceAll(".hjson", "");
+    final files = ref.watch(projectProvider).files;
+    final matchingSprite = files.where((f) => f.isImage && (f.name == "$cleanBase.png" || f.name == "sprites/$cleanBase.png")).firstOrNull;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Barra de Validación Sintáctica si hay errores
+        // Barra de Validación Sintáctica
         if (_syntaxErrors.isNotEmpty)
           Container(
             width: double.infinity,
@@ -522,67 +464,97 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
             ),
           ),
 
-        // Módulo de Asociación de Sprites
-        _buildSpriteLinkModule(activeFile.name),
-
-        // Barra de Presets Rápidos
+        // Barra de Herramientas Compacta (Sprite + Plantillas + Recomendadas en una sola fila)
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          height: 42,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: const BoxDecoration(
+            color: Color(0xFF1E1E24),
             border: Border(bottom: BorderSide(color: Colors.white12)),
           ),
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                const Text("Plantillas: ", style: TextStyle(color: Colors.white54, fontSize: 12)),
-                const SizedBox(width: 8),
-                if (activeFile.type == FileType.block) ...[
-                  _buildPresetChip("Taladro", () => _applyPreset("drill")),
-                  const SizedBox(width: 6),
-                  _buildPresetChip("Torreta", () => _applyPreset("turret")),
-                  const SizedBox(width: 6),
-                  _buildPresetChip("Fábrica", () => _applyPreset("crafter")),
-                ] else if (activeFile.type == FileType.item) ...[
-                  _buildPresetChip("Ítem Básico", () => _applyPreset("item_basic")),
-                ],
-              ],
-            ),
-          ),
-        ),
-
-        // Recomendaciones
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: const BoxDecoration(
-            border: Border(bottom: BorderSide(color: Colors.white12)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             children: [
-              const Text(
-                "Propiedades recomendadas para añadir:",
-                style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 12),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: recommendedProps.take(12).map((prop) {
-                  return InkWell(
-                    onTap: () => _addProperty(prop),
-                    borderRadius: BorderRadius.circular(4),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.06),
-                        border: Border.all(color: Colors.white24),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text("+ $prop", style: const TextStyle(color: Colors.white70, fontSize: 11)),
+              // Botón Compacto Sprite con ícono + y selector
+              InkWell(
+                onTap: () => _pickSprite(cleanBase),
+                borderRadius: BorderRadius.circular(6),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: matchingSprite != null ? Colors.green.withOpacity(0.15) : const Color(0xFF2A2A32),
+                    border: Border.all(
+                      color: matchingSprite != null ? Colors.greenAccent.withOpacity(0.5) : Colors.white24,
+                      width: 1,
                     ),
-                  );
-                }).toList(),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        matchingSprite != null ? Icons.image : Icons.add_photo_alternate_outlined,
+                        size: 15,
+                        color: matchingSprite != null ? Colors.greenAccent : Colors.amber,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        matchingSprite != null ? "PNG ✓" : "+ Sprite",
+                        style: TextStyle(
+                          color: matchingSprite != null ? Colors.greenAccent : Colors.white70,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(height: 20, width: 1, color: Colors.white12),
+              const SizedBox(width: 8),
+              // Scroll Horizontal con Plantillas y Recomendadas
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      const Text("Plantillas: ", style: TextStyle(color: Colors.white54, fontSize: 11)),
+                      const SizedBox(width: 4),
+                      if (activeFile.type == FileType.block) ...[
+                        _buildPresetChip("Taladro", () => _applyPreset("drill")),
+                        const SizedBox(width: 4),
+                        _buildPresetChip("Torreta", () => _applyPreset("turret")),
+                        const SizedBox(width: 4),
+                        _buildPresetChip("Fábrica", () => _applyPreset("crafter")),
+                      ] else if (activeFile.type == FileType.unit) ...[
+                        _buildPresetChip("Voladora", () => _applyPreset("unit_flying")),
+                        const SizedBox(width: 4),
+                        _buildPresetChip("Bípedo (Mech)", () => _applyPreset("unit_mech")),
+                      ] else if (activeFile.type == FileType.item) ...[
+                        _buildPresetChip("Ítem Básico", () => _applyPreset("item_basic")),
+                      ],
+                      if (recommendedProps.isNotEmpty) ...[
+                        const SizedBox(width: 10),
+                        Container(height: 18, width: 1, color: Colors.white12),
+                        const SizedBox(width: 10),
+                        const Text("Añadir: ", style: TextStyle(color: Colors.amber, fontSize: 11, fontWeight: FontWeight.bold)),
+                        const SizedBox(width: 4),
+                        ...recommendedProps.take(12).map((prop) {
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 4),
+                            child: ActionChip(
+                              backgroundColor: const Color(0xFF222228),
+                              side: const BorderSide(color: Colors.white24, width: 0.5),
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                              label: Text("+ $prop", style: const TextStyle(color: Colors.white70, fontSize: 10)),
+                              onPressed: () => _addProperty(prop),
+                            ),
+                          );
+                        }),
+                      ],
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
@@ -591,11 +563,25 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
         // Lista de Propiedades Activas
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 12,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 120,
+            ),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             children: _properties.entries.map((entry) {
               final key = entry.key;
               final value = entry.value;
-              final isVital = key == "name" || (key == "type" && activeFile.type == FileType.block);
+              final isVital = key == "name" || (key == "type" && (activeFile.type == FileType.block || activeFile.type == FileType.unit));
+
+              // Editor multilínea especial para requirements
+              if (key == "requirements") {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: _buildRequirementsCard(key, value, isVital),
+                );
+              }
 
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
@@ -606,12 +592,15 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                       width: 140,
                       child: Row(
                         children: [
-                          Text(
-                            key,
-                            style: TextStyle(
-                              color: isVital ? Colors.amber : Colors.white70,
-                              fontWeight: isVital ? FontWeight.bold : FontWeight.w500,
-                              fontSize: 13,
+                          Expanded(
+                            child: Text(
+                              key,
+                              style: TextStyle(
+                                color: isVital ? Colors.amber : Colors.white70,
+                                fontWeight: isVital ? FontWeight.bold : FontWeight.w500,
+                                fontSize: 13,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           if (isVital)
@@ -655,13 +644,190 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     return ActionChip(
       backgroundColor: const Color(0xFF2A2A32),
       side: const BorderSide(color: Colors.amber, width: 0.8),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       label: Text(label, style: const TextStyle(color: Colors.amber, fontSize: 11)),
       onPressed: onTap,
     );
   }
 
+  // Componente interactivo para Requerimientos de Ítems (Mindustry Requirements)
+  Widget _buildRequirementsCard(String key, dynamic value, bool isVital) {
+    List<Map<String, dynamic>> itemsList = [];
+    if (value is List) {
+      for (var r in value) {
+        final str = r.toString().trim();
+        final parts = str.split('/');
+        if (parts.length >= 2) {
+          itemsList.add({
+            'item': parts[0].trim(),
+            'amount': int.tryParse(parts[1].trim()) ?? 10,
+          });
+        } else if (parts.isNotEmpty && parts[0].isNotEmpty) {
+          itemsList.add({
+            'item': parts[0].trim(),
+            'amount': 10,
+          });
+        }
+      }
+    } else if (value is String && value.isNotEmpty) {
+      final clean = value.replaceAll('[', '').replaceAll(']', '').trim();
+      for (var p in clean.split(',')) {
+        final parts = p.trim().split('/');
+        if (parts.length >= 2) {
+          itemsList.add({
+            'item': parts[0].trim(),
+            'amount': int.tryParse(parts[1].trim()) ?? 10,
+          });
+        }
+      }
+    }
+
+    final availableItems = _getAllAvailableItems();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF222228),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white12),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.inventory_2_outlined, size: 16, color: Colors.amber),
+                  SizedBox(width: 8),
+                  Text(
+                    "requirements (Coste en Recursos)",
+                    style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                ],
+              ),
+              TextButton.icon(
+                icon: const Icon(Icons.add, size: 15, color: Colors.amber),
+                label: const Text("Añadir", style: TextStyle(color: Colors.amber, fontSize: 11)),
+                onPressed: () {
+                  final defaultItem = availableItems.isNotEmpty ? availableItems.first : "@copper";
+                  itemsList.add({'item': defaultItem, 'amount': 20});
+                  _updateRequirements(itemsList);
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          if (itemsList.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                "No hay materiales requeridos configurados",
+                style: TextStyle(color: Colors.white38, fontSize: 12),
+              ),
+            )
+          else
+            ...itemsList.asMap().entries.map((entry) {
+              final idx = entry.key;
+              final req = entry.value;
+              final currentItem = req['item'].toString();
+              final currentAmount = req['amount']?.toString() ?? '10';
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    // Selector de ítem con @ y soporte vanilla/mod
+                    Expanded(
+                      flex: 3,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF18181C),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: Colors.white24),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: availableItems.contains(currentItem) ? currentItem : null,
+                            hint: Text(currentItem, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                            dropdownColor: const Color(0xFF222228),
+                            isExpanded: true,
+                            style: const TextStyle(color: Colors.white, fontSize: 12),
+                            items: availableItems.map((item) {
+                              return DropdownMenuItem(
+                                value: item,
+                                child: Text(item, overflow: TextOverflow.ellipsis),
+                              );
+                            }).toList(),
+                            onChanged: (newVal) {
+                              if (newVal != null) {
+                                itemsList[idx]['item'] = newVal;
+                                _updateRequirements(itemsList);
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Cantidad requerida
+                    Expanded(
+                      flex: 2,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF18181C),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: Colors.white24),
+                        ),
+                        child: TextFormField(
+                          initialValue: currentAmount,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                          style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace'),
+                          decoration: const InputDecoration(
+                            border: InputBorder.none,
+                            isDense: true,
+                            hintText: "Cant.",
+                            hintStyle: TextStyle(color: Colors.white24, fontSize: 12),
+                          ),
+                          onChanged: (val) {
+                            itemsList[idx]['amount'] = int.tryParse(val) ?? 0;
+                            _updateRequirements(itemsList);
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    // Botón de eliminar
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.redAccent, size: 16),
+                      onPressed: () {
+                        itemsList.removeAt(idx);
+                        _updateRequirements(itemsList);
+                      },
+                    ),
+                  ],
+                ),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+
+  void _updateRequirements(List<Map<String, dynamic>> itemsList) {
+    final formatted = itemsList.map((r) => "${r['item']}/${r['amount']}").toList();
+    setState(() {
+      _properties["requirements"] = formatted;
+    });
+    _saveChanges();
+  }
+
   Widget _buildInputField(String key, dynamic value, FileType fileType) {
-    // 1. Selector masivo para la propiedad type
+    // 1. Selector masivo para la propiedad type en Bloques
     if (key == "type" && fileType == FileType.block) {
       String current = value.toString().replaceAll("\"", "");
       if (!_blockTypes.contains(current)) {
@@ -687,7 +853,33 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
       );
     }
 
-    // 2. Selector visual interactivo de color (ColorPicker)
+    // 2. Selector masivo para la propiedad type en Unidades
+    if (key == "type" && fileType == FileType.unit) {
+      String current = value.toString().replaceAll("\"", "");
+      if (!_unitTypes.contains(current)) {
+        current = _unitTypes.first;
+      }
+      return DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: current,
+          dropdownColor: const Color(0xFF222228),
+          icon: const Icon(Icons.arrow_drop_down, color: Colors.amber),
+          isExpanded: true,
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+          onChanged: (val) {
+            if (val != null) {
+              setState(() {
+                _properties[key] = val;
+              });
+              _saveChanges();
+            }
+          },
+          items: _unitTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+        ),
+      );
+    }
+
+    // 3. Selector visual interactivo de color (ColorPicker)
     if (_colorProps.contains(key)) {
       final colorHex = value.toString().replaceAll("#", "").trim();
       Color previewColor;
@@ -696,7 +888,6 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
       } catch (_) {
         previewColor = Colors.amber;
       }
-
       return InkWell(
         onTap: () => _openColorPicker(key, colorHex),
         child: Row(
@@ -722,36 +913,71 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
       );
     }
 
-    // 3. Menú desplegable para referencias cruzadas (requirements, outputItem, etc.)
-    if (key == "outputItem" || key == "outputLiquid" || key == "ammoType") {
-      final allFiles = ref.watch(projectProvider).files;
-      final candidates = allFiles
-          .where((f) => f.type == FileType.item || f.type == FileType.liquid)
-          .map((f) => f.name.replaceAll(".hjson", ""))
-          .toList();
-
-      if (candidates.isNotEmpty) {
-        final current = value.toString();
-        return DropdownButtonHideUnderline(
-          child: DropdownButton<String>(
-            value: candidates.contains(current) ? current : null,
-            hint: Text(current.isEmpty ? "Seleccionar ítem/líquido" : current, style: const TextStyle(color: Colors.white70)),
-            dropdownColor: const Color(0xFF222228),
-            isExpanded: true,
-            style: const TextStyle(color: Colors.white, fontSize: 13),
-            onChanged: (v) {
-              if (v != null) {
-                setState(() => _properties[key] = v);
-                _saveChanges();
-              }
-            },
-            items: candidates.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-          ),
-        );
-      }
+    // 4. Menú desplegable para recursos: ítems y líquidos
+    if (key == "outputItem" || key == "item" || key == "fuelItem") {
+      final candidates = _getAllAvailableItems();
+      final current = value.toString().trim();
+      return DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: candidates.contains(current) ? current : null,
+          hint: Text(current.isEmpty ? "Seleccionar ítem" : current, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+          dropdownColor: const Color(0xFF222228),
+          isExpanded: true,
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+          onChanged: (v) {
+            if (v != null) {
+              setState(() => _properties[key] = v);
+              _saveChanges();
+            }
+          },
+          items: candidates.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+        ),
+      );
     }
 
-    // 4. Booleanos estrictos
+    if (key == "outputLiquid" || key == "liquid") {
+      final candidates = _getAllAvailableLiquids();
+      final current = value.toString().trim();
+      return DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: candidates.contains(current) ? current : null,
+          hint: Text(current.isEmpty ? "Seleccionar líquido" : current, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+          dropdownColor: const Color(0xFF222228),
+          isExpanded: true,
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+          onChanged: (v) {
+            if (v != null) {
+              setState(() => _properties[key] = v);
+              _saveChanges();
+            }
+          },
+          items: candidates.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+        ),
+      );
+    }
+
+    if (key == "ammoType" || key == "ammoTypes") {
+      final candidates = [..._getAllAvailableItems(), ..._getAllAvailableLiquids()];
+      final current = value.toString().trim();
+      return DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: candidates.contains(current) ? current : null,
+          hint: Text(current.isEmpty ? "Seleccionar munición" : current, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+          dropdownColor: const Color(0xFF222228),
+          isExpanded: true,
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+          onChanged: (v) {
+            if (v != null) {
+              setState(() => _properties[key] = v);
+              _saveChanges();
+            }
+          },
+          items: candidates.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+        ),
+      );
+    }
+
+    // 5. Booleanos estrictos
     if (value is bool || _boolProps.contains(key)) {
       final bool val = value is bool ? value : value.toString().toLowerCase() == "true";
       return Align(
@@ -769,7 +995,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
       );
     }
 
-    // 5. Entradas de texto o números puros
+    // 6. Entradas de texto o números puros
     final isNum = _numberProps.contains(key);
     return Container(
       decoration: BoxDecoration(
@@ -782,8 +1008,8 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
         key: ValueKey("${_loadedFileId}_$key"),
         initialValue: value.toString(),
         keyboardType: isNum ? const TextInputType.numberWithOptions(decimal: true, signed: true) : TextInputType.text,
-        inputFormatters: isNum 
-            ? [FilteringTextInputFormatter.allow(RegExp(r'^-?[0-9]*\.?[0-9]*'))] 
+        inputFormatters: isNum
+            ? [FilteringTextInputFormatter.allow(RegExp(r'^-?[0-9]*\.?[0-9]*'))]
             : null,
         style: const TextStyle(color: Colors.white, fontSize: 13, fontFamily: 'monospace'),
         decoration: InputDecoration(
