@@ -157,7 +157,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     final activeFile = ref.read(projectProvider).activeFile;
     if (activeFile != null) {
       final hjsonString = HjsonEngine.stringify(_properties);
-      ref.read(projectProvider.notifier).updateFileContent(activeFile.name, hjsonString);
+      ref.read(projectProvider.notifier).updateActiveFileContent(hjsonString);
       setState(() {
         _syntaxErrors = HjsonEngine.validateSyntax(hjsonString);
       });
@@ -438,7 +438,8 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     final recommendedProps = _getRecommendedProperties(activeFile.type);
     final cleanBase = activeFile.name.replaceAll(".hjson", "");
     final files = ref.watch(projectProvider).files;
-    final matchingSprite = files.where((f) => f.isImage && (f.name == "$cleanBase.png" || f.name == "sprites/$cleanBase.png")).firstOrNull;
+    final matchingSprites = files.where((f) => f.isImage && (f.name == "$cleanBase.png" || f.name == "sprites/$cleanBase.png")).toList();
+    final matchingSprite = matchingSprites.isNotEmpty ? matchingSprites.first : null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
