@@ -19,7 +19,7 @@ class MainScreen extends ConsumerStatefulWidget {
 class _MainScreenState extends ConsumerState<MainScreen> {
   bool _isCodeView = false;
 
-    @override
+  @override
   Widget build(BuildContext context) {
     final projectState = ref.watch(projectProvider);
     final activeFile = projectState.activeFile;
@@ -34,7 +34,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
         children: [
           Text(
             activeFile != null ? '${activeFile.name.replaceAll(".hjson", "")}' : 'Selecciona un archivo',
-            style: const TextStyle(color: Colors.amber, fontSize: 14),
+            style: const TextStyle(color: Colors.amber, fontSize: 14, fontWeight: FontWeight.w600),
           ),
           Row(
             children: [
@@ -85,6 +85,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFF18181C),
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: Row(
           children: [
@@ -111,4 +112,3 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     );
   }
 }
-
