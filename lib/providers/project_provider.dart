@@ -84,6 +84,17 @@ class ProjectNotifier extends StateNotifier<ProjectState> {
     selectFile(file.name);
   }
 
+    void updateFileContent(String fileName, String newContent) {
+    final updatedFiles = state.files.map((file) {
+      if (file.name == fileName) {
+        return file.copyWith(content: newContent);
+      }
+      return file;
+    }).toList();
+    state = state.copyWith(files: updatedFiles);
+    _saveToPrefs();
+  }
+
   void updateActiveFileContent(String newContent) {
     if (state.activeFileName == null) return;
     final updatedFiles = state.files.map((file) {
