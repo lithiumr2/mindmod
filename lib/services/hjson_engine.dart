@@ -51,7 +51,7 @@ class HjsonEngine {
     }
     // Comillas para strings con espacios o sintaxis Hjson
     if (strVal.contains(' ') || strVal.contains('{') || strVal.contains('}') || strVal.contains(':') || strVal.contains('[')) {
-      final escaped = strVal.replaceAll('"', '\\\"');
+      final escaped = strVal.replaceAll("\"", r"\"");
       return '"$escaped"';
     }
     return strVal.isEmpty ? '""' : strVal;
