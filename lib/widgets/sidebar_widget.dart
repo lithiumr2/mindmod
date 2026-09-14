@@ -108,7 +108,7 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
                       dense: true,
                       contentPadding: const EdgeInsets.only(left: 20.0, right: 8.0),
                       leading: const Icon(Icons.add_circle_outline, color: Colors.amber, size: 16),
-                      title: const Text('New Sprite', style: TextStyle(color: Colors.amber, fontSize: 12)),
+                      title: Text(tr('new_sprite'), style: const TextStyle(color: Colors.amber, fontSize: 12)),
                       onTap: () {
                         setState(() => selectedFolder = 'sprites');
                         _showNewItemDialog(context, ref, 'sprites');
