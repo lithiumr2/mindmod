@@ -15,6 +15,7 @@ class SidebarWidget extends ConsumerStatefulWidget {
 }
 
 class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
+  String tr(String key) => ref.read(localeProvider.notifier).tr(key);
   String selectedFolder = 'blocks';
 
   @override
@@ -45,11 +46,11 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
                     }
                   },
                   itemBuilder: (context) => [
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'import',
                       child: Text(tr('import_mod'), style: const TextStyle(color: Colors.white)),
                     ),
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'data',
                       child: Text(tr('data_config'), style: const TextStyle(color: Colors.white)),
                     ),
@@ -186,7 +187,7 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
   }
 
   Future<void> _showNewItemDialog(BuildContext context, WidgetRef ref, String folder) async {
-    final tr = ref.read(localeProvider.notifier).tr;
+    
     if (folder == 'sprites') {
       filePicker.FilePickerResult? result = await filePicker.FilePicker.platform.pickFiles(
         type: filePicker.FileType.image,
