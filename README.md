@@ -2,8 +2,6 @@
 
 <div align="center">
 
-![Mindmod Banner](assets/icon.jpg)
-
 **A powerful, visual tool to create, edit, and manage JSON/Hjson mods for Mindustry.**
 
 [![Beta Status](https://img.shields.io/badge/status-beta-orange.svg)](https://github.com/)
