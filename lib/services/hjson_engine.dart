@@ -43,7 +43,7 @@ class HjsonEngine {
     }
     final strVal = value.toString().trim();
     // Verificación de número estricto si no es un campo textual obligatorio
-    if (key != 'name' && key != 'description' && key != 'type' && key != 'category' && key != 'shootSound') {
+    if (key != 'name' && key != 'description' && key != 'type' && key != 'category' && key != 'shootSound' && key != 'version' && key != 'minGameVersion' && key != 'author') {
       if (int.tryParse(strVal) != null) return int.parse(strVal).toString();
       if (double.tryParse(strVal) != null) return double.parse(strVal).toString();
       if (strVal.toLowerCase() == 'true') return 'true';
