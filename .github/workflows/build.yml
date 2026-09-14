@@ -70,9 +70,18 @@ jobs:
       - name: Instalar dependencias
         run: flutter pub get
 
+            - name: Cache Keystore
+        id: cache-keystore
+        uses: actions/cache@v4
+        with:
+          path: android/app/mindmod.jks
+          key: mindmod-release-keystore-v1
+          
       - name: Configurar Firma de Release (Keystore)
         run: |
-          keytool -genkey -v -keystore android/app/mindmod.jks -keyalg RSA -keysize 2048 -validity 10000 -alias mindmod -storepass mindmod -keypass mindmod -dname "CN=Mindmod, OU=Mindmod, O=Mindmod, L=Mindmod, ST=Mindmod, C=US"
+          if [ ! -f android/app/mindmod.jks ]; then
+            keytool -genkey -v -keystore android/app/mindmod.jks -keyalg RSA -keysize 2048 -validity 10000 -alias mindmod -storepass mindmod -keypass mindmod -dname "CN=Mindmod, OU=Mindmod, O=Mindmod, L=Mindmod, ST=Mindmod, C=US"
+          fi
           
           python3 -c "
           import os
