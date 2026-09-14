@@ -337,7 +337,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
       builder: (ctx) {
         return AlertDialog(
           backgroundColor: const Color(0xFF222228),
-          title: Text("Color para $key", style: const TextStyle(color: Colors.white, fontSize: 16)),
+          title: Text("${tr('color_for')} $key", style: const TextStyle(color: Colors.white, fontSize: 16)),
           content: SingleChildScrollView(
             child: Wrap(
               spacing: 10,
@@ -374,7 +374,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text("Cerrar", style: TextStyle(color: Colors.white70)),
+              child: Text(tr('close'), style: const TextStyle(color: Colors.white70)),
             ),
           ],
         );
@@ -961,7 +961,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
                 value: candidates.contains(currentItem) ? currentItem : null,
-                hint: const Text("Ítem", style: TextStyle(color: Colors.white70, fontSize: 13)),
+                hint: Text(tr('preset_basic_item'), style: const TextStyle(color: Colors.white70, fontSize: 13)),
                 dropdownColor: const Color(0xFF222228),
                 isExpanded: true,
                 style: const TextStyle(color: Colors.white, fontSize: 13),
