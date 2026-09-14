@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Mindmod Banner](public/assets/icon.jpg)
+![Mindmod Banner](assets/icon.jpg)
 
 **A powerful, visual tool to create, edit, and manage JSON/Hjson mods for Mindustry.**
 
