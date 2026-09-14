@@ -15,6 +15,7 @@ class VisualFormWidget extends ConsumerStatefulWidget {
 }
 
 class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
+  String tr(String key) => ref.read(localeProvider.notifier).tr(key);
   Map<String, dynamic> _properties = {};
   List<String> _syntaxErrors = [];
   String _loadedFileId = "";
@@ -515,8 +516,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                         color: matchingSprite != null ? Colors.greenAccent : Colors.amber,
                       ),
                       const SizedBox(width: 4),
-                      Text(
-                        matchingSprite != null ? "PNG ✓" : "+ Sprite",
+                      Text(matchingSprite != null ? tr('png_ok') : tr('add_sprite'),
                         style: TextStyle(
                           color: matchingSprite != null ? Colors.greenAccent : Colors.white70,
                           fontSize: 11,
@@ -536,26 +536,26 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      const Text("Plantillas: ", style: TextStyle(color: Colors.white54, fontSize: 11)),
+                      Text(tr('presets'), style: const TextStyle(color: Colors.white54, fontSize: 11)),
                       const SizedBox(width: 4),
                       if (activeFile.type == FileType.block) ...[
-                        _buildPresetChip("Taladro", () => _applyPreset("drill")),
+                        _buildPresetChip(tr('preset_drill'), () => _applyPreset("drill")),
                         const SizedBox(width: 4),
-                        _buildPresetChip("Torreta", () => _applyPreset("turret")),
+                        _buildPresetChip(tr('preset_turret'), () => _applyPreset("turret")),
                         const SizedBox(width: 4),
-                        _buildPresetChip("Fábrica", () => _applyPreset("crafter")),
+                        _buildPresetChip(tr('preset_crafter'), () => _applyPreset("crafter")),
                       ] else if (activeFile.type == FileType.unit) ...[
-                        _buildPresetChip("Voladora", () => _applyPreset("unit_flying")),
+                        _buildPresetChip(tr('preset_flying'), () => _applyPreset("unit_flying")),
                         const SizedBox(width: 4),
-                        _buildPresetChip("Bípedo (Mech)", () => _applyPreset("unit_mech")),
+                        _buildPresetChip(tr('preset_mech'), () => _applyPreset("unit_mech")),
                       ] else if (activeFile.type == FileType.item) ...[
-                        _buildPresetChip("Ítem Básico", () => _applyPreset("item_basic")),
+                        _buildPresetChip(tr('preset_basic_item'), () => _applyPreset("item_basic")),
                       ],
                       if (recommendedProps.isNotEmpty) ...[
                         const SizedBox(width: 10),
                         Container(height: 18, width: 1, color: Colors.white12),
                         const SizedBox(width: 10),
-                        const Text("Añadir: ", style: TextStyle(color: Colors.amber, fontSize: 11, fontWeight: FontWeight.bold)),
+                        Text(tr('add_prop'), style: const TextStyle(color: Colors.amber, fontSize: 11, fontWeight: FontWeight.bold)),
                         const SizedBox(width: 4),
                         ...recommendedProps.take(12).map((prop) {
                           return Padding(
@@ -727,15 +727,14 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                 children: [
                   const Icon(Icons.inventory_2_outlined, size: 16, color: Colors.amber),
                   const SizedBox(width: 8),
-                  Text(
-                    "$key (Ítems)",
+                  Text("$key${tr('items_req')}",
                     style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13),
                   ),
                 ],
               ),
               TextButton.icon(
                 icon: const Icon(Icons.add, size: 15, color: Colors.amber),
-                label: const Text("Añadir", style: TextStyle(color: Colors.amber, fontSize: 11)),
+                label: Text(tr('add'), style: const TextStyle(color: Colors.amber, fontSize: 11)),
                 onPressed: () {
                   final defaultItem = availableItems.isNotEmpty ? availableItems.first : "@copper";
                   itemsList.add({'item': defaultItem, 'amount': 20});
@@ -746,10 +745,9 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
           ),
           const SizedBox(height: 6),
           if (itemsList.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8),
-              child: Text(
-                "No hay materiales requeridos configurados",
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Text(tr('no_reqs'),
                 style: TextStyle(color: Colors.white38, fontSize: 12),
               ),
             )
@@ -816,7 +814,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                           decoration: const InputDecoration(
                             border: InputBorder.none,
                             isDense: true,
-                            hintText: "Cant.",
+                            hintText: tr('qty'),
                             hintStyle: TextStyle(color: Colors.white24, fontSize: 12),
                           ),
                           onChanged: (val) {
@@ -987,7 +985,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
               decoration: const InputDecoration(
                 border: InputBorder.none,
                 isDense: true,
-                hintText: "Cant.",
+                hintText: tr('qty'),
               ),
               onChanged: (val) {
                 final amt = int.tryParse(val) ?? 1;
@@ -1006,7 +1004,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
       return DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: candidates.contains(current) ? current : null,
-          hint: Text(current.isEmpty ? "Seleccionar ítem" : current, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+          hint: Text(current.isEmpty ? tr('select_item') : current, style: const TextStyle(color: Colors.white70, fontSize: 13)),
           dropdownColor: const Color(0xFF222228),
           isExpanded: true,
           style: const TextStyle(color: Colors.white, fontSize: 13),
@@ -1027,7 +1025,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
       return DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: candidates.contains(current) ? current : null,
-          hint: Text(current.isEmpty ? "Seleccionar líquido" : current, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+          hint: Text(current.isEmpty ? tr('select_liquid') : current, style: const TextStyle(color: Colors.white70, fontSize: 13)),
           dropdownColor: const Color(0xFF222228),
           isExpanded: true,
           style: const TextStyle(color: Colors.white, fontSize: 13),
@@ -1048,7 +1046,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
       return DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: candidates.contains(current) ? current : null,
-          hint: Text(current.isEmpty ? "Seleccionar munición" : current, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+          hint: Text(current.isEmpty ? tr('select_ammo') : current, style: const TextStyle(color: Colors.white70, fontSize: 13)),
           dropdownColor: const Color(0xFF222228),
           isExpanded: true,
           style: const TextStyle(color: Colors.white, fontSize: 13),
@@ -1101,7 +1099,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
         decoration: InputDecoration(
           border: InputBorder.none,
           isDense: true,
-          hintText: isNum ? "0" : "valor",
+          hintText: isNum ? "0" : tr('value'),
           hintStyle: const TextStyle(color: Colors.white24),
         ),
         onChanged: (newVal) {
