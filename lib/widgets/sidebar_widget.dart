@@ -209,29 +209,30 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
       return;
     }
 
+    final tr = ref.read(localeProvider.notifier).tr;
     String defaultName = 'copper-wall';
-    String title = 'Create New Block';
+    String title = tr('new_block');
     String defaultContent = '{\n  name: "copper-wall"\n  type: "Wall"\n  health: 200\n  size: 1\n}';
 
     if (folder == 'items') {
       defaultName = 'custom-item';
-      title = 'Create New Item';
+      title = tr('new_item');
       defaultContent = '{\n  name: "custom-item"\n  cost: 1\n}';
     } else if (folder == 'liquids') {
       defaultName = 'custom-liquid';
-      title = 'Create New Liquid';
+      title = tr('new_liquid');
       defaultContent = '{\n  name: "custom-liquid"\n  color: "ff0000"\n}';
     } else if (folder == 'units') {
       defaultName = 'custom-unit';
-      title = 'Create New Unit';
+      title = tr('new_unit');
       defaultContent = '{\n  name: "custom-unit"\n  type: "flying"\n  health: 150\n}';
     } else if (folder == 'status') {
       defaultName = 'custom-status';
-      title = 'Create New Status';
+      title = tr('new_status');
       defaultContent = '{\n  name: "custom-status"\n  damage: 0.5\n}';
     } else if (folder == 'scripts') {
       defaultName = 'script.js';
-      title = 'Create New Script';
+      title = tr('new_script');
       defaultContent = '// Main script file\n';
     }
 
