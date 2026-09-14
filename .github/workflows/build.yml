@@ -8,39 +8,30 @@ on:
     branches: [ "main", "experimental" ]
   pull_request:
     branches: [ "main", "experimental" ]
-    
-permissions:
-  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout del código
         uses: actions/checkout@v4
-
       - name: Configurar Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
-
       - name: Configurar Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-
       - name: Regenerar estructura Android limpia (v2 embedding)
         run: |
           rm -rf android
           flutter create . --platforms=android --org=com.mindmod
-
       - name: Forzar compileSdk y minSdk en el proyecto y sus dependencias
         run: |
           python3 -c "
           import os
-
           for root, dirs, files in os.walk('android'):
               for file in files:
                   if file.startswith('build.gradle'):
@@ -55,12 +46,10 @@ jobs:
                       
                       with open(filepath, 'w') as f:
                           f.write(content)
-
           root_gradle = 'android/build.gradle'
           if os.path.exists(root_gradle):
               with open(root_gradle, 'a') as f:
                   f.write('''
-
           subprojects {
               afterEvaluate { project ->
                   if (project.hasProperty('android')) {
@@ -72,24 +61,21 @@ jobs:
           }
           ''')
           "
-
       - name: Instalar dependencias
         run: flutter pub get
-
       - name: Generate App Icons
         run: |
           if [ -f assets/icon.png ] || [ -f assets/icon.jpg ]; then
             if [ -f assets/icon.jpg ]; then mv assets/icon.jpg assets/icon.png; fi
             flutter pub run flutter_launcher_icons
           fi
-
       - name: Cache Keystore
         id: cache-keystore
         uses: actions/cache@v4
         with:
           path: android/app/mindmod.jks
           key: mindmod-release-keystore-v1
-          
+        
       - name: Configurar Firma de Release (Keystore)
         run: |
           if [ ! -f android/app/mindmod.jks ]; then
@@ -133,17 +119,14 @@ jobs:
           
           with open(target, 'w') as f: f.write(content)
           "
-
       - name: Compilar APK release
         run: flutter build apk --release --no-tree-shake-icons
-
       - name: Subir APK generado
         uses: actions/upload-artifact@v4
         with:
           name: mindmod-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
           
-
       - name: Subir APK a Release Beta
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/heads/main')
