@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Mindmod Banner](public/assets/mindmod_logo.jpg)
+![Mindmod Banner](public/assets/icon.jpg)
 
 **A powerful, visual tool to create, edit, and manage JSON/Hjson mods for Mindustry.**
 
@@ -14,11 +14,11 @@
 
 ---
 
-## 🌟 Overview
+## Overview
 
 **Mindmod** is an intuitive modding assistant and visual editor designed specifically for **Mindustry**. Whether you want to design custom units, defensive turrets, drills, crafters, items, or liquids, Mindmod streamlines the JSON/Hjson authoring process with a clean UI, live code preview, and sprite integration.
 
-> **⚠️ Beta Notice**: Mindmod is currently in **active beta**. You may encounter bugs, missing property presets, or unexpected behaviors. Contributions, bug reports, and feedback are very welcome!
+> **Beta Notice**: Mindmod is currently in **active beta**. You may encounter bugs, missing property presets, or unexpected behaviors. Contributions, bug reports, and feedback are very welcome!
 
 ---
 
