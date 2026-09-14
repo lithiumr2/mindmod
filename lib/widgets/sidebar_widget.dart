@@ -233,9 +233,6 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
       defaultName = 'script.js';
       title = 'Create New Script';
       defaultContent = '// Main script file\n';
-      defaultName = 'custom-status';
-      title = 'Create New Status';
-      defaultContent = '{\n  name: "custom-status"\n  damage: 0.5\n}';
     }
 
     final controller = TextEditingController(text: defaultName);
