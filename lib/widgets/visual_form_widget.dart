@@ -367,11 +367,8 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                   ),
                 );
               }).toList(),
-                );
-              },
             ),
           ),
-        ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
@@ -979,7 +976,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                     _saveChanges();
                   }
                 },
-                items: candidates.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                items: candidates.map<DropdownMenuItem<String>>((c) => DropdownMenuItem<String>(value: c as String, child: Text(c as String))).toList(),
               ),
             ),
           ),
@@ -1023,7 +1020,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
               _saveChanges();
             }
           },
-          items: candidates.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+          items: candidates.map<DropdownMenuItem<String>>((c) => DropdownMenuItem<String>(value: c as String, child: Text(c as String))).toList(),
         ),
       );
     }
@@ -1044,13 +1041,13 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
               _saveChanges();
             }
           },
-          items: candidates.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+          items: candidates.map<DropdownMenuItem<String>>((c) => DropdownMenuItem<String>(value: c as String, child: Text(c as String))).toList(),
         ),
       );
     }
 
     if (key == "ammoType" || key == "ammoTypes") {
-      final candidates = [..._getAllAvailableItems(), ..._getAllAvailableLiquids()];
+      List<String> candidates = [..._getAllAvailableItems(), ..._getAllAvailableLiquids()];
       final current = value.toString().trim();
       return DropdownButtonHideUnderline(
         child: DropdownButton<String>(
@@ -1065,7 +1062,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
               _saveChanges();
             }
           },
-          items: candidates.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+          items: candidates.map<DropdownMenuItem<String>>((c) => DropdownMenuItem<String>(value: c as String, child: Text(c as String))).toList(),
         ),
       );
     }
