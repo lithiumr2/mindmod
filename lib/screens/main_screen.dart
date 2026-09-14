@@ -181,12 +181,12 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                   }
                 },
                 itemBuilder: (context) => [
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'export_zip',
                     child: Row(
                       children: [
-                        Icon(Icons.download, color: Color(0xFFFBC02D), size: 18),
-                        SizedBox(width: 10),
+                        const Icon(Icons.download, color: Color(0xFFFBC02D), size: 18),
+                        const SizedBox(width: 10),
                         Text(tr('export_zip'), style: const TextStyle(color: Colors.white)),
                       ],
                     ),
