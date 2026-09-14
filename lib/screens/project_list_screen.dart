@@ -105,6 +105,57 @@ import 'main_screen.dart';
     );
   }
 
+
+void _showSettingsDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return Consumer(
+          builder: (context, ref, child) {
+            final lang = ref.watch(localeProvider);
+            final tr = ref.read(localeProvider.notifier).tr;
+            
+            return AlertDialog(
+              backgroundColor: const Color(0xFF222228),
+              title: Text(tr('general_settings'), style: const TextStyle(color: Colors.white)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(tr('language'), style: const TextStyle(color: Colors.white70)),
+                  const SizedBox(height: 10),
+                  DropdownButton<String>(
+                    value: lang == 'es' || lang == 'en' || lang == 'ru' ? lang : 'system',
+                    dropdownColor: const Color(0xFF2A2A35),
+                    isExpanded: true,
+                    style: const TextStyle(color: Colors.white),
+                    items: [
+                      DropdownMenuItem(value: 'system', child: Text(tr('system'))),
+                      DropdownMenuItem(value: 'en', child: Text(tr('english'))),
+                      DropdownMenuItem(value: 'es', child: Text(tr('spanish'))),
+                      DropdownMenuItem(value: 'ru', child: Text(tr('russian'))),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) {
+                        ref.read(localeProvider.notifier).setLocale(val);
+                      }
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: Text(tr('close'), style: const TextStyle(color: Colors.amber)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
 class ProjectListScreen extends ConsumerWidget {
   const ProjectListScreen({super.key});
 
@@ -120,7 +171,7 @@ class ProjectListScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.settings, color: Colors.white70),
-            onPressed: _showSettingsDialog,
+            onPressed: () => _showSettingsDialog(context, ref),
           )
         ],
       ),
