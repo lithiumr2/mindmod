@@ -173,7 +173,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                     final path = await ExportService.exportModToZip(projectState.files);
                     if (context.mounted && path != null) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Mod exportado en: $path')),
+                        SnackBar(content: Text('${tr('export_success')} $path')),
                       );
                     }
                   }
