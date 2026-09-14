@@ -36,14 +36,30 @@ class ProjectListScreen extends ConsumerWidget {
                   'Proyectos Recientes',
                   style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
                 ),
-                ElevatedButton.icon(
-                  onPressed: () => _showCreateProjectDialog(context, ref),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Nuevo Mod'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.amber,
-                    foregroundColor: Colors.black,
-                  ),
+                Row(
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lógica de importación de ZIP (Próximamente)')));
+                      },
+                      icon: const Icon(Icons.upload_file),
+                      label: const Text('Importar Mod'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.amber,
+                        side: const BorderSide(color: Colors.amber),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton.icon(
+                      onPressed: () => _showCreateProjectDialog(context, ref),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Nuevo Mod'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.amber,
+                        foregroundColor: Colors.black,
+                      ),
+                    ),
+                  ],
                 )
               ],
             ),
