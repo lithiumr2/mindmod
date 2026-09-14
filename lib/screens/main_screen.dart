@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/project_file.dart';
 import '../providers/project_provider.dart';
@@ -155,7 +156,14 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                     Icon(Icons.code, size: 16),
                   ],
                 ),
-              PopupMenuButton<String>(
+              ElevatedButton.icon(
+                    onPressed: () => _analyzeMod(context, ref),
+                    icon: const Icon(Icons.bug_report_outlined, size: 16),
+                    label: const Text('Analizar Mod'),
+                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF222228), foregroundColor: Colors.amber, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+                  ),
+                  const SizedBox(width: 12),
+                  PopupMenuButton<String>(
                 icon: const Icon(Icons.more_vert, color: Colors.white70),
                 color: const Color(0xFF202026),
                 onSelected: (value) async {
@@ -216,7 +224,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                                     ),
                                     child: ClipRRect(
                                       borderRadius: BorderRadius.circular(6),
-                                      child: Image.memory(base64Decode(activeFile.content), fit: BoxFit.contain, filterQuality: FilterQuality.none, errorBuilder: (c,e,s) => const Text('Error al cargar imagen', style: TextStyle(color: Colors.red))),
+                                      child: Image.memory(activeFile.binaryContent ?? Uint8List(0), fit: BoxFit.contain, filterQuality: FilterQuality.none, errorBuilder: (c,e,s) => const Text('Error al cargar imagen', style: TextStyle(color: Colors.red))),
                                     ),
                                   ),
                                   const SizedBox(height: 24),
