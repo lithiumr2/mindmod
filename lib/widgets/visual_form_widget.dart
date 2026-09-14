@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart' as filePicker;
 import '../models/project_file.dart';
 import '../providers/project_provider.dart';
 import '../services/hjson_engine.dart';
+import '../providers/locale_provider.dart';
 
 class VisualFormWidget extends ConsumerStatefulWidget {
   const VisualFormWidget({super.key});
@@ -811,11 +812,11 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                           keyboardType: TextInputType.number,
                           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                           style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace'),
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             border: InputBorder.none,
                             isDense: true,
                             hintText: tr('qty'),
-                            hintStyle: TextStyle(color: Colors.white24, fontSize: 12),
+                            hintStyle: const TextStyle(color: Colors.white24, fontSize: 12),
                           ),
                           onChanged: (val) {
                             itemsList[idx]['amount'] = int.tryParse(val) ?? 0;
@@ -982,10 +983,10 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               style: const TextStyle(color: Colors.white, fontSize: 13, fontFamily: 'monospace'),
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                isDense: true,
-                hintText: tr('qty'),
+              decoration: InputDecoration(
+                            border: InputBorder.none,
+                            isDense: true,
+                            hintText: tr('qty'),
               ),
               onChanged: (val) {
                 final amt = int.tryParse(val) ?? 1;
