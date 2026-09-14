@@ -60,10 +60,10 @@ import 'main_screen.dart';
         final encodedData = jsonEncode(files.map((f) => f.toJson()).toList());
         await prefs.setString('mindmod_project_files_$newId', encodedData);
         
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Mod importado con éxito: $projName')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('import_success')}: $projName')));
       }
     } catch(e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al importar: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('import_error')}: $e')));
     }
   }
 
@@ -74,19 +74,19 @@ import 'main_screen.dart';
       context: context,
       builder: (c) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E24),
-        title: const Text('Renombrar Proyecto', style: TextStyle(color: Colors.white)),
+        title: Text(tr('rename_project'), style: const TextStyle(color: Colors.white)),
         content: TextField(
           controller: controller,
           style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(
-            hintText: 'Nombre del proyecto',
-            hintStyle: TextStyle(color: Colors.white24),
-            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
-            focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.amber)),
+          decoration: InputDecoration(
+            hintText: tr('hint_project_name'),
+            hintStyle: const TextStyle(color: Colors.white24),
+            enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+            focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.amber)),
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c), child: const Text('Cancelar', style: TextStyle(color: Colors.white54))),
+          TextButton(onPressed: () => Navigator.pop(c), child: Text(tr('cancel'), style: const TextStyle(color: Colors.white54))),
           TextButton(
             onPressed: () {
               if (controller.text.trim().isNotEmpty) {
@@ -98,7 +98,7 @@ import 'main_screen.dart';
                  Navigator.pop(c);
               }
             },
-            child: const Text('Guardar', style: TextStyle(color: Colors.amber)),
+            child: Text(tr('save'), style: const TextStyle(color: Colors.amber)),
           ),
         ],
       ),
@@ -183,8 +183,8 @@ class ProjectListScreen extends ConsumerWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Proyectos Recientes',
+                Text(
+                  tr('recent_projects'),
                   style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
                 ),
                 Row(
@@ -194,7 +194,7 @@ class ProjectListScreen extends ConsumerWidget {
                         _importModZip(context, ref);
                       },
                       icon: const Icon(Icons.upload_file),
-                      label: const Text('Importar Mod'),
+                      label: Text(tr('import_mod')),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.amber,
                         side: const BorderSide(color: Colors.amber),
@@ -204,7 +204,7 @@ class ProjectListScreen extends ConsumerWidget {
                     ElevatedButton.icon(
                       onPressed: () => _showCreateProjectDialog(context, ref),
                       icon: const Icon(Icons.add),
-                      label: const Text('Nuevo Mod'),
+                      label: Text(tr('new_project')),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.amber,
                         foregroundColor: Colors.black,
@@ -255,7 +255,7 @@ class ProjectListScreen extends ConsumerWidget {
                             ),
                             const Spacer(),
                             Text(
-                              proj['name'] ?? 'Sin nombre',
+                              proj['name'] ?? tr('unnamed'),
                               style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 4),
@@ -283,20 +283,20 @@ class ProjectListScreen extends ConsumerWidget {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF202026),
-        title: const Text('Nuevo Proyecto', style: TextStyle(color: Colors.white)),
+        title: Text(tr('new_project'), style: const TextStyle(color: Colors.white)),
         content: TextField(
           controller: controller,
           style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(
-            hintText: 'Nombre del Mod',
-            hintStyle: TextStyle(color: Colors.white54),
+          decoration: InputDecoration(
+            hintText: tr('mod_name'),
+            hintStyle: const TextStyle(color: Colors.white54),
           ),
           autofocus: true,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar', style: TextStyle(color: Colors.white54)),
+            child: Text(tr('cancel'), style: const TextStyle(color: Colors.white54)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -306,7 +306,7 @@ class ProjectListScreen extends ConsumerWidget {
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.amber, foregroundColor: Colors.black),
-            child: const Text('Crear'),
+            child: Text(tr('create')),
           ),
         ],
       ),
