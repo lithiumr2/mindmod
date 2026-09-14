@@ -32,11 +32,11 @@ dependency_overrides:
 
 flutter_icons:
   android: true
-  ios: true
+  ios: false
   image_path: "assets/icon.png"
   min_sdk_android: 21
   web:
-    generate: true
+    generate: false
     image_path: "assets/icon.png"
     background_color: "#18181C"
     theme_color: "#18181C"
