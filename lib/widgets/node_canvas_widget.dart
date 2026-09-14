@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/locale_provider.dart';
 
 class NodeItem {
   String id;
@@ -21,14 +23,14 @@ class NodeConnection {
   NodeConnection({required this.fromId, required this.toId});
 }
 
-class NodeCanvasWidget extends StatefulWidget {
+class NodeCanvasWidget extends ConsumerStatefulWidget {
   const NodeCanvasWidget({super.key});
 
   @override
-  State<NodeCanvasWidget> createState() => _NodeCanvasWidgetState();
+  ConsumerState<NodeCanvasWidget> createState() => _NodeCanvasWidgetState();
 }
 
-class _NodeCanvasWidgetState extends State<NodeCanvasWidget> {
+class _NodeCanvasWidgetState extends ConsumerState<NodeCanvasWidget> {
   final List<NodeItem> nodes = [
     NodeItem(id: '1', title: 'Cobre (Input)', position: const Offset(50, 100), color: const Color(0xFFD8734A)),
     NodeItem(id: '2', title: 'Fábrica Silicon', position: const Offset(300, 150), color: const Color(0xFF202026)),
@@ -42,6 +44,8 @@ class _NodeCanvasWidgetState extends State<NodeCanvasWidget> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(localeProvider);
+    final tr = ref.read(localeProvider.notifier).tr;
     return Container(
       color: const Color(0xFF141418),
       child: Stack(
@@ -81,10 +85,7 @@ class _NodeCanvasWidgetState extends State<NodeCanvasWidget> {
                         style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
                       ),
                       const SizedBox(height: 4),
-                      const Text(
-                        'Arrastrar para mover',
-                        style: TextStyle(color: Colors.grey, fontSize: 10),
-                      ),
+                      Text(tr('drag_to_move'), style: const TextStyle(color: Colors.grey, fontSize: 10)),
                     ],
                   ),
                 ),
