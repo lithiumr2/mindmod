@@ -189,7 +189,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
         _properties[key] = false;
       } else if (_colorProps.contains(key)) {
         _properties[key] = "ffffff";
-      } else if (key == "requirements") {
+      } else if (key == "requirements" || key == "outputItems" || key == "results") {
         _properties[key] = ["@copper/20"];
       } else {
         _properties[key] = "";
@@ -367,8 +367,11 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                   ),
                 );
               }).toList(),
+                );
+              },
             ),
           ),
+        ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
@@ -580,7 +583,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
 
         // Lista de Propiedades Activas
         Expanded(
-          child: ListView(
+          child: SingleChildScrollView(
             padding: EdgeInsets.only(
               left: 16,
               right: 16,
@@ -588,22 +591,31 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
               bottom: MediaQuery.of(context).viewInsets.bottom + 120,
             ),
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            children: _properties.entries.map((entry) {
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isWide = constraints.maxWidth > 500;
+                return Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: _properties.entries.map((entry) {
+                    final key = entry.key;
+                    final value = entry.value;
+                    final isVital = key == name || (key == type && (activeFile.type == FileType.block || activeFile.type == FileType.unit));
+                    final isComplex = key == requirements || key == outputItems || key == results || key == description || key == details || key == weapons || key == abilities || key == consumes;
+                    final itemWidth = (isWide && !isComplex) ? (constraints.maxWidth / 2.0) - 6.0 : constraints.maxWidth;
+
               final key = entry.key;
               final value = entry.value;
               final isVital = key == "name" || (key == "type" && (activeFile.type == FileType.block || activeFile.type == FileType.unit));
 
               // Editor multilínea especial para requirements
               if (key == "requirements") {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
-                  child: _buildRequirementsCard(key, value, isVital),
-                );
+                return SizedBox(width: constraints.maxWidth, child: _buildRequirementsCard(key, value, isVital));
               }
 
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Row(
+              return SizedBox(
+      width: itemWidth,
+      child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     SizedBox(
@@ -652,6 +664,9 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                 ),
               );
             }).toList(),
+                );
+              },
+            ),
           ),
         ),
       ],
@@ -720,8 +735,8 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                   Icon(Icons.inventory_2_outlined, size: 16, color: Colors.amber),
                   SizedBox(width: 8),
                   Text(
-                    "requirements (Coste en Recursos)",
-                    style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13),
+                    "$key (Ítems)",
+                    style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13),
                   ),
                 ],
               ),
@@ -932,7 +947,67 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     }
 
     // 4. Menú desplegable para recursos: ítems y líquidos
-    if (key == "outputItem" || key == "item" || key == "fuelItem") {
+    
+    if (key == "outputItem") {
+      final candidates = _getAllAvailableItems();
+      String currentItem = "copper";
+      int currentAmount = 1;
+      
+      final str = value.toString().trim();
+      final parts = str.split('/');
+      if (parts.length >= 2) {
+        currentItem = parts[0].trim();
+        currentAmount = int.tryParse(parts[1].trim()) ?? 1;
+      } else if (str.isNotEmpty) {
+        currentItem = str;
+      }
+
+      return Row(
+        children: [
+          Expanded(
+            flex: 2,
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: candidates.contains(currentItem) ? currentItem : null,
+                hint: const Text("Ítem", style: TextStyle(color: Colors.white70, fontSize: 13)),
+                dropdownColor: const Color(0xFF222228),
+                isExpanded: true,
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+                onChanged: (v) {
+                  if (v != null) {
+                    setState(() => _properties[key] = "$v/$currentAmount");
+                    _saveChanges();
+                  }
+                },
+                items: candidates.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+              ),
+            ),
+          ),
+          Container(width: 1, height: 20, color: Colors.white12, margin: const EdgeInsets.symmetric(horizontal: 8)),
+          Expanded(
+            flex: 1,
+            child: TextFormField(
+              initialValue: currentAmount.toString(),
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              style: const TextStyle(color: Colors.white, fontSize: 13, fontFamily: 'monospace'),
+              decoration: const InputDecoration(
+                border: InputBorder.none,
+                isDense: true,
+                hintText: "Cant.",
+              ),
+              onChanged: (val) {
+                final amt = int.tryParse(val) ?? 1;
+                setState(() => _properties[key] = "$currentItem/$amt");
+                _saveChanges();
+              },
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (key == "item" || key == "fuelItem") {
       final candidates = _getAllAvailableItems();
       final current = value.toString().trim();
       return DropdownButtonHideUnderline(
