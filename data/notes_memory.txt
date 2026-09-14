@@ -1,0 +1,4 @@
+Historial de cambios y memoria del proyecto Mindmod IDE.
+Ultima sincronización: 2026-09-13
+Estado: Build de Windows y Android funcional.
+Pendiente: Editor de scripts y gestión de múltiples proyectos.
