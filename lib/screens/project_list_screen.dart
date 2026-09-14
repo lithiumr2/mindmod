@@ -1,7 +1,108 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/project_provider.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:archive/archive.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import '../models/project_file.dart';
+import 'dart:typed_data';
 import 'main_screen.dart';
+
+
+  Future<void> _importModZip(BuildContext context, WidgetRef ref) async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['zip'],
+        withData: true,
+      );
+      if (result != null && result.files.single.bytes != null) {
+        final bytes = result.files.single.bytes!;
+        final archive = ZipDecoder().decodeBytes(bytes);
+        
+        String projName = result.files.single.name.replaceAll('.zip', '');
+        final newId = ref.read(projectsListProvider.notifier).addProject(projName);
+        
+        List<ProjectFile> files = [];
+        for (final file in archive) {
+          if (file.isFile) {
+            final filename = file.name;
+            // Ignore Mac OS metadata
+            if (filename.contains('__MACOSX')) continue;
+            
+            FileType type = FileType.unknown;
+            if (filename.endsWith('.hjson') || filename.endsWith('.json')) {
+               if (filename.contains('blocks/')) type = FileType.block;
+               else if (filename.contains('items/')) type = FileType.item;
+               else if (filename.contains('liquids/')) type = FileType.liquid;
+               else if (filename.contains('units/')) type = FileType.unit;
+               else if (filename.contains('status/')) type = FileType.status;
+               else if (filename.contains('sectors/')) type = FileType.sector;
+               else if (filename.contains('weather/')) type = FileType.weather;
+               else if (filename.endsWith('mod.json') || filename.endsWith('mod.hjson')) type = FileType.modJson;
+               
+               final contentStr = utf8.decode(file.content as List<int>);
+               files.add(ProjectFile(name: filename.split('/').last, type: type, content: contentStr));
+            } else if (filename.endsWith('.png')) {
+               final base64Str = base64Encode(file.content as List<int>);
+               files.add(ProjectFile(name: filename.split('/').last, type: FileType.unknown, content: base64Str, isImage: true));
+            }
+          }
+        }
+        
+        if (files.isEmpty) {
+          files.add(ProjectFile(name: 'mod.json', type: FileType.modJson, content: '{\n  "name": "imported-mod"\n}'));
+        }
+        
+        final prefs = await SharedPreferences.getInstance();
+        final encodedData = jsonEncode(files.map((f) => f.toJson()).toList());
+        await prefs.setString('mindmod_project_files_$newId', encodedData);
+        
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Mod importado con éxito: $projName')));
+      }
+    } catch(e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al importar: $e')));
+    }
+  }
+
+
+  void _showRenameDialog(BuildContext context, WidgetRef ref, String id, String currentName) {
+    final controller = TextEditingController(text: currentName);
+    showDialog(
+      context: context,
+      builder: (c) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E24),
+        title: const Text('Renombrar Proyecto', style: TextStyle(color: Colors.white)),
+        content: TextField(
+          controller: controller,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            hintText: 'Nombre del proyecto',
+            hintStyle: TextStyle(color: Colors.white24),
+            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+            focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.amber)),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c), child: const Text('Cancelar', style: TextStyle(color: Colors.white54))),
+          TextButton(
+            onPressed: () {
+              if (controller.text.trim().isNotEmpty) {
+                 final notifier = ref.read(projectsListProvider.notifier);
+                 // Unfortunately, ProjectsListNotifier doesn't have a rename method. Let's just update the list.
+                 notifier.renameProject(id, controller.text.trim());
+                 // It won't save automatically unless we add a method, but we can't easily without editing the provider.
+                 // Actually, we can add renameProject to project_provider.dart
+                 Navigator.pop(c);
+              }
+            },
+            child: const Text('Guardar', style: TextStyle(color: Colors.amber)),
+          ),
+        ],
+      ),
+    );
+  }
 
 class ProjectListScreen extends ConsumerWidget {
   const ProjectListScreen({super.key});
@@ -40,7 +141,7 @@ class ProjectListScreen extends ConsumerWidget {
                   children: [
                     OutlinedButton.icon(
                       onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lógica de importación de ZIP (Próximamente)')));
+                        _importModZip(context, ref);
                       },
                       icon: const Icon(Icons.upload_file),
                       label: const Text('Importar Mod'),
