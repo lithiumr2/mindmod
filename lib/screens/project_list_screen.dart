@@ -10,6 +10,9 @@ import '../models/project_file.dart';
 import 'dart:typed_data';
 import 'main_screen.dart';
 
+String _getTr(WidgetRef ref, String key) => ref.read(localeProvider.notifier).tr(key);
+
+
 
   Future<void> _importModZip(BuildContext context, WidgetRef ref) async {
     try {
@@ -60,10 +63,10 @@ import 'main_screen.dart';
         final encodedData = jsonEncode(files.map((f) => f.toJson()).toList());
         await prefs.setString('mindmod_project_files_$newId', encodedData);
         
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('import_success')}: $projName')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${_getTr(ref, 'import_success')}: $projName')));
       }
     } catch(e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('import_error')}: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${_getTr(ref, 'import_error')}: $e')));
     }
   }
 
@@ -74,19 +77,19 @@ import 'main_screen.dart';
       context: context,
       builder: (c) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E24),
-        title: Text(tr('rename_project'), style: const TextStyle(color: Colors.white)),
+        title: Text(_getTr(ref, 'rename_project'), style: const TextStyle(color: Colors.white)),
         content: TextField(
           controller: controller,
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
-            hintText: tr('hint_project_name'),
+            hintText: _getTr(ref, 'hint_project_name'),
             hintStyle: const TextStyle(color: Colors.white24),
             enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
             focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.amber)),
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c), child: Text(tr('cancel'), style: const TextStyle(color: Colors.white54))),
+          TextButton(onPressed: () => Navigator.pop(c), child: Text(_getTr(ref, 'cancel'), style: const TextStyle(color: Colors.white54))),
           TextButton(
             onPressed: () {
               if (controller.text.trim().isNotEmpty) {
@@ -98,7 +101,7 @@ import 'main_screen.dart';
                  Navigator.pop(c);
               }
             },
-            child: Text(tr('save'), style: const TextStyle(color: Colors.amber)),
+            child: Text(_getTr(ref, 'save'), style: const TextStyle(color: Colors.amber)),
           ),
         ],
       ),
@@ -162,6 +165,7 @@ class ProjectListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final projects = ref.watch(projectsListProvider);
+    final tr = ref.read(localeProvider.notifier).tr;
 
     return Scaffold(
       backgroundColor: const Color(0xFF18181C),
@@ -278,6 +282,7 @@ class ProjectListScreen extends ConsumerWidget {
   }
 
   void _showCreateProjectDialog(BuildContext context, WidgetRef ref) {
+    final tr = ref.read(localeProvider.notifier).tr;
     final controller = TextEditingController();
     showDialog(
       context: context,
