@@ -723,10 +723,10 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Row(
+              Row(
                 children: [
-                  Icon(Icons.inventory_2_outlined, size: 16, color: Colors.amber),
-                  SizedBox(width: 8),
+                  const Icon(Icons.inventory_2_outlined, size: 16, color: Colors.amber),
+                  const SizedBox(width: 8),
                   Text(
                     "$key (Ítems)",
                     style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13),
