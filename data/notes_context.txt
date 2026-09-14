@@ -1,0 +1,4 @@
+## MINDMOD NOTES [CONTEXT-MODE] (P:1|I:0|R:0)
+[P|FEATURE] #note-1789341077398-01n9y Captura / Imagen de Mindmod (2img)
+  [ ] #chk-1789340927241-820m pasó eso cuando puse "1" en la versión de el mod.json
+  [ ] #chk-1789341014218-aqnn añade el editor de scripts, el importar mod, configurar datos, y el menú principal para trabajar con varios proyectos
