@@ -120,6 +120,32 @@ class ProjectNotifier extends StateNotifier<ProjectState> {
     addFile(ProjectFile(name: name, type: type, content: content));
   }
 
+  void renameFile(String oldName, String newName) {
+    if (oldName == newName) return;
+    
+    // Si es un sprite y no tiene prefijo de carpeta, podemos forzar sprites/ o dejarlo igual
+    // Depende del usuario, pero dejaremos el nombre tal cual (agregando la carpeta si estaba antes)
+    String finalName = newName;
+    if (oldName.startsWith('sprites/') && !newName.startsWith('sprites/')) {
+       finalName = 'sprites/' + newName;
+    }
+
+    final updatedFiles = state.files.map((f) {
+      if (f.name == oldName) {
+        return f.copyWith(name: finalName);
+      }
+      return f;
+    }).toList();
+    
+    String? nextActive = state.activeFileName;
+    if (state.activeFileName == oldName) {
+      nextActive = finalName;
+    }
+    
+    state = state.copyWith(files: updatedFiles, activeFileName: nextActive);
+    _saveToPrefs();
+  }
+
   void deleteFile(String fileName) {
     final updatedFiles = state.files.where((f) => f.name != fileName).toList();
     String? nextActive = state.activeFileName;
