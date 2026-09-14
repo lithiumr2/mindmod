@@ -162,12 +162,21 @@ class ProjectsListNotifier extends StateNotifier<List<Map<String, String>>> {
     await prefs.setString('mindmod_projects_list', jsonEncode(state));
   }
   
-  void addProject(String name) {
+  String addProject(String name) {
     final id = DateTime.now().millisecondsSinceEpoch.toString();
     state = [...state, {'id': id, 'name': name}];
     _save();
+    return id;
   }
 
+  void renameProject(String id, String newName) {
+    state = state.map((p) {
+      if (p['id'] == id) return {'id': id, 'name': newName};
+      return p;
+    }).toList();
+    _save();
+  }
+  
   void deleteProject(String id) {
     state = state.where((p) => p['id'] != id).toList();
     _save();
