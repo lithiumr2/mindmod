@@ -13,6 +13,7 @@ enum FileType {
   image,
   json,
   hjson,
+  script,
   other,
 }
 
