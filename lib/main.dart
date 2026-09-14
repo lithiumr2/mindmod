@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'screens/main_screen.dart';
+import 'screens/project_list_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,7 +25,7 @@ class MindmodApp extends StatelessWidget {
         brightness: Brightness.dark,
         primarySwatch: Colors.amber,
       ),
-      home: const MainScreen(),
+      home: const ProjectListScreen(),
     );
   }
 }
