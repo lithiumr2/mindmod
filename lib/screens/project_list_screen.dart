@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/project_provider.dart';
+import '../providers/locale_provider.dart';
 import 'package:file_picker/file_picker.dart' as fp;
 import 'package:archive/archive.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -114,14 +115,12 @@ class ProjectListScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: const Color(0xFF18181C),
       appBar: AppBar(
-        title: const Text('Mindmod - Mis Proyectos', style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold)),
+        title: Text(ref.read(localeProvider.notifier).tr('title'), style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold)),
         backgroundColor: const Color(0xFF202026),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings, color: Colors.white70),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Configurar datos generales...')));
-            },
+            onPressed: _showSettingsDialog,
           )
         ],
       ),
