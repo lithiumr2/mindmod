@@ -77,7 +77,7 @@ jobs:
             flutter pub run flutter_launcher_icons
           fi
 
-            - name: Cache Keystore
+      - name: Cache Keystore
         id: cache-keystore
         uses: actions/cache@v4
         with:
