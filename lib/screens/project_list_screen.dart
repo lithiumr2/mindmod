@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/project_provider.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:file_picker/file_picker.dart' as fp;
 import 'package:archive/archive.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -12,8 +12,8 @@ import 'main_screen.dart';
 
   Future<void> _importModZip(BuildContext context, WidgetRef ref) async {
     try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
+      fp.FilePickerResult? result = await fp.FilePicker.platform.pickFiles(
+        type: fp.FileType.custom,
         allowedExtensions: ['zip'],
         withData: true,
       );
@@ -31,7 +31,7 @@ import 'main_screen.dart';
             // Ignore Mac OS metadata
             if (filename.contains('__MACOSX')) continue;
             
-            FileType type = FileType.unknown;
+            FileType type = FileType.other;
             if (filename.endsWith('.hjson') || filename.endsWith('.json')) {
                if (filename.contains('blocks/')) type = FileType.block;
                else if (filename.contains('items/')) type = FileType.item;
@@ -46,7 +46,7 @@ import 'main_screen.dart';
                files.add(ProjectFile(name: filename.split('/').last, type: type, content: contentStr));
             } else if (filename.endsWith('.png')) {
                final base64Str = base64Encode(file.content as List<int>);
-               files.add(ProjectFile(name: filename.split('/').last, type: FileType.unknown, content: base64Str, isImage: true));
+               files.add(ProjectFile(name: filename.split('/').last, type: FileType.other, content: base64Str, isImage: true));
             }
           }
         }
