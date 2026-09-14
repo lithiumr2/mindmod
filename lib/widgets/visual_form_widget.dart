@@ -21,12 +21,14 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
 
   // 30 tipos de bloques nativos de Mindustry
   final List<String> _blockTypes = [
-    "Wall", "ShieldWall", "Door", "MendProjector", "OverdriveProjector",
-    "ForceProjector", "Conveyor", "ArmoredConveyor", "Plastoconveyor", "StackConveyor",
-    "Duct", "MassDriver", "Drill", "BurstDrill", "ImpactDrill",
-    "BeamDrill", "GenericCrafter", "ItemTurret", "LiquidTurret", "PowerTurret",
-    "LaserTurret", "PowerNode", "SurgeTower", "BeamNode", "Battery",
-    "SolarPanel", "NuclearReactor", "ImpactReactor", "LiquidRouter", "LiquidJunction"
+    "Wall", "ShieldWall", "Door", "MendProjector", "OverdriveProjector", "OverdriveDome",
+    "ForceProjector", "Conveyor", "ArmoredConveyor", "PlastaniumConveyor", "StackConveyor",
+    "Duct", "MassDriver", "Drill", "BurstDrill", "ImpactDrill", "Pump", "SolidPump", "Fracker",
+    "BeamDrill", "GenericCrafter", "HeatCrafter", "Separator", "Incinerator", "ItemTurret", "LiquidTurret", "PowerTurret",
+    "ContinuousTurret", "PointDefenseTurret", "LaserTurret", "PowerNode", "SurgeTower", "BeamNode", "Battery",
+    "SolarGenerator", "ThermalGenerator", "ConsumeGenerator", "NuclearReactor", "ImpactReactor", "LiquidRouter", "LiquidJunction",
+    "Router", "Junction", "Sorter", "LogicSorter", "ItemBridge", "Conduit", "ArmoredConduit", "LiquidBridge",
+    "UnitFactory", "Reconstructor", "UnitAssembler", "MessageBlock", "LogicBlock", "MemoryBlock", "StorageBlock", "CoreBlock"
   ];
 
   // Tipos de unidades de Mindustry
@@ -90,9 +92,12 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
   ];
 
   final List<String> _unitProps = [
-    "type", "health", "speed", "flying", "range", "armor", "hitSize",
-    "itemCapacity", "hasItems", "hasLiquids", "liquidCapacity", "requirements",
-    "weapons", "abilities", "controller", "hovering", "shadowElevation", "drag", "accel", "description", "details"
+    "type", "health", "armor", "hitSize", "speed", "rotateSpeed", "itemCapacity", "outlineColor", 
+    "isEnemy", "coreUnitDock", "flying", "engineOffset", "engineSize", "lowAltitude", "circleTarget",
+    "mechStepParticles", "mechLegColor", "stepShake", "legCount", "legLength", "legSpeed", "legForwardScl",
+    "legMoveSpace", "hovering", "allowLegStep", "trailLength", "trailX", "trailY", "trailScl", "waterVision",
+    "mineTier", "mineSpeed", "buildSpeed", "payloadCapacity", "controller", "targetAir", "targetGround", "faceTarget",
+    "weapons", "abilities", "hasItems", "hasLiquids", "liquidCapacity", "requirements", "shadowElevation", "drag", "accel", "description", "details"
   ];
 
   final List<String> _statusProps = [
@@ -110,7 +115,8 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
   final List<String> _baseBlockProps = [
     "type", "health", "size", "requirements", "category",
     "solid", "destructible", "hasItems", "itemCapacity", "hasLiquids", "liquidCapacity",
-    "hasPower", "consumesPower", "outputsPower", "outputItem", "outputLiquid"
+    "hasPower", "consumesPower", "outputsPower", "alwaysUnlocked", "buildVisibility", "research", "envEnabled", "envDisabled",
+    "floating", "placeableLiquid", "consumes", "outputItem", "outputItems", "outputLiquid", "outputLiquids"
   ];
 
   final Set<String> _numberProps = {
@@ -120,17 +126,28 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     "memoryCapacity", "displaySize", "itemCapacity", "liquidCapacity", "hardness",
     "cost", "explosiveness", "flammability", "radioactivity", "charge", "temperature",
     "viscosity", "heatCapacity", "healPercent", "speedBoost", "radius", "shieldHealth",
-    "armor", "hitSize", "drag", "accel", "capacity", "amount"
+    "armor", "hitSize", "drag", "accel", "capacity", "amount", "warmupSpeed", "liquidBoostIntensity", "consumeTime", "pumpAmount",
+    "itemUseTime", "transportTime", "knockback", "bulletSpeed", "liquidPressure", "heatRequirement", "maxEfficiency", "flashThreshold", "explosionRadius",
+    "explosionDamage", "chanceDeflect", "lightningChance", "lightningDamage", "cooldownNormal", "cooldownLiquid", "phaseRadiusBoost", "phaseShieldBoost",
+    "speedBoostPhase", "useTime", "healAmount", "recoil", "restitution", "chargeTime", "chargeEffects", "bulletDamage", "constructTime",
+    "dronesCreated", "maxInstructionsPerTick", "unitCapModifier", "thrusterLength", "rotateSpeed", "engineOffset", "engineSize",
+    "stepShake", "legCount", "legLength", "legSpeed", "legForwardScl", "legMoveSpace", "trailLength", "trailX", "trailY", "trailScl",
+    "mineTier", "mineSpeed", "buildSpeed", "payloadCapacity", "shootCone", "splashDamage", "splashDamageRadius", "statusDuration",
+    "homingPower", "homingRange", "fragBullets", "pierceCap", "lifetime"
   };
 
   final Set<String> _boolProps = {
     "solid", "destructible", "hasItems", "hasLiquids", "hasPower", "consumesPower",
     "outputsPower", "alwaysUnlocked", "insulated", "absorbLasers", "flashHit",
-    "targetAir", "targetGround", "gas", "coolant", "transparent", "flying", "hovering"
+    "targetAir", "targetGround", "gas", "coolant", "transparent", "flying", "hovering",
+    "drawMineItem", "pulse", "invert", "leaks", "extinguish", "coreMerge", "incinerateNonBuildable",
+    "isEnemy", "coreUnitDock", "lowAltitude", "circleTarget", "mechStepParticles", "allowLegStep", "waterVision",
+    "faceTarget", "mirror", "rotate", "pierce", "pierceBuilding"
   };
 
   final Set<String> _colorProps = {
-    "color", "barColor", "lightColor", "laserColor1", "laserColor2", "sparkColor"
+    "color", "barColor", "lightColor", "laserColor1", "laserColor2", "sparkColor",
+    "emptyLightColor", "fullLightColor", "flameColor", "outlineColor", "mechLegColor", "noiseColor"
   };
 
   void _cleanInvalidProperties(FileType type, Map<String, dynamic> parsed) {
