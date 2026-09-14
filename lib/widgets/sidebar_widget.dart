@@ -83,20 +83,7 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
                     _buildSubFolderCategory(files, projectState, 'status', 'status', Icons.folder, Colors.purpleAccent),
                   ],
                 ),
-                ExpansionTile(
-                  leading: const Icon(Icons.code, color: Colors.green, size: 18),
-                  title: const Text('scripts', style: TextStyle(color: Colors.white70, fontSize: 13)),
-                  initiallyExpanded: false,
-                  children: [
-                    ListTile(
-                      dense: true,
-                      contentPadding: const EdgeInsets.only(left: 32.0, right: 16.0),
-                      leading: const Icon(Icons.add_circle_outline, color: Colors.green, size: 16),
-                      title: const Text('New Script (.js)', style: TextStyle(color: Colors.green, fontSize: 12)),
-                      onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Soporte para JS próximamente'))),
-                    )
-                  ],
-                ),
+                _buildSubFolderCategory(files, projectState, 'scripts', 'scripts', Icons.code, Colors.green),
                 ExpansionTile(
                   leading: const Icon(Icons.folder, color: Colors.blue, size: 18),
                   title: const Text('sprites', style: TextStyle(color: Colors.white70, fontSize: 13)),
@@ -154,6 +141,7 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
       if (folderKey == 'units') return f.type == FileType.unit;
       if (folderKey == 'status') return f.type == FileType.status;
       if (folderKey == 'blocks') return f.type == FileType.block;
+      if (folderKey == 'scripts') return f.type == FileType.script;
       return false;
     }).toList();
 
@@ -189,7 +177,7 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
           dense: true,
           contentPadding: const EdgeInsets.only(left: 32.0, right: 16.0),
           leading: const Icon(Icons.add_circle_outline, color: Colors.amber, size: 16),
-          title: Text('New ' + (folderKey == 'items' ? 'Item' : folderKey == 'liquids' ? 'Liquid' : folderKey == 'units' ? 'Unit' : folderKey == 'status' ? 'Status' : folderKey == 'blocks' ? 'Block' : folderKey), style: const TextStyle(color: Colors.amber, fontSize: 12)),
+          title: Text('New ' + (folderKey == 'items' ? 'Item' : folderKey == 'liquids' ? 'Liquid' : folderKey == 'units' ? 'Unit' : folderKey == 'status' ? 'Status' : folderKey == 'scripts' ? 'Script' : folderKey == 'blocks' ? 'Block' : folderKey), style: const TextStyle(color: Colors.amber, fontSize: 12)),
           onTap: () {
              setState(() => selectedFolder = folderKey);
             _showNewItemDialog(context, ref, folderKey);
