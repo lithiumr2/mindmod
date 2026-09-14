@@ -597,13 +597,9 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                   children: _properties.entries.map((entry) {
                     final key = entry.key;
                     final value = entry.value;
-                    final isVital = key == name || (key == type && (activeFile.type == FileType.block || activeFile.type == FileType.unit));
-                    final isComplex = key == requirements || key == outputItems || key == results || key == description || key == details || key == weapons || key == abilities || key == consumes;
+                    final isVital = key == "name" || (key == "type" && (activeFile.type == FileType.block || activeFile.type == FileType.unit));
+                    final isComplex = key == "requirements" || key == "outputItems" || key == "results" || key == "description" || key == "details" || key == "weapons" || key == "abilities" || key == "consumes";
                     final itemWidth = (isWide && !isComplex) ? (constraints.maxWidth / 2.0) - 6.0 : constraints.maxWidth;
-
-              final key = entry.key;
-              final value = entry.value;
-              final isVital = key == "name" || (key == "type" && (activeFile.type == FileType.block || activeFile.type == FileType.unit));
 
               // Editor multilínea especial para requirements
               if (key == "requirements") {
