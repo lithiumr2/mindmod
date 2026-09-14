@@ -22,13 +22,13 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
     final files = projectState.files;
 
     return Container(
-      width: 260,
+      width: 210,
       color: const Color(0xFF141418),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.all(12.0),
+            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -94,7 +94,7 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
                   children: [
                     ...files.where((f) => f.isImage).map((file) => ListTile(
                           dense: true,
-                          contentPadding: const EdgeInsets.only(left: 32.0, right: 16.0),
+                          contentPadding: const EdgeInsets.only(left: 20.0, right: 8.0),
                           leading: const Icon(Icons.image, color: Colors.purpleAccent, size: 16),
                           title: Text(file.name.replaceAll('.hjson', ''), style: const TextStyle(color: Colors.white, fontSize: 12)),
                           selected: projectState.activeFileName == file.name,
@@ -107,7 +107,7 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
                         )),
                     ListTile(
                       dense: true,
-                      contentPadding: const EdgeInsets.only(left: 32.0, right: 16.0),
+                      contentPadding: const EdgeInsets.only(left: 20.0, right: 8.0),
                       leading: const Icon(Icons.add_circle_outline, color: Colors.amber, size: 16),
                       title: const Text('New Sprite', style: TextStyle(color: Colors.amber, fontSize: 12)),
                       onTap: () {
@@ -162,7 +162,7 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
       children: [
         ...categoryFiles.map((file) => ListTile(
               dense: true,
-              contentPadding: const EdgeInsets.only(left: 32.0, right: 16.0),
+              contentPadding: const EdgeInsets.only(left: 20.0, right: 8.0),
               leading: const Icon(Icons.insert_drive_file, color: Colors.amber, size: 16),
               title: Text(file.name.replaceAll('.hjson', ''), style: const TextStyle(color: Colors.white, fontSize: 12)),
               selected: projectState.activeFileName == file.name,
@@ -175,7 +175,7 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
             )),
         ListTile(
           dense: true,
-          contentPadding: const EdgeInsets.only(left: 32.0, right: 16.0),
+          contentPadding: const EdgeInsets.only(left: 20.0, right: 8.0),
           leading: const Icon(Icons.add_circle_outline, color: Colors.amber, size: 16),
           title: Text('New ' + (folderKey == 'items' ? 'Item' : folderKey == 'liquids' ? 'Liquid' : folderKey == 'units' ? 'Unit' : folderKey == 'status' ? 'Status' : folderKey == 'scripts' ? 'Script' : folderKey == 'blocks' ? 'Block' : folderKey), style: const TextStyle(color: Colors.amber, fontSize: 12)),
           onTap: () {
