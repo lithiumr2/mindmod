@@ -123,6 +123,7 @@ class MainScreen extends ConsumerStatefulWidget {
 }
 
 class _MainScreenState extends ConsumerState<MainScreen> {
+  String tr(String key) => ref.read(localeProvider.notifier).tr(key);
   bool _isCodeView = false;
 
   @override
