@@ -27,11 +27,13 @@ class ProjectState {
 }
 
 class ProjectNotifier extends StateNotifier<ProjectState> {
-  ProjectNotifier() : super(ProjectState(files: [], activeFileName: 'mod.json')) {
+  final String projectId;
+
+  ProjectNotifier(this.projectId) : super(ProjectState(files: [], activeFileName: 'mod.json')) {
     _loadFromPrefs();
   }
 
-  static const String _storageKey = 'mindmod_project_files';
+  String get _storageKey => 'mindmod_project_files_$projectId';
 
   // Cargar datos persistentes al iniciar
   Future<void> _loadFromPrefs() async {
