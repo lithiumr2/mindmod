@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/project_provider.dart';
 import '../services/hjson_engine.dart';
+import '../providers/locale_provider.dart';
 
 class ModJsonFormWidget extends ConsumerWidget {
   const ModJsonFormWidget({super.key});
@@ -22,6 +23,8 @@ class ModJsonFormWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(localeProvider);
+    final tr = ref.read(localeProvider.notifier).tr;
     final activeFile = ref.watch(projectProvider).activeFile;
     if (activeFile == null) return const SizedBox.shrink();
 
@@ -32,38 +35,36 @@ class ModJsonFormWidget extends ConsumerWidget {
       padding: const EdgeInsets.all(16),
       child: ListView(
         children: [
-          const Text(
-            'Configuración General (mod.json)',
-            style: TextStyle(color: Colors.amber, fontSize: 18, fontWeight: FontWeight.bold),
+          Text(tr('mod_json_title'), style: const TextStyle(color: Colors.amber, fontSize: 18, fontWeight: FontWeight.bold)),
           ),
           const SizedBox(height: 20),
           
-          _buildTextField('Nombre Interno (name)', 'ej. mi-mod-epico', parsedData['name'], 
+          _buildTextField(tr('internal_name'), tr('hint_internal_name'), parsedData['name']?.toString(), 
             (v) => _updateField(ref, parsedData, 'name', v)),
           
-          _buildTextField('Nombre Público (displayName)', 'ej. Mi Mod Épico', parsedData['displayName'], 
+          _buildTextField(tr('display_name'), tr('hint_display_name'), parsedData['displayName']?.toString(), 
             (v) => _updateField(ref, parsedData, 'displayName', v)),
           
-          _buildTextField('Autor (author)', 'Tu nombre', parsedData['author'], 
+          _buildTextField(tr('author'), tr('hint_author'), parsedData['author']?.toString(), 
             (v) => _updateField(ref, parsedData, 'author', v)),
           
-          _buildTextField('Descripción (description)', '¿De qué trata el mod?', parsedData['description'], 
+          _buildTextField(tr('description'), tr('hint_description'), parsedData['description']?.toString(), 
             (v) => _updateField(ref, parsedData, 'description', v), maxLines: 3),
             
           Row(
             children: [
               Expanded(
-                child: _buildTextField('Versión', 'ej. 1.0', parsedData['version'], 
+                child: _buildTextField(tr('version'), tr('hint_version'), parsedData['version']?.toString(), 
                   (v) => _updateField(ref, parsedData, 'version', v)),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: _buildTextField('Versión Mín. Juego', 'ej. 146', parsedData['minGameVersion']?.toString(), 
+                child: _buildTextField(tr('min_game_version'), tr('hint_min_game_version'), parsedData['minGameVersion']?.toString(), 
                   (v) => _updateField(ref, parsedData, 'minGameVersion', v)),
               ),
             ],
           ),
-          _buildTextField('Dependencias (separadas por coma)', 'ej. core-mod, multi-crafter', 
+          _buildTextField(tr('dependencies'), tr('hint_dependencies'), 
             (parsedData['dependencies'] as List<dynamic>?)?.join(', ') ?? '', 
             (v) => _updateFieldList(ref, parsedData, 'dependencies', v)),
         ],
