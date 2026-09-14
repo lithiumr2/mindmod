@@ -129,6 +129,50 @@ class ProjectNotifier extends StateNotifier<ProjectState> {
   }
 }
 
+final currentProjectIdProvider = StateProvider<String?>((ref) => null);
+
+final projectsListProvider = StateNotifierProvider<ProjectsListNotifier, List<Map<String, String>>>((ref) {
+  return ProjectsListNotifier();
+});
+
+class ProjectsListNotifier extends StateNotifier<List<Map<String, String>>> {
+  ProjectsListNotifier() : super([]) {
+    _load();
+  }
+  
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final str = prefs.getString('mindmod_projects_list');
+    if (str != null) {
+      try {
+        final List<dynamic> decoded = jsonDecode(str);
+        state = decoded.map((e) => Map<String, String>.from(e)).toList();
+      } catch (_) {}
+    }
+    if (state.isEmpty) {
+      state = [{'id': 'default', 'name': 'My First Mod'}];
+      _save();
+    }
+  }
+  
+  Future<void> _save() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('mindmod_projects_list', jsonEncode(state));
+  }
+  
+  void addProject(String name) {
+    final id = DateTime.now().millisecondsSinceEpoch.toString();
+    state = [...state, {'id': id, 'name': name}];
+    _save();
+  }
+
+  void deleteProject(String id) {
+    state = state.where((p) => p['id'] != id).toList();
+    _save();
+  }
+}
+
 final projectProvider = StateNotifierProvider<ProjectNotifier, ProjectState>((ref) {
-  return ProjectNotifier();
+  final projectId = ref.watch(currentProjectIdProvider);
+  return ProjectNotifier(projectId ?? 'default');
 });
