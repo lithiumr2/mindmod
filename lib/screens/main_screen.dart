@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/project_file.dart';
 import '../providers/project_provider.dart';
+import '../providers/locale_provider.dart';
 import '../services/export_service.dart';
 import '../widgets/code_editor_widget.dart';
 import '../widgets/visual_form_widget.dart';
@@ -126,6 +127,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(localeProvider);
     final projectState = ref.watch(projectProvider);
     final activeFile = projectState.activeFile;
     final isModJson = activeFile?.name == 'mod.json';
@@ -159,7 +161,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
               ElevatedButton.icon(
                     onPressed: () => _analyzeMod(context, ref),
                     icon: const Icon(Icons.bug_report_outlined, size: 16),
-                    label: const Text('Analizar Mod'),
+                    label: Text(ref.read(localeProvider.notifier).tr('analyze_mod')),
                     style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF222228), foregroundColor: Colors.amber, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
                   ),
                   const SizedBox(width: 12),
