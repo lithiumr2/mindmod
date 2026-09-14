@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart' as filePicker;
 import 'dart:convert';
 
 import '../providers/project_provider.dart';
+import '../providers/locale_provider.dart';
 import '../models/project_file.dart';
 
 class SidebarWidget extends ConsumerStatefulWidget {
@@ -32,28 +33,25 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Mindmod Workspace',
-                  style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13),
-                ),
+                Text(tr('workspace'), style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13)),
                 PopupMenuButton<String>(
                   icon: const Icon(Icons.settings, color: Colors.white54, size: 18),
                   color: const Color(0xFF222228),
                   onSelected: (value) {
                     if (value == 'import') {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Importación próximamente...')));
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('import_soon'))));
                     } else if (value == 'data') {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Config. de Datos próximamente...')));
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('data_config_soon'))));
                     }
                   },
                   itemBuilder: (context) => [
                     const PopupMenuItem(
                       value: 'import',
-                      child: Text('Importar Mod', style: TextStyle(color: Colors.white)),
+                      child: Text(tr('import_mod'), style: const TextStyle(color: Colors.white)),
                     ),
                     const PopupMenuItem(
                       value: 'data',
-                      child: Text('Configuración de Datos', style: TextStyle(color: Colors.white)),
+                      child: Text(tr('data_config'), style: const TextStyle(color: Colors.white)),
                     ),
                   ],
                 ),
@@ -177,7 +175,7 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
           dense: true,
           contentPadding: const EdgeInsets.only(left: 20.0, right: 8.0),
           leading: const Icon(Icons.add_circle_outline, color: Colors.amber, size: 16),
-          title: Text('New ' + (folderKey == 'items' ? 'Item' : folderKey == 'liquids' ? 'Liquid' : folderKey == 'units' ? 'Unit' : folderKey == 'status' ? 'Status' : folderKey == 'scripts' ? 'Script' : folderKey == 'blocks' ? 'Block' : folderKey), style: const TextStyle(color: Colors.amber, fontSize: 12)),
+          title: Text(tr(folderKey == 'items' ? 'new_item' : folderKey == 'liquids' ? 'new_liquid' : folderKey == 'units' ? 'new_unit' : folderKey == 'status' ? 'new_status' : folderKey == 'scripts' ? 'new_script' : folderKey == 'blocks' ? 'new_block' : 'new_project'), style: const TextStyle(color: Colors.amber, fontSize: 12)),
           onTap: () {
              setState(() => selectedFolder = folderKey);
             _showNewItemDialog(context, ref, folderKey);
@@ -188,6 +186,7 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
   }
 
   Future<void> _showNewItemDialog(BuildContext context, WidgetRef ref, String folder) async {
+    final tr = ref.read(localeProvider.notifier).tr;
     if (folder == 'sprites') {
       filePicker.FilePickerResult? result = await filePicker.FilePicker.platform.pickFiles(
         type: filePicker.FileType.image,
@@ -245,12 +244,12 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
         content: TextField(
           controller: controller,
           style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(hintText: 'filename', hintStyle: TextStyle(color: Colors.white54)),
+          decoration: InputDecoration(hintText: tr('filename_hint'), hintStyle: TextStyle(color: Colors.white54)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            child: Text(tr('cancel'), style: const TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFBC02D), foregroundColor: Colors.black),
@@ -282,7 +281,7 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
                 Navigator.pop(context);
               }
             },
-            child: const Text('Create'),
+            child: Text(tr('create')),
           ),
         ],
       ),
