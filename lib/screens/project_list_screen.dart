@@ -46,7 +46,7 @@ import 'main_screen.dart';
                files.add(ProjectFile(name: filename.split('/').last, type: type, content: contentStr));
             } else if (filename.endsWith('.png')) {
                final base64Str = base64Encode(file.content as List<int>);
-               files.add(ProjectFile(name: filename.split('/').last, type: FileType.other, content: base64Str, isImage: true));
+               files.add(ProjectFile(name: filename.split('/').last, type: FileType.other, content: base64Str));
             }
           }
         }
