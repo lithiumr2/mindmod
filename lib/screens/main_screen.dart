@@ -15,6 +15,7 @@ import '../services/hjson_engine.dart';
 
 
   void _analyzeMod(BuildContext context, WidgetRef ref) {
+    final tr = ref.read(localeProvider.notifier).tr;
     final files = ref.read(projectProvider).files;
     List<String> errors = [];
     List<String> warnings = [];
@@ -22,7 +23,7 @@ import '../services/hjson_engine.dart';
     // Check mod.json
     final modJson = files.any((f) => f.name == 'mod.json' || f.name == 'mod.hjson');
     if (!modJson) {
-      errors.add('Falta el archivo mod.json (Obligatorio para que Mindustry lea el mod).');
+      errors.add(tr('err_missing_mod_json'));
     }
 
     for (var file in files) {
@@ -32,7 +33,7 @@ import '../services/hjson_engine.dart';
       if (file.name.endsWith('.hjson') || file.name.endsWith('.json')) {
          final syntaxErrors = HjsonEngine.validateSyntax(file.content);
          if (syntaxErrors.isNotEmpty) {
-           errors.add('Error de sintaxis en ${file.name}: ${syntaxErrors.first}');
+           errors.add('${tr('err_syntax_in')} ${file.name}: ${syntaxErrors.first}');
          }
          
          // Parse to check semantics
@@ -40,13 +41,13 @@ import '../services/hjson_engine.dart';
            final parsed = HjsonEngine.parse(file.content);
            if (file.type == FileType.block || file.type == FileType.item || file.type == FileType.unit || file.type == FileType.liquid) {
              if (!parsed.containsKey('name')) {
-               warnings.add('El archivo ${file.name} no tiene la propiedad "name" definida.');
+               warnings.add('${file.name}: ${tr('warn_missing_name')}');
              }
              if (file.type == FileType.block && !parsed.containsKey('type')) {
-               warnings.add('El bloque en ${file.name} no tiene "type". Mindustry podría ignorarlo.');
+               warnings.add('${file.name}: ${tr('warn_block_no_type')}');
              }
              if (file.type == FileType.block && !parsed.containsKey('requirements')) {
-               warnings.add('El bloque ${file.name} no tiene requisitos de construcción (requirements).');
+               warnings.add('${file.name}: ${tr('warn_block_no_reqs')}');
              }
            }
          } catch(e) {}
@@ -57,7 +58,7 @@ import '../services/hjson_engine.dart';
          final baseName = file.name.replaceAll('.hjson', '').replaceAll('.json', '');
          final hasSprite = files.any((f) => f.isImage && (f.name == '${baseName}.png' || f.name == 'sprites/${baseName}.png'));
          if (!hasSprite) {
-           warnings.add('Falta sprite para ${file.name}. (Se necesita ${baseName}.png)');
+           warnings.add('${tr('warn_missing_sprite')} ${file.name}. (${tr('needed')} ${baseName}.png)');
          }
       }
     }
@@ -66,7 +67,7 @@ import '../services/hjson_engine.dart';
       context: context,
       builder: (c) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E24),
-        title: const Text('Análisis del Mod', style: TextStyle(color: Colors.white)),
+        title: Text(tr('analysis_title'), style: const TextStyle(color: Colors.white)),
         content: SizedBox(
           width: 500,
           child: SingleChildScrollView(
@@ -75,10 +76,10 @@ import '../services/hjson_engine.dart';
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (errors.isEmpty && warnings.isEmpty)
-                  const Text('¡Todo parece estar en orden! Tu mod está listo para funcionar.', style: TextStyle(color: Colors.greenAccent)),
+                  Text(tr('analysis_ok'), style: const TextStyle(color: Colors.greenAccent)),
                 
                 if (errors.isNotEmpty) ...[
-                  const Text('Errores Críticos:', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                  Text(tr('analysis_critical'), style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   ...errors.map((e) => Padding(
                     padding: const EdgeInsets.only(bottom: 4),
@@ -92,7 +93,7 @@ import '../services/hjson_engine.dart';
                 ],
 
                 if (warnings.isNotEmpty) ...[
-                  const Text('Advertencias:', style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold)),
+                  Text(tr('analysis_warnings'), style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   ...warnings.map((w) => Padding(
                     padding: const EdgeInsets.only(bottom: 4),
@@ -108,7 +109,7 @@ import '../services/hjson_engine.dart';
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c), child: const Text('Cerrar', style: TextStyle(color: Colors.white))),
+          TextButton(onPressed: () => Navigator.pop(c), child: Text(tr('close'), style: const TextStyle(color: Colors.white))),
         ],
       ),
     );
@@ -141,7 +142,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            activeFile != null ? '${activeFile.name.replaceAll(".hjson", "")}' : 'Selecciona un archivo',
+            activeFile != null ? '${activeFile.name.replaceAll(".hjson", "")}' : tr('select_file_header'),
             style: const TextStyle(color: Colors.amber, fontSize: 14, fontWeight: FontWeight.w600),
           ),
           Row(
@@ -174,7 +175,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                     final path = await ExportService.exportModToZip(projectState.files);
                     if (context.mounted && path != null) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('${tr('export_success')} $path')),
+                        SnackBar(content: Text('${tr('mod_exported_to')} $path')),
                       );
                     }
                   }
@@ -186,7 +187,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                       children: [
                         Icon(Icons.download, color: Color(0xFFFBC02D), size: 18),
                         SizedBox(width: 10),
-                        Text('Exportar ZIP', style: TextStyle(color: Colors.white)),
+                        Text(tr('export_zip'), style: const TextStyle(color: Colors.white)),
                       ],
                     ),
                   ),
@@ -211,7 +212,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                   topBar,
                   Expanded(
                     child: activeFile == null
-                        ? const Center(child: Text('Selecciona o crea un archivo', style: TextStyle(color: Colors.white54)))
+                        ? Center(child: Text(tr('select_or_create'), style: const TextStyle(color: Colors.white54)))
                         : activeFile.isImage
                             ? 
                             Center(
@@ -227,7 +228,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                                     ),
                                     child: ClipRRect(
                                       borderRadius: BorderRadius.circular(6),
-                                      child: Image.memory(activeFile.binaryContent ?? Uint8List(0), fit: BoxFit.contain, filterQuality: FilterQuality.none, errorBuilder: (c,e,s) => const Text('Error al cargar imagen', style: TextStyle(color: Colors.red))),
+                                      child: Image.memory(activeFile.binaryContent ?? Uint8List(0), fit: BoxFit.contain, filterQuality: FilterQuality.none, errorBuilder: (c,e,s) => Text(tr('img_error'), style: const TextStyle(color: Colors.red))),
                                     ),
                                   ),
                                   const SizedBox(height: 24),
@@ -242,11 +243,11 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        const Text('Configuración del Sprite', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                                        Text(tr('sprite_config'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
                                         const SizedBox(height: 16),
                                         Row(
                                           children: [
-                                            const Text('Vinculado a:', style: TextStyle(color: Colors.white70)),
+                                            Text(tr('linked_to'), style: const TextStyle(color: Colors.white70)),
                                             const SizedBox(width: 12),
                                             Expanded(
                                               child: TextFormField(
@@ -272,15 +273,15 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                                         Container(
                                           padding: const EdgeInsets.all(12),
                                           decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
-                                          child: const Row(
+                                          child: Row(
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
-                                              Icon(Icons.info_outline, color: Colors.blueAccent, size: 16),
-                                              SizedBox(width: 8),
+                                              const Icon(Icons.info_outline, color: Colors.blueAccent, size: 16),
+                                              const SizedBox(width: 8),
                                               Expanded(
                                                 child: Text(
-                                                  'En Mindustry, el sprite se vincula automáticamente si se llama exactamente igual que tu bloque o ítem.\n\nTamaños recomendados:\n- Ítems: 32x32\n- Bloques size 1: 32x32\n- Bloques size 2: 64x64',
-                                                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                                                  tr('sprite_info_tip'),
+                                                  style: const TextStyle(color: Colors.white70, fontSize: 12),
                                                 ),
                                               )
                                             ],
