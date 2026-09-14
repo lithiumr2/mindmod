@@ -137,3 +137,14 @@ jobs:
           name: mindmod-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
           
+
+      - name: Subir APK a Release Beta
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/heads/main')
+        with:
+          tag_name: beta
+          name: 'Beta Release'
+          body: '¡Primera versión beta pública! Incluye traducción completa al 100%, sistema de firma automática de APK (Keystore integrado) e icono personalizado generado.'
+          prerelease: true
+          files: build/app/outputs/flutter-apk/app-release.apk
+          token: ${{ secrets.GITHUB_TOKEN }}
