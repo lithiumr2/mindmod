@@ -29,4 +29,5 @@
 - **Dual Editor Mode**: Seamlessly switch between the visual form builder and the raw JSON/Hjson code editor.
 - **Mod Analyzer**: Run built-in diagnostics to validate your mod configuration and catch syntax errors before exporting.
 - **GitHub Integration**: Connect directly with your GitHub account to manage repositories, browse files, and commit changes instantly
-(assets/demo1)
+
+!(assets/demo1)
