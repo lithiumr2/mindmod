@@ -229,6 +229,13 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
       defaultName = 'custom-status';
       title = 'Create New Status';
       defaultContent = '{\n  name: "custom-status"\n  damage: 0.5\n}';
+    } else if (folder == 'scripts') {
+      defaultName = 'script.js';
+      title = 'Create New Script';
+      defaultContent = '// Main script file\n';
+      defaultName = 'custom-status';
+      title = 'Create New Status';
+      defaultContent = '{\n  name: "custom-status"\n  damage: 0.5\n}';
     }
 
     final controller = TextEditingController(text: defaultName);
@@ -259,10 +266,13 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
                 if (folder == 'liquids') determinedType = FileType.liquid;
                 if (folder == 'units') determinedType = FileType.unit;
                 if (folder == 'status') determinedType = FileType.status;
+                if (folder == 'scripts') determinedType = FileType.script;
 
                 ref.read(projectProvider.notifier).addFile(
                   ProjectFile(
-                    name: controller.text.trim().endsWith('.hjson') ? controller.text.trim() : '${controller.text.trim()}.hjson',
+                    name: (folder == 'scripts') 
+                        ? (controller.text.trim().endsWith('.js') ? controller.text.trim() : '${controller.text.trim()}.js') 
+                        : (controller.text.trim().endsWith('.hjson') ? controller.text.trim() : '${controller.text.trim()}.hjson'),
                     type: determinedType,
                     content: defaultContent
                         .replaceAll('copper-wall', baseName)
