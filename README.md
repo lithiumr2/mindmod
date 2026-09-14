@@ -1,4 +1,4 @@
-# Mindmod - Mindustry JSON & Hjson Mod Creator 🚀
+# Mindmod - Mindustry JSON & Hjson Mod Creator 
 
 <div align="center">
 
