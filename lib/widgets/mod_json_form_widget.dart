@@ -36,7 +36,6 @@ class ModJsonFormWidget extends ConsumerWidget {
       child: ListView(
         children: [
           Text(tr('mod_json_title'), style: const TextStyle(color: Colors.amber, fontSize: 18, fontWeight: FontWeight.bold)),
-          ),
           const SizedBox(height: 20),
           
           _buildTextField(tr('internal_name'), tr('hint_internal_name'), parsedData['name']?.toString(), 
