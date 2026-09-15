@@ -83,8 +83,8 @@ class HjsonEngine {
       if (strVal.toLowerCase() == 'false') return 'false';
     }
     // Comillas para strings con caracteres especiales o espacios
-    if (strVal.contains(' ') || strVal.contains('{') || strVal.contains('}') || strVal.contains(':') || strVal.contains('[') || strVal.contains(']') || strVal.contains('#') || strVal.contains(',') || strVal.contains('"')) {
-      final escaped = strVal.replaceAll(r'\', r'\\').replaceAll('"', r'\"');
+    if (strVal.contains('\n') || strVal.contains(' ') || strVal.contains('{') || strVal.contains('}') || strVal.contains(':') || strVal.contains('[') || strVal.contains(']') || strVal.contains('#') || strVal.contains(',') || strVal.contains('"')) {
+      final escaped = strVal.replaceAll(r'\', r'\\').replaceAll('"', r'\"').replaceAll('\n', r'\n');
       return '"$escaped"';
     }
     return strVal.isEmpty ? '""' : strVal;
