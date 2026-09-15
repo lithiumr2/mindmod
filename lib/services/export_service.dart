@@ -21,14 +21,33 @@ class ExportService {
         final spriteName = file.name.replaceAll('sprites/', '');
         archive.addFile(ArchiveFile('sprites/$spriteName', file.binaryContent!.length, file.binaryContent!));
       } else {
-        final parsed = HjsonEngine.parse(file.content);
-        final type = (parsed['type']?.toString() ?? 'Block').toLowerCase();
-
         String folder = 'content/blocks/';
-        if (type.contains('item')) {
-          folder = 'content/items/';
-        } else if (type.contains('liquid')) {
-          folder = 'content/liquids/';
+        switch (file.type) {
+          case FileType.item:
+            folder = 'content/items/';
+            break;
+          case FileType.liquid:
+            folder = 'content/liquids/';
+            break;
+          case FileType.unit:
+            folder = 'content/units/';
+            break;
+          case FileType.status:
+            folder = 'content/status/';
+            break;
+          case FileType.sector:
+            folder = 'content/sectors/';
+            break;
+          case FileType.weather:
+            folder = 'content/weathers/';
+            break;
+          case FileType.script:
+            folder = 'scripts/';
+            break;
+          case FileType.block:
+          default:
+            folder = 'content/blocks/';
+            break;
         }
 
         final bytes = utf8.encode(file.content);
