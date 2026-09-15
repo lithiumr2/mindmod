@@ -1158,7 +1158,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
           consumesObj["power"] = power;
         }
         if (itemsList.isNotEmpty) {
-          consumesObj["items"] = itemsList.map((r) => "\${r['item']}/\${r['amount']}").toList();
+          consumesObj["items"] = itemsList.map((r) => "${r['item']}/${r['amount']}").toList();
         }
         _properties["consumes"] = consumesObj;
       }
@@ -1423,7 +1423,9 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
       child: TextFormField(
         key: ValueKey("${_loadedFileId}_$key"),
         initialValue: value.toString(),
-        keyboardType: isNum ? const TextInputType.numberWithOptions(decimal: true, signed: true) : TextInputType.text,
+        keyboardType: isNum ? const TextInputType.numberWithOptions(decimal: true, signed: true) : (key == 'description' || key == 'details' ? TextInputType.multiline : TextInputType.text),
+        maxLines: (key == 'description' || key == 'details') ? 4 : 1,
+        minLines: 1,
         inputFormatters: isNum
             ? [FilteringTextInputFormatter.allow(RegExp(r'^-?[0-9]*\.?[0-9]*'))]
             : null,
@@ -1445,7 +1447,11 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
               _properties[key] = cleanVal;
             }
           } else {
-            _properties[key] = newVal;
+            if (key == 'name') {
+              _properties[key] = newVal.replaceAll(' ', '-').toLowerCase();
+            } else {
+              _properties[key] = newVal;
+            }
           }
           _saveChanges();
         },
