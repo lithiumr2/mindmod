@@ -33,6 +33,14 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     "UnitFactory", "Reconstructor", "UnitAssembler", "MessageBlock", "LogicBlock", "MemoryBlock", "StorageBlock", "CoreBlock"
   ];
 
+    final List<String> _categories = [
+    "turret", "production", "distribution", "liquid", "power", "defense", "crafting", "units", "effect", "logic", "campaign"
+  ];
+  
+  final List<String> _buildVisibilities = [
+    "shown", "hidden", "debugOnly", "editorOnly", "sandboxOnly"
+  ];
+
   // Tipos de unidades de Mindustry
   final List<String> _unitTypes = [
     "flying", "mech", "legs", "naval", "payload", "crawl", "tether", "unit"
@@ -43,7 +51,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     "copper", "lead", "metaglass", "graphite", "sand", "coal",
     "titanium", "thorium", "silicon", "plastanium", "phase-fabric",
     "surge-alloy", "spore-pod", "blast-compound", "pyratite",
-    "@beryllium", "@tungsten", "@oxide", "@carbide"
+    "beryllium", "tungsten", "oxide", "carbide"
   ];
 
   // Líquidos vanilla nativos de Mindustry con prefijo @
@@ -395,11 +403,11 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     } else if (fileType == FileType.weather) {
       base = List.from(_weatherProps);
     } else if (fileType == FileType.block) {
-      base = List.from(_baseBlockProps);
       final currentType = _properties["type"]?.toString().replaceAll("\"", "") ?? "Wall";
       if (_blockSpecificProps.containsKey(currentType)) {
         base.addAll(_blockSpecificProps[currentType]!);
       }
+      base.addAll(_baseBlockProps);
     }
     return base.where((p) => !_properties.containsKey(p)).toList();
   }
@@ -556,7 +564,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                         const SizedBox(width: 10),
                         Text(tr('add_prop'), style: const TextStyle(color: Colors.amber, fontSize: 11, fontWeight: FontWeight.bold)),
                         const SizedBox(width: 4),
-                        ...recommendedProps.take(12).map((prop) {
+                        ...recommendedProps.take(25).map((prop) {
                           return Padding(
                             padding: const EdgeInsets.only(right: 4),
                             child: ActionChip(
@@ -716,6 +724,20 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     }
 
     final availableItems = _getAllAvailableItems();
+    
+    final outputLiquidStr = _properties["outputLiquid"]?.toString().trim() ?? "";
+    String currentOutputLiquid = "";
+    double currentOutputLiquidAmount = 1.0;
+    if (outputLiquidStr.isNotEmpty) {
+      final parts = outputLiquidStr.split('/');
+      if (parts.length >= 2) {
+        currentOutputLiquid = parts[0].trim();
+        currentOutputLiquidAmount = double.tryParse(parts[1].trim()) ?? 1.0;
+      } else {
+        currentOutputLiquid = outputLiquidStr;
+      }
+    }
+    final availableLiquids = _getAllAvailableLiquids();
 
     return Container(
       decoration: BoxDecoration(
@@ -1141,6 +1163,127 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                 ),
               ],
             ),
+            
+          const SizedBox(height: 12),
+          
+          if (currentOutputLiquid.isEmpty)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text("Sin Líquido de Salida", style: TextStyle(color: Colors.white38, fontSize: 11)),
+                TextButton.icon(
+                  icon: const Icon(Icons.water_drop, size: 14, color: Colors.blueAccent),
+                  label: const Text("Añadir Líquido", style: TextStyle(color: Colors.blueAccent, fontSize: 11)),
+                  onPressed: () {
+                    final defaultLiq = availableLiquids.isNotEmpty ? availableLiquids.first : "water";
+                    _updateOutputLiquid(defaultLiq, 0.5);
+                  },
+                ),
+              ],
+            )
+          else
+            Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF18181C),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.white24),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: availableLiquids.contains(currentOutputLiquid) ? currentOutputLiquid : null,
+                        hint: Text(currentOutputLiquid, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                        dropdownColor: const Color(0xFF222228),
+                        isExpanded: true,
+                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                        items: availableLiquids.map((item) => DropdownMenuItem(value: item, child: Text(item, overflow: TextOverflow.ellipsis))).toList(),
+                        onChanged: (newVal) {
+                          if (newVal != null) {
+                            _updateOutputLiquid(newVal, currentOutputLiquidAmount);
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 2,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF18181C),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.white24),
+                    ),
+                    child: TextFormField(
+                      initialValue: currentOutputLiquidAmount.toString(),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^[0-9]*\.?[0-9]*'))],
+                      style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace'),
+                      decoration: const InputDecoration(
+                        border: InputBorder.none,
+                        isDense: true,
+                        hintText: "Líquido/seg",
+                        hintStyle: TextStyle(color: Colors.white24, fontSize: 12),
+                      ),
+                      onChanged: (val) {
+                        final amt = double.tryParse(val) ?? 0.0;
+                        _updateOutputLiquid(currentOutputLiquid, amt);
+                      },
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.redAccent, size: 16),
+                  onPressed: () {
+                    setState(() {
+                      _properties.remove("outputLiquid");
+                    });
+                    _saveChanges();
+                  },
+                ),
+              ],
+            ),
+          
+          const SizedBox(height: 12),
+          const Divider(color: Colors.white12),
+          const SizedBox(height: 12),
+          Text("Tiempo de Fabricación (craftTime)", style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF18181C),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: Colors.white24),
+            ),
+            child: TextFormField(
+              initialValue: _properties["craftTime"]?.toString() ?? "",
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace'),
+              decoration: const InputDecoration(
+                border: InputBorder.none,
+                isDense: true,
+                hintText: "Ej: 60 (ticks)",
+                hintStyle: TextStyle(color: Colors.white24, fontSize: 12),
+              ),
+              onChanged: (val) {
+                setState(() {
+                  if (val.isEmpty) {
+                    _properties.remove("craftTime");
+                  } else {
+                    _properties["craftTime"] = double.tryParse(val) ?? 60.0;
+                  }
+                });
+                _saveChanges();
+              },
+            ),
+          ),
         ],
       ),
     );
@@ -1167,6 +1310,13 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
   void _updateOutputItem(String item, int amount) {
     setState(() {
       _properties["outputItem"] = "$item/$amount";
+    });
+    _saveChanges();
+  }
+  
+  void _updateOutputLiquid(String liquid, double amount) {
+    setState(() {
+      _properties["outputLiquid"] = "$liquid/$amount";
     });
     _saveChanges();
   }
@@ -1229,6 +1379,51 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
             }
           },
           items: _unitTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+        ),
+      );
+    }
+
+    
+    // 2.5 Selector masivo para category
+    if (key == "category" && fileType == FileType.block) {
+      String current = value.toString().replaceAll("\"", "");
+      if (!_categories.contains(current)) current = _categories.first;
+      return DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: current,
+          dropdownColor: const Color(0xFF222228),
+          icon: const Icon(Icons.arrow_drop_down, color: Colors.amber),
+          isExpanded: true,
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+          onChanged: (val) {
+            if (val != null) {
+              setState(() { _properties[key] = val; });
+              _saveChanges();
+            }
+          },
+          items: _categories.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+        ),
+      );
+    }
+
+    // 2.6 Selector masivo para buildVisibility
+    if (key == "buildVisibility" && fileType == FileType.block) {
+      String current = value.toString().replaceAll("\"", "");
+      if (!_buildVisibilities.contains(current)) current = _buildVisibilities.first;
+      return DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: current,
+          dropdownColor: const Color(0xFF222228),
+          icon: const Icon(Icons.arrow_drop_down, color: Colors.amber),
+          isExpanded: true,
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+          onChanged: (val) {
+            if (val != null) {
+              setState(() { _properties[key] = val; });
+              _saveChanges();
+            }
+          },
+          items: _buildVisibilities.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
         ),
       );
     }
