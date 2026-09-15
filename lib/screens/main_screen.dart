@@ -262,7 +262,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                                                 ),
                                                 onFieldSubmitted: (val) {
                                                   if (val.trim().isNotEmpty) {
-                                                    ref.read(projectProvider.notifier).renameFile(activeFile.name, val.trim() + '.png');
+                                                    ref.read(projectProvider.notifier).renameFile(activeFile.name, val.trim().replaceAll(' ', '-').toLowerCase() + '.png');
                                                   }
                                                 },
                                               ),
