@@ -257,7 +257,9 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFBC02D), foregroundColor: Colors.black),
             onPressed: () {
               if (controller.text.isNotEmpty) {
-                final baseName = controller.text.split('.').first;
+                final rawName = controller.text.trim();
+                final safeName = rawName.replaceAll(' ', '-').toLowerCase();
+                final baseName = safeName.split('.').first;
                 
                 FileType determinedType = FileType.block;
                 if (folder == 'items') determinedType = FileType.item;
@@ -269,8 +271,8 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
                 ref.read(projectProvider.notifier).addFile(
                   ProjectFile(
                     name: (folder == 'scripts') 
-                        ? (controller.text.trim().endsWith('.js') ? controller.text.trim() : '${controller.text.trim()}.js') 
-                        : (controller.text.trim().endsWith('.hjson') ? controller.text.trim() : '${controller.text.trim()}.hjson'),
+                        ? (safeName.endsWith('.js') ? safeName : '${safeName}.js') 
+                        : (safeName.endsWith('.hjson') ? safeName : '${safeName}.hjson'),
                     type: determinedType,
                     content: defaultContent
                         .replaceAll('copper-wall', baseName)
