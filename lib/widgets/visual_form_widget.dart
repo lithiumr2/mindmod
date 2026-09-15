@@ -595,7 +595,11 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                 return Wrap(
                   spacing: 12,
                   runSpacing: 12,
-                  children: _properties.entries.map((entry) {
+                  children: [
+                    ..._properties.entries
+                        .where((e) => e.key != "consumes" && e.key != "outputItem")
+                        .map((entry) {
+
                     final key = entry.key;
                     final value = entry.value;
                     final isVital = key == "name" || (key == "type" && (activeFile.type == FileType.block || activeFile.type == FileType.unit));
@@ -657,7 +661,11 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                   ],
                 ),
               );
-            }).toList(),
+            
+                    }).toList(),
+                    if (activeFile.type == FileType.block)
+                      SizedBox(width: constraints.maxWidth, child: _buildConsumesAndOutputsCard()),
+                  ],
                 );
               },
             ),
@@ -842,6 +850,326 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
       ),
     );
   }
+
+
+  Widget _buildConsumesAndOutputsCard() {
+    // Lectura de datos
+    final consumes = _properties["consumes"];
+    double? power;
+    List<Map<String, dynamic>> itemsList = [];
+    
+    if (consumes is Map) {
+      if (consumes['power'] != null) {
+        power = double.tryParse(consumes['power'].toString());
+      }
+      final itemsMap = consumes['items'];
+      if (itemsMap is Map && itemsMap['items'] is List) {
+        for (var item in itemsMap['items']) {
+          final str = item.toString().trim();
+          final parts = str.split('/');
+          if (parts.length >= 2) {
+            itemsList.add({
+              'item': parts[0].trim(),
+              'amount': int.tryParse(parts[1].trim()) ?? 1,
+            });
+          }
+        }
+      }
+    }
+
+    final outputItemStr = _properties["outputItem"]?.toString().trim() ?? "";
+    String currentOutputItem = "";
+    int currentOutputAmount = 1;
+    if (outputItemStr.isNotEmpty) {
+      final parts = outputItemStr.split('/');
+      if (parts.length >= 2) {
+        currentOutputItem = parts[0].trim();
+        currentOutputAmount = int.tryParse(parts[1].trim()) ?? 1;
+      } else {
+        currentOutputItem = outputItemStr;
+      }
+    }
+
+    final availableItems = _getAllAvailableItems();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF222228),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white12),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.sync_alt, size: 16, color: Colors.amber),
+              const SizedBox(width: 8),
+              Text(tr('consumes_and_outputs'), style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          
+          // === SECCIÓN DE CONSUMO ===
+          Text(tr('consumes_title'), style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          
+          // Consumo de energía
+          Row(
+            children: [
+              Text(tr('power_energy'), style: const TextStyle(color: Colors.white54, fontSize: 12)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF18181C),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Colors.white24),
+                  ),
+                  child: TextFormField(
+                    key: ValueKey("consumes_power_${power ?? 'none'}"),
+                    initialValue: power?.toString() ?? "",
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace'),
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      isDense: true,
+                      hintText: "0.0",
+                      hintStyle: const TextStyle(color: Colors.white24, fontSize: 12),
+                    ),
+                    onChanged: (val) {
+                      _updateConsumes(double.tryParse(val), itemsList);
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          
+          // Consumo de ítems
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(tr('input_items'), style: const TextStyle(color: Colors.white54, fontSize: 12)),
+              TextButton.icon(
+                icon: const Icon(Icons.add, size: 14, color: Colors.amber),
+                label: Text(tr('add'), style: const TextStyle(color: Colors.amber, fontSize: 11)),
+                onPressed: () {
+                  final defaultItem = availableItems.isNotEmpty ? availableItems.first : "@copper";
+                  itemsList.add({'item': defaultItem, 'amount': 1});
+                  _updateConsumes(power, itemsList);
+                },
+              ),
+            ],
+          ),
+          
+          if (itemsList.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text(tr('no_input_items'), style: const TextStyle(color: Colors.white38, fontSize: 11)),
+            )
+          else
+            ...itemsList.asMap().entries.map((entry) {
+              final idx = entry.key;
+              final req = entry.value;
+              final currentItem = req['item'].toString();
+              final currentAmount = req['amount']?.toString() ?? '1';
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF18181C),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: Colors.white24),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: availableItems.contains(currentItem) ? currentItem : null,
+                            hint: Text(currentItem, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                            dropdownColor: const Color(0xFF222228),
+                            isExpanded: true,
+                            style: const TextStyle(color: Colors.white, fontSize: 12),
+                            items: availableItems.map((item) => DropdownMenuItem(value: item, child: Text(item, overflow: TextOverflow.ellipsis))).toList(),
+                            onChanged: (newVal) {
+                              if (newVal != null) {
+                                itemsList[idx]['item'] = newVal;
+                                _updateConsumes(power, itemsList);
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 2,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF18181C),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: Colors.white24),
+                        ),
+                        child: TextFormField(
+                          initialValue: currentAmount,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                          style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace'),
+                          decoration: InputDecoration(
+                            border: InputBorder.none,
+                            isDense: true,
+                            hintText: tr('qty'),
+                            hintStyle: const TextStyle(color: Colors.white24, fontSize: 12),
+                          ),
+                          onChanged: (val) {
+                            itemsList[idx]['amount'] = int.tryParse(val) ?? 1;
+                            _updateConsumes(power, itemsList);
+                          },
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.redAccent, size: 16),
+                      onPressed: () {
+                        itemsList.removeAt(idx);
+                        _updateConsumes(power, itemsList);
+                      },
+                    ),
+                  ],
+                ),
+              );
+            }),
+            
+          const Divider(color: Colors.white12, height: 24),
+
+          // === SECCIÓN DE SALIDA ===
+          Text(tr('output_title'), style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          
+          if (currentOutputItem.isEmpty)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(tr('no_output_configured'), style: const TextStyle(color: Colors.white38, fontSize: 11)),
+                TextButton.icon(
+                  icon: const Icon(Icons.add, size: 14, color: Colors.amber),
+                  label: Text(tr('add_output_item'), style: const TextStyle(color: Colors.amber, fontSize: 11)),
+                  onPressed: () {
+                    final defaultItem = availableItems.isNotEmpty ? availableItems.first : "@copper";
+                    _updateOutputItem(defaultItem, 1);
+                  },
+                ),
+              ],
+            )
+          else
+            Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF18181C),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.white24),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: availableItems.contains(currentOutputItem) ? currentOutputItem : null,
+                        hint: Text(currentOutputItem, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                        dropdownColor: const Color(0xFF222228),
+                        isExpanded: true,
+                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                        items: availableItems.map((item) => DropdownMenuItem(value: item, child: Text(item, overflow: TextOverflow.ellipsis))).toList(),
+                        onChanged: (newVal) {
+                          if (newVal != null) {
+                            _updateOutputItem(newVal, currentOutputAmount);
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 2,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF18181C),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.white24),
+                    ),
+                    child: TextFormField(
+                      initialValue: currentOutputAmount.toString(),
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace'),
+                      decoration: InputDecoration(
+                        border: InputBorder.none,
+                        isDense: true,
+                        hintText: tr('qty'),
+                        hintStyle: const TextStyle(color: Colors.white24, fontSize: 12),
+                      ),
+                      onChanged: (val) {
+                        final amt = int.tryParse(val) ?? 1;
+                        _updateOutputItem(currentOutputItem, amt);
+                      },
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.redAccent, size: 16),
+                  onPressed: () {
+                    setState(() {
+                      _properties.remove("outputItem");
+                    });
+                    _saveChanges();
+                  },
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _updateConsumes(double? power, List<Map<String, dynamic>> itemsList) {
+    setState(() {
+      if (power == null && itemsList.isEmpty) {
+        _properties.remove("consumes");
+      } else {
+        Map<String, dynamic> consumesObj = {};
+        if (power != null) {
+          consumesObj["power"] = power;
+        }
+        if (itemsList.isNotEmpty) {
+          consumesObj["items"] = {
+            "items": itemsList.map((r) => "${r['item']}/${r['amount']}").toList()
+          };
+        }
+        _properties["consumes"] = consumesObj;
+      }
+    });
+    _saveChanges();
+  }
+
+  void _updateOutputItem(String item, int amount) {
+    setState(() {
+      _properties["outputItem"] = "$item/$amount";
+    });
+    _saveChanges();
+  }
+
 
   void _updateRequirements(List<Map<String, dynamic>> itemsList) {
     final formatted = itemsList.map((r) => "${r['item']}/${r['amount']}").toList();
