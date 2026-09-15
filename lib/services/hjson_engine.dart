@@ -5,13 +5,43 @@ class HjsonEngine {
     buffer.writeln('{');
     data.forEach((key, value) {
       if (value == null) return;
-      if (value is String && value.trim().isEmpty && key != 'name' && key != 'description') return;
+      final cleanK = _cleanKey(key);
+      if (value is String && value.trim().isEmpty && cleanK != 'name' && cleanK != 'description') return;
       
-      final formatted = _formatValue(key, value, indentLevel: 1);
-      buffer.writeln('  $key: $formatted');
+      final formatted = _formatValue(cleanK, value, indentLevel: 1);
+      buffer.writeln('  $cleanK: $formatted');
     });
     buffer.writeln('}');
     return buffer.toString();
+  }
+
+  static String _cleanKey(String raw) {
+    var k = raw.trim();
+    while (k.startsWith('"') && k.endsWith('"') && k.length >= 2) {
+      k = k.substring(1, k.length - 1).trim();
+    }
+    return k;
+  }
+
+  /// Desinfecta cualquier acumulación de barras invertidas o comillas recursivas
+  static String cleanEscapedString(String str) {
+    var val = str.trim();
+    if (val.endsWith(',')) {
+      val = val.substring(0, val.length - 1).trim();
+    }
+    while (true) {
+      final prev = val;
+      if (val.startsWith('"') && val.endsWith('"') && val.length >= 2) {
+        val = val.substring(1, val.length - 1);
+      }
+      val = val.replaceAll(r'\"', '"').replaceAll(r'\\', r'\');
+      if (val.startsWith(r'\"') && val.endsWith(r'\"') && val.length >= 4) {
+        val = val.substring(2, val.length - 2);
+      }
+      val = val.replaceAll(RegExp(r'\\+$'), '').replaceAll(RegExp(r'^\\+'), '');
+      if (val == prev) break;
+    }
+    return val.trim();
   }
 
   static String _formatValue(String key, dynamic value, {int indentLevel = 1}) {
@@ -36,22 +66,25 @@ class HjsonEngine {
       final mapBuffer = StringBuffer();
       mapBuffer.writeln('{');
       value.forEach((k, v) {
-        mapBuffer.writeln('$indent  $k: ${_formatValue(k.toString(), v, indentLevel: indentLevel + 1)}');
+        final subKey = _cleanKey(k.toString());
+        mapBuffer.writeln('$indent  $subKey: ${_formatValue(subKey, v, indentLevel: indentLevel + 1)}');
       });
       mapBuffer.write('$indent}');
       return mapBuffer.toString();
     }
-    final strVal = value.toString().trim();
+    final rawStr = value.toString().trim();
+    final strVal = cleanEscapedString(rawStr);
+
     // Verificación de número estricto si no es un campo textual obligatorio
-    if (key != 'name' && key != 'description' && key != 'type' && key != 'category' && key != 'shootSound' && key != 'version' && key != 'minGameVersion' && key != 'author') {
+    if (key != 'name' && key != 'displayName' && key != 'description' && key != 'type' && key != 'category' && key != 'shootSound' && key != 'version' && key != 'minGameVersion' && key != 'author') {
       if (int.tryParse(strVal) != null) return int.parse(strVal).toString();
       if (double.tryParse(strVal) != null) return double.parse(strVal).toString();
       if (strVal.toLowerCase() == 'true') return 'true';
       if (strVal.toLowerCase() == 'false') return 'false';
     }
-    // Comillas para strings con espacios o sintaxis Hjson
-    if (strVal.contains(' ') || strVal.contains('{') || strVal.contains('}') || strVal.contains(':') || strVal.contains('[')) {
-      final escaped = strVal.replaceAll('"', r'\"');
+    // Comillas para strings con caracteres especiales o espacios
+    if (strVal.contains(' ') || strVal.contains('{') || strVal.contains('}') || strVal.contains(':') || strVal.contains('[') || strVal.contains(']') || strVal.contains('#') || strVal.contains(',') || strVal.contains('"')) {
+      final escaped = strVal.replaceAll(r'\', r'\\').replaceAll('"', r'\"');
       return '"$escaped"';
     }
     return strVal.isEmpty ? '""' : strVal;
@@ -70,8 +103,16 @@ class HjsonEngine {
       if (trimmed.startsWith('#') || trimmed.startsWith('//')) continue;
       for (int c = 0; c < line.length; c++) {
         final char = line[c];
-        if (char == '"' && (c == 0 || line[c - 1] != '\\')) {
-          inQuote = !inQuote;
+        if (char == '"') {
+          int backslashCount = 0;
+          int p = c - 1;
+          while (p >= 0 && line[p] == r'\') {
+            backslashCount++;
+            p--;
+          }
+          if (backslashCount % 2 == 0) {
+            inQuote = !inQuote;
+          }
         }
         if (!inQuote) {
           if (char == '{') braceCount++;
@@ -101,10 +142,18 @@ class HjsonEngine {
     return errors;
   }
 
-  /// Parser con soporte de números, booleanos, listas y estructuras
+  /// Parser con soporte de números, booleanos, listas, mapas anidados y estructuras
   static Map<String, dynamic> parse(String content) {
+    var text = content.trim();
+    if (text.startsWith('{') && text.endsWith('}') && text.length >= 2) {
+      text = text.substring(1, text.length - 1).trim();
+    }
+    return _parseBlock(text);
+  }
+
+  static Map<String, dynamic> _parseBlock(String blockText) {
     final Map<String, dynamic> result = {};
-    final lines = content.split('\n');
+    final lines = blockText.split('\n');
     int i = 0;
     while (i < lines.length) {
       final line = lines[i];
@@ -115,8 +164,41 @@ class HjsonEngine {
 
       final colonIndex = trimmed.indexOf(':');
       if (colonIndex != -1) {
-        final key = trimmed.substring(0, colonIndex).trim();
+        final key = _cleanKey(trimmed.substring(0, colonIndex));
         var rawVal = trimmed.substring(colonIndex + 1).trim();
+
+        // Si empieza un bloque/objeto con {
+        if (rawVal.startsWith('{')) {
+          if (rawVal.endsWith('}') && rawVal.length >= 2) {
+            result[key] = _parseBlock(rawVal.substring(1, rawVal.length - 1));
+          } else {
+            final objLines = <String>[];
+            final firstPart = rawVal.substring(1).trim();
+            if (firstPart.isNotEmpty && firstPart != '}') {
+              objLines.add(firstPart);
+            }
+            int depth = 1;
+            while (i < lines.length && depth > 0) {
+              final nextLine = lines[i];
+              i++;
+              for (int c = 0; c < nextLine.length; c++) {
+                final ch = nextLine[c];
+                if (ch == '{') depth++;
+                if (ch == '}') depth--;
+              }
+              if (depth == 0) {
+                final closeIdx = nextLine.lastIndexOf('}');
+                final beforeClose = nextLine.substring(0, closeIdx).trim();
+                if (beforeClose.isNotEmpty) objLines.add(beforeClose);
+                break;
+              } else {
+                objLines.add(nextLine);
+              }
+            }
+            result[key] = _parseBlock(objLines.join('\n'));
+          }
+          continue;
+        }
 
         // Si empieza una lista con [
         if (rawVal.startsWith('[')) {
@@ -178,21 +260,15 @@ class HjsonEngine {
   }
 
   static dynamic _cleanItem(String raw) {
-    var val = raw.trim();
-    if (val.startsWith('"') && val.endsWith('"') && val.length >= 2) {
-      val = val.substring(1, val.length - 1);
-    }
-    return _parseScalar(val);
+    return _parseScalar(raw);
   }
 
   static dynamic _parseScalar(String rawVal) {
-    if (rawVal.startsWith('"') && rawVal.endsWith('"') && rawVal.length >= 2) {
-      return rawVal.substring(1, rawVal.length - 1);
-    }
-    if (rawVal == 'true') return true;
-    if (rawVal == 'false') return false;
-    if (int.tryParse(rawVal) != null) return int.parse(rawVal);
-    if (double.tryParse(rawVal) != null) return double.parse(rawVal);
-    return rawVal;
+    final cleaned = cleanEscapedString(rawVal);
+    if (cleaned == 'true') return true;
+    if (cleaned == 'false') return false;
+    if (int.tryParse(cleaned) != null) return int.parse(cleaned);
+    if (double.tryParse(cleaned) != null) return double.parse(cleaned);
+    return cleaned;
   }
 }
