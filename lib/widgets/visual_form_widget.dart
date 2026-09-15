@@ -40,16 +40,16 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
 
   // Ítems vanilla nativos de Mindustry con prefijo @
   static const List<String> _vanillaItems = [
-    "@copper", "@lead", "@metaglass", "@graphite", "@sand", "@coal",
-    "@titanium", "@thorium", "@silicon", "@plastanium", "@phase-fabric",
-    "@surge-alloy", "@spore-pod", "@blast-compound", "@pyratite",
+    "copper", "lead", "metaglass", "graphite", "sand", "coal",
+    "titanium", "thorium", "silicon", "plastanium", "phase-fabric",
+    "surge-alloy", "spore-pod", "blast-compound", "pyratite",
     "@beryllium", "@tungsten", "@oxide", "@carbide"
   ];
 
   // Líquidos vanilla nativos de Mindustry con prefijo @
   static const List<String> _vanillaLiquids = [
-    "@water", "@slag", "@oil", "@cryofluid", "@neoplasm", "@arkycite",
-    "@ozone", "@hydrogen", "@nitrogen", "@gallium"
+    "water", "slag", "oil", "cryofluid", "neoplasm", "arkycite",
+    "ozone", "hydrogen", "nitrogen", "@gallium"
   ];
 
   final Map<String, List<String>> _blockSpecificProps = {
@@ -192,7 +192,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
       } else if (_colorProps.contains(key)) {
         _properties[key] = "ffffff";
       } else if (key == "requirements" || key == "outputItems" || key == "results") {
-        _properties[key] = ["@copper/20"];
+        _properties[key] = ["copper/20"];
       } else {
         _properties[key] = "";
       }
@@ -213,8 +213,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     for (var f in files) {
       if (f.type == FileType.item) {
         final clean = f.name.replaceAll(".hjson", "");
-        items.add("@$clean");
-        items.add(clean);
+                items.add(clean);
       }
     }
     return items.toList();
@@ -226,8 +225,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     for (var f in files) {
       if (f.type == FileType.liquid) {
         final clean = f.name.replaceAll(".hjson", "");
-        liquids.add("@$clean");
-        liquids.add(clean);
+                liquids.add(clean);
       }
     }
     return liquids.toList();
@@ -249,7 +247,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
           "hasPower": true,
           "consumesPower": true,
           "category": "production",
-          "requirements": ["@copper/30", "@lead/20"]
+          "requirements": ["copper/30", "lead/20"]
         };
       } else if (presetKey == "turret") {
         _properties = {
@@ -264,7 +262,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
           "targetGround": true,
           "shootSound": "shoot",
           "category": "turret",
-          "requirements": ["@copper/75", "@lead/50"]
+          "requirements": ["copper/75", "lead/50"]
         };
       } else if (presetKey == "crafter") {
         _properties = {
@@ -279,8 +277,8 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
           "liquidCapacity": 20,
           "hasPower": true,
           "category": "crafting",
-          "outputItem": "@silicon",
-          "requirements": ["@lead/60", "@copper/40"]
+          "outputItem": "silicon",
+          "requirements": ["lead/60", "copper/40"]
         };
       } else if (presetKey == "unit_flying") {
         _properties = {
@@ -745,7 +743,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                 icon: const Icon(Icons.add, size: 15, color: Colors.amber),
                 label: Text(tr('add'), style: const TextStyle(color: Colors.amber, fontSize: 11)),
                 onPressed: () {
-                  final defaultItem = availableItems.isNotEmpty ? availableItems.first : "@copper";
+                  final defaultItem = availableItems.isNotEmpty ? availableItems.first : "copper";
                   itemsList.add({'item': defaultItem, 'amount': 20});
                   _updateRequirements(itemsList);
                 },
@@ -963,7 +961,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                 icon: const Icon(Icons.add, size: 14, color: Colors.amber),
                 label: Text(tr('add'), style: const TextStyle(color: Colors.amber, fontSize: 11)),
                 onPressed: () {
-                  final defaultItem = availableItems.isNotEmpty ? availableItems.first : "@copper";
+                  final defaultItem = availableItems.isNotEmpty ? availableItems.first : "copper";
                   itemsList.add({'item': defaultItem, 'amount': 1});
                   _updateConsumes(power, itemsList);
                 },
@@ -1069,7 +1067,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                   icon: const Icon(Icons.add, size: 14, color: Colors.amber),
                   label: Text(tr('add_output_item'), style: const TextStyle(color: Colors.amber, fontSize: 11)),
                   onPressed: () {
-                    final defaultItem = availableItems.isNotEmpty ? availableItems.first : "@copper";
+                    final defaultItem = availableItems.isNotEmpty ? availableItems.first : "copper";
                     _updateOutputItem(defaultItem, 1);
                   },
                 ),
