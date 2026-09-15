@@ -862,17 +862,22 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
       if (consumes['power'] != null) {
         power = double.tryParse(consumes['power'].toString());
       }
-      final itemsMap = consumes['items'];
-      if (itemsMap is Map && itemsMap['items'] is List) {
-        for (var item in itemsMap['items']) {
-          final str = item.toString().trim();
-          final parts = str.split('/');
-          if (parts.length >= 2) {
-            itemsList.add({
-              'item': parts[0].trim(),
-              'amount': int.tryParse(parts[1].trim()) ?? 1,
-            });
-          }
+      final itemsField = consumes['items'];
+      List<dynamic> rawList = [];
+      if (itemsField is List) {
+        rawList = itemsField;
+      } else if (itemsField is Map && itemsField['items'] is List) {
+        rawList = itemsField['items'];
+      }
+      
+      for (var item in rawList) {
+        final str = item.toString().trim();
+        final parts = str.split('/');
+        if (parts.length >= 2) {
+          itemsList.add({
+            'item': parts[0].trim(),
+            'amount': int.tryParse(parts[1].trim()) ?? 1,
+          });
         }
       }
     }
@@ -1153,9 +1158,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
           consumesObj["power"] = power;
         }
         if (itemsList.isNotEmpty) {
-          consumesObj["items"] = {
-            "items": itemsList.map((r) => "${r['item']}/${r['amount']}").toList()
-          };
+          consumesObj["items"] = itemsList.map((r) => "\${r['item']}/\${r['amount']}").toList();
         }
         _properties["consumes"] = consumesObj;
       }
