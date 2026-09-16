@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/project_file.dart';
+import '../services/storage_service.dart';
 
 class ProjectState {
   final List<ProjectFile> files;
@@ -30,29 +32,60 @@ class ProjectNotifier extends StateNotifier<ProjectState> {
   final String projectId;
 
   ProjectNotifier(this.projectId) : super(ProjectState(files: [], activeFileName: 'mod.json')) {
-    _loadFromPrefs();
+    _loadFromDisk();
   }
 
-  String get _storageKey => 'mindmod_project_files_$projectId';
-
-  // Cargar datos persistentes al iniciar
-  Future<void> _loadFromPrefs() async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonString = prefs.getString(_storageKey);
-
-    if (jsonString != null && jsonString.isNotEmpty) {
-      try {
-        final List<dynamic> decodedList = jsonDecode(jsonString);
-        final loadedFiles = decodedList.map((item) => ProjectFile.fromJson(item)).toList();
-        state = state.copyWith(
-          files: loadedFiles,
-          activeFileName: loadedFiles.isNotEmpty ? loadedFiles.first.name : null,
-        );
-        return;
-      } catch (_) {}
+  Future<void> _loadFromDisk() async {
+    final modsDir = await StorageService.getModsDirectory();
+    final projectDir = Directory('${modsDir.path}/$projectId');
+    
+    if (!await projectDir.exists()) {
+      await projectDir.create(recursive: true);
+      _loadDefaultFiles();
+      return;
     }
 
-    _loadDefaultFiles();
+    final List<ProjectFile> loadedFiles = [];
+    
+    final entities = projectDir.listSync(recursive: true);
+    for (var entity in entities) {
+      if (entity is File) {
+        final relativePath = entity.path.replaceFirst('${projectDir.path}/', '');
+        final type = StorageService.getTypeFromPath(relativePath);
+        final name = relativePath.split('/').last;
+        
+        // Load text files into content, or encode images to base64
+        String content = '';
+        if (type != FileType.image) {
+          try {
+            content = await entity.readAsString();
+          } catch (_) {}
+        } else {
+          try {
+            final bytes = await (entity as File).readAsBytes();
+            content = base64Encode(bytes);
+          } catch (_) {}
+        }
+        
+        loadedFiles.add(ProjectFile(
+          name: type == FileType.image && relativePath.startsWith('sprites/') ? relativePath : name,
+          type: type,
+          content: content,
+        ));
+      }
+    }
+    
+    if (loadedFiles.isEmpty) {
+      _loadDefaultFiles();
+      return;
+    }
+
+    state = state.copyWith(
+      files: loadedFiles,
+      activeFileName: loadedFiles.any((f) => f.name == 'mod.json') 
+          ? 'mod.json' 
+          : loadedFiles.first.name,
+    );
   }
 
   void _loadDefaultFiles() {
@@ -60,7 +93,7 @@ class ProjectNotifier extends StateNotifier<ProjectState> {
       ProjectFile(
         name: 'mod.json',
         type: FileType.modJson,
-        content: '{\n  "name": "nuevo-mod",\n  "displayName": "Mi Super Mod",\n  "author": "Creador",\n  "description": "Un mod increíble para Mindustry",\n  "version": "1.0",\n  "minGameVersion": "146"\n}',
+        content: '{\n  "name": "$projectId",\n  "displayName": "My Super Mod",\n  "author": "Creator",\n  "description": "An awesome Mindustry mod",\n  "version": "1.0",\n  "minGameVersion": "146"\n}',
       ),
       ProjectFile(
         name: 'copper-wall.hjson',
@@ -68,14 +101,33 @@ class ProjectNotifier extends StateNotifier<ProjectState> {
         content: '{\n  name: "copper-wall"\n  type: "Wall"\n  health: 200\n  size: 1\n}',
       ),
     ];
+    
+    // Save to disk immediately
+    for (var file in defaults) {
+      _saveFileToDisk(file);
+    }
+    
     state = state.copyWith(files: defaults, activeFileName: 'copper-wall.hjson');
-    _saveToPrefs();
   }
 
-  Future<void> _saveToPrefs() async {
-    final prefs = await SharedPreferences.getInstance();
-    final encodedData = jsonEncode(state.files.map((f) => f.toJson()).toList());
-    await prefs.setString(_storageKey, encodedData);
+  Future<void> _saveFileToDisk(ProjectFile file) async {
+    final modsDir = await StorageService.getModsDirectory();
+    final relativePath = StorageService.getRelativePathForType(file);
+    final physicalFile = File('${modsDir.path}/$projectId/$relativePath');
+    await physicalFile.parent.create(recursive: true);
+    
+    if (!file.isImage) {
+      await physicalFile.writeAsString(file.content);
+    }
+  }
+
+  Future<void> _deleteFileFromDisk(ProjectFile file) async {
+    final modsDir = await StorageService.getModsDirectory();
+    final relativePath = StorageService.getRelativePathForType(file);
+    final physicalFile = File('${modsDir.path}/$projectId/$relativePath');
+    if (await physicalFile.exists()) {
+      await physicalFile.delete();
+    }
   }
 
   void selectFile(String fileName) {
@@ -85,55 +137,53 @@ class ProjectNotifier extends StateNotifier<ProjectState> {
   void setActiveFile(ProjectFile file) {
     selectFile(file.name);
   }
-
-    void updateFileContent(String fileName, String newContent) {
+  
+  void updateFileContent(String fileName, String newContent) {
     final updatedFiles = state.files.map((file) {
       if (file.name == fileName) {
-        return file.copyWith(content: newContent);
+        final newFile = file.copyWith(content: newContent);
+        _saveFileToDisk(newFile); // Async save
+        return newFile;
       }
       return file;
     }).toList();
     state = state.copyWith(files: updatedFiles);
-    _saveToPrefs();
   }
 
   void updateActiveFileContent(String newContent) {
     if (state.activeFileName == null) return;
-    final updatedFiles = state.files.map((file) {
-      if (file.name == state.activeFileName) {
-        return file.copyWith(content: newContent);
-      }
-      return file;
-    }).toList();
-
-    state = state.copyWith(files: updatedFiles);
-    _saveToPrefs();
+    updateFileContent(state.activeFileName!, newContent);
   }
 
   void addFile(ProjectFile file) {
     final updatedFiles = [...state.files, file];
     state = state.copyWith(files: updatedFiles, activeFileName: file.name);
-    _saveToPrefs();
+    _saveFileToDisk(file);
   }
 
   void createNewFile(String name, FileType type, {String content = ''}) {
     addFile(ProjectFile(name: name, type: type, content: content));
   }
 
-  void renameFile(String oldName, String newName) {
+  Future<void> renameFile(String oldName, String newName) async {
     if (oldName == newName) return;
     
-    // Si es un sprite y no tiene prefijo de carpeta, podemos forzar sprites/ o dejarlo igual
-    // Depende del usuario, pero dejaremos el nombre tal cual (agregando la carpeta si estaba antes)
     String finalName = newName;
-    if (oldName.startsWith('sprites/') && !newName.startsWith('sprites/')) {
+    if (oldName.startsWith('sprites/') && !newName.startsWith('sprites/')) { 
        finalName = 'sprites/' + newName;
     }
+    
+    final fileToRename = state.files.firstWhere((f) => f.name == oldName);
+    
+    // Delete old
+    await _deleteFileFromDisk(fileToRename);
+    
+    // Create new
+    final renamedFile = fileToRename.copyWith(name: finalName);
+    await _saveFileToDisk(renamedFile);
 
     final updatedFiles = state.files.map((f) {
-      if (f.name == oldName) {
-        return f.copyWith(name: finalName);
-      }
+      if (f.name == oldName) return renamedFile;
       return f;
     }).toList();
     
@@ -143,17 +193,18 @@ class ProjectNotifier extends StateNotifier<ProjectState> {
     }
     
     state = state.copyWith(files: updatedFiles, activeFileName: nextActive);
-    _saveToPrefs();
   }
 
-  void deleteFile(String fileName) {
+  Future<void> deleteFile(String fileName) async {
+    final fileToDelete = state.files.firstWhere((f) => f.name == fileName);
+    await _deleteFileFromDisk(fileToDelete);
+
     final updatedFiles = state.files.where((f) => f.name != fileName).toList();
     String? nextActive = state.activeFileName;
     if (state.activeFileName == fileName) {
       nextActive = updatedFiles.isNotEmpty ? updatedFiles.first.name : null;
     }
     state = state.copyWith(files: updatedFiles, activeFileName: nextActive);
-    _saveToPrefs();
   }
 }
 
@@ -169,43 +220,62 @@ class ProjectsListNotifier extends StateNotifier<List<Map<String, String>>> {
   }
   
   Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
-    final str = prefs.getString('mindmod_projects_list');
-    if (str != null) {
-      try {
-        final List<dynamic> decoded = jsonDecode(str);
-        state = decoded.map((e) => Map<String, String>.from(e)).toList();
-      } catch (_) {}
+    final modsDir = await StorageService.getModsDirectory();
+    final entities = modsDir.listSync();
+    
+    List<Map<String, String>> projects = [];
+    for (var entity in entities) {
+      if (entity is Directory) {
+        final id = entity.path.split(Platform.pathSeparator).last;
+        String name = id;
+        
+        // Try to read mod.json for display name
+        final modJson = File('${entity.path}/mod.json');
+        if (await modJson.exists()) {
+          try {
+            final content = await modJson.readAsString();
+            final parsed = jsonDecode(content);
+            if (parsed['displayName'] != null) {
+              name = parsed['displayName'];
+            }
+          } catch (_) {}
+        }
+        
+        projects.add({'id': id, 'name': name});
+      }
     }
-    if (state.isEmpty) {
-      state = [{'id': 'default', 'name': 'My First Mod'}];
-      _save();
+    
+    if (projects.isEmpty) {
+      // Default will be created when loaded
+      projects.add({'id': 'default', 'name': 'My First Mod'});
     }
-  }
-  
-  Future<void> _save() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('mindmod_projects_list', jsonEncode(state));
+    
+    state = projects;
   }
   
   String addProject(String name) {
-    final id = DateTime.now().millisecondsSinceEpoch.toString();
+    final id = name.toLowerCase().replaceAll(RegExp(r'\s+'), '_');
     state = [...state, {'id': id, 'name': name}];
-    _save();
     return id;
   }
 
   void renameProject(String id, String newName) {
+    // Note: We are not renaming the folder here to keep it simple, just updating the list
+    // A proper rename would rename the folder on disk. For now, we just update state 
+    // and ideally the mod.json
     state = state.map((p) {
       if (p['id'] == id) return {'id': id, 'name': newName};
       return p;
     }).toList();
-    _save();
   }
   
-  void deleteProject(String id) {
+  Future<void> deleteProject(String id) async {
+    final modsDir = await StorageService.getModsDirectory();
+    final projectDir = Directory('${modsDir.path}/$id');
+    if (await projectDir.exists()) {
+      await projectDir.delete(recursive: true);
+    }
     state = state.where((p) => p['id'] != id).toList();
-    _save();
   }
 }
 
