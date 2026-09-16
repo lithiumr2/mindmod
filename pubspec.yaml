@@ -32,9 +32,9 @@ dependency_overrides:
   
 
 
-flutter_icons:
+flutter_launcher_icons:
   android: "launcher_icon"
-  ios: true
+  ios: false
   image_path: "assets/icon.jpg"
 
 
