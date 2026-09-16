@@ -34,24 +34,23 @@ jobs:
           sed -i 's/compileSdk = .*/compileSdk = 34/' android/app/build.gradle
           sed -i 's/targetSdk = .*/targetSdk = 34/' android/app/build.gradle
           
-          cat << 'EOF' >> android/build.gradle
-          
-subprojects {
-    afterEvaluate { project ->
-        if (project.hasProperty('android')) {
-            project.android {
-                if (namespace == null) {
-                    namespace project.group
-                }
-                compileSdkVersion 34
-                defaultConfig {
-                    targetSdkVersion 34
-                }
-            }
-        }
-    }
-}
-EOF
+          echo "
+          subprojects {
+              afterEvaluate { project ->
+                  if (project.hasProperty('android')) {
+                      project.android {
+                          if (namespace == null) {
+                              namespace project.group
+                          }
+                          compileSdkVersion 34
+                          defaultConfig {
+                              targetSdkVersion 34
+                          }
+                      }
+                  }
+              }
+          }
+          " >> android/build.gradle
       - name: Instalar dependencias
         run: flutter pub get
 
