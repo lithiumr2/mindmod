@@ -5,6 +5,8 @@ import '../providers/locale_provider.dart';
 import 'package:file_picker/file_picker.dart' as fp;
 import 'package:archive/archive.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/storage_service.dart';
+import 'dart:io';
 import 'dart:convert';
 import '../models/project_file.dart';
 import 'dart:typed_data';
@@ -50,7 +52,7 @@ String _getTr(WidgetRef ref, String key) => ref.read(localeProvider.notifier).tr
                files.add(ProjectFile(name: filename.split('/').last, type: type, content: contentStr));
             } else if (filename.endsWith('.png')) {
                final base64Str = base64Encode(file.content as List<int>);
-               files.add(ProjectFile(name: filename.split('/').last, type: FileType.other, content: base64Str));
+               files.add(ProjectFile(name: 'sprites/' + filename.split('/').last, type: FileType.image, content: base64Str));
             }
           }
         }
@@ -59,9 +61,18 @@ String _getTr(WidgetRef ref, String key) => ref.read(localeProvider.notifier).tr
           files.add(ProjectFile(name: 'mod.json', type: FileType.modJson, content: '{\n  "name": "imported-mod"\n}'));
         }
         
-        final prefs = await SharedPreferences.getInstance();
-        final encodedData = jsonEncode(files.map((f) => f.toJson()).toList());
-        await prefs.setString('mindmod_project_files_$newId', encodedData);
+        final modsDir = await StorageService.getModsDirectory();
+        for (final projFile in files) {
+          final relativePath = StorageService.getRelativePathForType(projFile);
+          final physicalFile = File('${modsDir.path}/$newId/$relativePath');
+          await physicalFile.parent.create(recursive: true);
+          
+          if (projFile.isImage || projFile.binaryContent != null) {
+            await physicalFile.writeAsBytes(projFile.binaryContent!);
+          } else {
+            await physicalFile.writeAsString(projFile.content);
+          }
+        }
         
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${_getTr(ref, 'import_success')}: $projName')));
       }
