@@ -31,26 +31,27 @@ jobs:
           flutter create . --platforms=android --org=com.mindmod
       - name: Forzar compileSdk y minSdk en el proyecto y sus dependencias
         run: |
-          find android -name "build.gradle" -exec sed -i -e 's/compileSdk[[:space:]]*=[[:space:]]*flutter.compileSdkVersion/compileSdk = 34/g' -e 's/compileSdkVersion[[:space:]]*=[[:space:]]*flutter.compileSdkVersion/compileSdkVersion = 34/g' -e 's/compileSdkVersion[[:space:]]*[0-9]\+/compileSdkVersion 34/g' -e 's/compileSdk[[:space:]]*[0-9]\+/compileSdk 34/g' -e 's/targetSdk[[:space:]]*=[[:space:]]*flutter.targetSdkVersion/targetSdk = 34/g' -e 's/targetSdkVersion[[:space:]]*=[[:space:]]*flutter.targetSdkVersion/targetSdkVersion = 34/g' -e 's/targetSdkVersion[[:space:]]*[0-9]\+/targetSdkVersion 34/g' -e 's/targetSdk[[:space:]]*[0-9]\+/targetSdk 34/g' {} \;
-          if [ -f android/build.gradle ]; then
-            sed -i "s/ext.kotlin_version = '[^']*'/ext.kotlin_version = '1.9.10'/g" android/build.gradle
-            sed -i 's/ext.kotlin_version = "[^"]*"/ext.kotlin_version = "1.9.10"/g' android/build.gradle
-            cat << 'GRADLE_EXT' >> android/build.gradle
-          subprojects {
-              afterEvaluate { project ->
-                  if (project.hasProperty('android')) {
-                      project.android {
-                          compileSdkVersion 34
-                          defaultConfig {
-                              minSdkVersion 21
-                              targetSdkVersion 34
-                          }
-                      }
-                  }
-              }
-          }
-          GRADLE_EXT
-          fi
+          sed -i 's/compileSdk = .*/compileSdk = 34/' android/app/build.gradle
+          sed -i 's/targetSdk = .*/targetSdk = 34/' android/app/build.gradle
+          
+          cat << 'EOF' >> android/build.gradle
+          
+subprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty('android')) {
+            project.android {
+                if (namespace == null) {
+                    namespace project.group
+                }
+                compileSdkVersion 34
+                defaultConfig {
+                    targetSdkVersion 34
+                }
+            }
+        }
+    }
+}
+EOF
       - name: Instalar dependencias
         run: flutter pub get
 
