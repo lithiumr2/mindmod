@@ -7,6 +7,7 @@ import '../models/project_file.dart';
 import '../providers/project_provider.dart';
 import '../services/hjson_engine.dart';
 import '../providers/locale_provider.dart';
+import 'type_properties/type_properties_dispatcher.dart';
 
 class VisualFormWidget extends ConsumerStatefulWidget {
   const VisualFormWidget({super.key});
@@ -431,6 +432,33 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     }
   }
 
+  List<String> _getHandledProps(FileType fileType, String? type) {
+    if (fileType == FileType.unit) {
+      return ["speed", "hitSize", "health", "armor", "itemCapacity", "rotateSpeed", "isEnemy", "weapons", "engineOffset", "engineSize", "lowAltitude", "circleTarget", "mechStepParticles", "stepShake", "legCount", "legLength", "legSpeed", "hovering", "allowLegStep", "trailLength", "waterVision"];
+    }
+    if (fileType == FileType.block) {
+      switch (type) {
+        case 'Drill': case 'BurstDrill': case 'ImpactDrill': return ["tier", "drillTime", "warmupSpeed", "liquidBoostIntensity", "drawMineItem", "drillEffect", "updateEffect"];
+        case 'BeamDrill': return ["range", "tier", "drillTime", "sparkColor"];
+        case 'Pump': case 'SolidPump': case 'Fracker': return ["pumpAmount", "result"];
+        case 'GenericCrafter': case 'Incinerator': return ["craftTime", "craftEffect", "updateEffect", "consumes", "outputItem", "outputItems", "outputLiquid", "outputLiquids"];
+        case 'HeatCrafter': return ["craftTime", "craftEffect", "updateEffect", "consumes", "outputItem", "outputItems", "outputLiquid", "outputLiquids", "heatRequirement", "maxEfficiency"];
+        case 'Separator': return ["craftTime", "results"];
+        case 'ConsumeGenerator': case 'ThermalGenerator': case 'SolarGenerator': return ["powerProduction", "itemDuration", "generateEffect", "consumes"];
+        case 'NuclearReactor': case 'ImpactReactor': return ["powerProduction", "heating", "smokeThreshold", "flashThreshold", "explosionRadius", "explosionDamage"];
+        case 'PowerNode': case 'SurgeTower': case 'BeamNode': return ["maxNodes", "laserRange", "laserColor1", "laserColor2"];
+        case 'ItemTurret': return ["range", "reload", "inaccuracy", "recoil", "targetAir", "targetGround", "ammoTypes"];
+        case 'LiquidTurret': return ["range", "reload", "inaccuracy", "recoil", "targetAir", "targetGround", "extinguish", "ammoTypes"];
+        case 'PowerTurret': case 'LaserTurret': case 'ContinuousTurret': case 'PointDefenseTurret': return ["range", "reload", "chargeTime", "targetAir", "targetGround", "shootType"];
+        case 'Wall': case 'ShieldWall': case 'Door': return ["chanceDeflect", "lightningChance", "lightningDamage", "insulated", "absorbLasers"];
+        case 'ForceProjector': case 'MendProjector': case 'OverdriveProjector': case 'OverdriveDome': return ["radius", "shieldHealth", "cooldownNormal", "cooldownLiquid", "phaseRadiusBoost", "phaseShieldBoost"];
+        case 'Conveyor': case 'ArmoredConveyor': case 'PlastaniumConveyor': case 'StackConveyor': case 'Duct': return ["speed", "displayedSpeed"];
+        case 'MassDriver': return ["range", "reload", "itemCapacity", "bulletSpeed"];
+      }
+    }
+    return [];
+  }
+
   @override
   Widget build(BuildContext context) {
     final activeFile = ref.watch(projectProvider).activeFile;
@@ -603,7 +631,10 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                   runSpacing: 12,
                   children: [
                     ..._properties.entries
-                        .where((e) => e.key != "consumes" && e.key != "outputItem")
+                        .where((e) {
+                          final handled = _getHandledProps(activeFile.type, _properties["type"]?.toString().replaceAll('"', ''));
+                          return !handled.contains(e.key);
+                        })
                         .map((entry) {
 
                     final key = entry.key;
@@ -669,8 +700,22 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
               );
             
                     }).toList(),
-                    if (activeFile.type == FileType.block)
-                      SizedBox(width: constraints.maxWidth, child: _buildConsumesAndOutputsCard()),
+                    if (activeFile.type == FileType.block || activeFile.type == FileType.unit)
+                      SizedBox(
+                        width: constraints.maxWidth,
+                        child: TypePropertiesDispatcher(
+                          fileType: activeFile.type,
+                          properties: _properties,
+                          availableItems: _getAllAvailableItems(),
+                          availableLiquids: _getAllAvailableLiquids(),
+                          onChanged: (newProps) {
+                            setState(() {
+                              _properties = newProps;
+                            });
+                            _saveChanges();
+                          },
+                        ),
+                      ),
                   ],
                 );
               },
@@ -855,470 +900,6 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
         ],
       ),
     );
-  }
-
-
-  Widget _buildConsumesAndOutputsCard() {
-    // Lectura de datos
-    final consumes = _properties["consumes"];
-    double? power;
-    List<Map<String, dynamic>> itemsList = [];
-    
-    if (consumes is Map) {
-      if (consumes['power'] != null) {
-        power = double.tryParse(consumes['power'].toString());
-      }
-      final itemsField = consumes['items'];
-      List<dynamic> rawList = [];
-      if (itemsField is List) {
-        rawList = itemsField;
-      } else if (itemsField is Map && itemsField['items'] is List) {
-        rawList = itemsField['items'];
-      }
-      
-      for (var item in rawList) {
-        final str = item.toString().trim();
-        final parts = str.split('/');
-        if (parts.length >= 2) {
-          itemsList.add({
-            'item': parts[0].trim(),
-            'amount': int.tryParse(parts[1].trim()) ?? 1,
-          });
-        }
-      }
-    }
-
-    final outputItemStr = _properties["outputItem"]?.toString().trim() ?? "";
-    String currentOutputItem = "";
-    int currentOutputAmount = 1;
-    if (outputItemStr.isNotEmpty) {
-      final parts = outputItemStr.split('/');
-      if (parts.length >= 2) {
-        currentOutputItem = parts[0].trim();
-        currentOutputAmount = int.tryParse(parts[1].trim()) ?? 1;
-      } else {
-        currentOutputItem = outputItemStr;
-      }
-    }
-
-    final availableItems = _getAllAvailableItems();
-
-    final outputLiquidStr = _properties["outputLiquid"]?.toString().trim() ?? "";
-    String currentOutputLiquid = "";
-    double currentOutputLiquidAmount = 1.0;
-    if (outputLiquidStr.isNotEmpty) {
-      final parts = outputLiquidStr.split('/');
-      if (parts.length >= 2) {
-        currentOutputLiquid = parts[0].trim();
-        currentOutputLiquidAmount = double.tryParse(parts[1].trim()) ?? 1.0;
-      } else {
-        currentOutputLiquid = outputLiquidStr;
-      }
-    }
-    final availableLiquids = _getAllAvailableLiquids();
-
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF222228),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white12),
-      ),
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.sync_alt, size: 16, color: Colors.amber),
-              const SizedBox(width: 8),
-              Text(tr('consumes_and_outputs'), style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13)),
-            ],
-          ),
-          const SizedBox(height: 12),
-          
-          // === SECCIÓN DE CONSUMO ===
-          Text(tr('consumes_title'), style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          
-          // Consumo de energía
-          Row(
-            children: [
-              Text(tr('power_energy'), style: const TextStyle(color: Colors.white54, fontSize: 12)),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF18181C),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: Colors.white24),
-                  ),
-                  child: TextFormField(
-                    key: ValueKey("consumes_power_${power ?? 'none'}"),
-                    initialValue: power?.toString() ?? "",
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace'),
-                    decoration: InputDecoration(
-                      border: InputBorder.none,
-                      isDense: true,
-                      hintText: "0.0",
-                      hintStyle: const TextStyle(color: Colors.white24, fontSize: 12),
-                    ),
-                    onChanged: (val) {
-                      _updateConsumes(double.tryParse(val), itemsList);
-                    },
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          
-          // Consumo de ítems
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(tr('input_items'), style: const TextStyle(color: Colors.white54, fontSize: 12)),
-              TextButton.icon(
-                icon: const Icon(Icons.add, size: 14, color: Colors.amber),
-                label: Text(tr('add'), style: const TextStyle(color: Colors.amber, fontSize: 11)),
-                onPressed: () {
-                  final defaultItem = availableItems.isNotEmpty ? availableItems.first : "copper";
-                  itemsList.add({'item': defaultItem, 'amount': 1});
-                  _updateConsumes(power, itemsList);
-                },
-              ),
-            ],
-          ),
-          
-          if (itemsList.isEmpty)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Text(tr('no_input_items'), style: const TextStyle(color: Colors.white38, fontSize: 11)),
-            )
-          else
-            ...itemsList.asMap().entries.map((entry) {
-              final idx = entry.key;
-              final req = entry.value;
-              final currentItem = req['item'].toString();
-              final currentAmount = req['amount']?.toString() ?? '1';
-
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      flex: 3,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF18181C),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: Colors.white24),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: availableItems.contains(currentItem) ? currentItem : null,
-                            hint: Text(currentItem, style: const TextStyle(color: Colors.white70, fontSize: 12)),
-                            dropdownColor: const Color(0xFF222228),
-                            isExpanded: true,
-                            style: const TextStyle(color: Colors.white, fontSize: 12),
-                            items: availableItems.map((item) => DropdownMenuItem(value: item, child: Text(item, overflow: TextOverflow.ellipsis))).toList(),
-                            onChanged: (newVal) {
-                              if (newVal != null) {
-                                itemsList[idx]['item'] = newVal;
-                                _updateConsumes(power, itemsList);
-                              }
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      flex: 2,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF18181C),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: Colors.white24),
-                        ),
-                        child: TextFormField(
-                          initialValue: currentAmount,
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                          style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace'),
-                          decoration: InputDecoration(
-                            border: InputBorder.none,
-                            isDense: true,
-                            hintText: tr('qty'),
-                            hintStyle: const TextStyle(color: Colors.white24, fontSize: 12),
-                          ),
-                          onChanged: (val) {
-                            itemsList[idx]['amount'] = int.tryParse(val) ?? 1;
-                            _updateConsumes(power, itemsList);
-                          },
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Colors.redAccent, size: 16),
-                      onPressed: () {
-                        itemsList.removeAt(idx);
-                        _updateConsumes(power, itemsList);
-                      },
-                    ),
-                  ],
-                ),
-              );
-            }),
-            
-          const Divider(color: Colors.white12, height: 24),
-
-          // === SECCIÓN DE SALIDA ===
-          Text(tr('output_title'), style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          
-          if (currentOutputItem.isEmpty)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(tr('no_output_configured'), style: const TextStyle(color: Colors.white38, fontSize: 11)),
-                TextButton.icon(
-                  icon: const Icon(Icons.add, size: 14, color: Colors.amber),
-                  label: Text(tr('add_output_item'), style: const TextStyle(color: Colors.amber, fontSize: 11)),
-                  onPressed: () {
-                    final defaultItem = availableItems.isNotEmpty ? availableItems.first : "copper";
-                    _updateOutputItem(defaultItem, 1);
-                  },
-                ),
-              ],
-            )
-          else
-            Row(
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF18181C),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: Colors.white24),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: availableItems.contains(currentOutputItem) ? currentOutputItem : null,
-                        hint: Text(currentOutputItem, style: const TextStyle(color: Colors.white70, fontSize: 12)),
-                        dropdownColor: const Color(0xFF222228),
-                        isExpanded: true,
-                        style: const TextStyle(color: Colors.white, fontSize: 12),
-                        items: availableItems.map((item) => DropdownMenuItem(value: item, child: Text(item, overflow: TextOverflow.ellipsis))).toList(),
-                        onChanged: (newVal) {
-                          if (newVal != null) {
-                            _updateOutputItem(newVal, currentOutputAmount);
-                          }
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  flex: 2,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF18181C),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: Colors.white24),
-                    ),
-                    child: TextFormField(
-                      initialValue: currentOutputAmount.toString(),
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace'),
-                      decoration: InputDecoration(
-                        border: InputBorder.none,
-                        isDense: true,
-                        hintText: tr('qty'),
-                        hintStyle: const TextStyle(color: Colors.white24, fontSize: 12),
-                      ),
-                      onChanged: (val) {
-                        final amt = int.tryParse(val) ?? 1;
-                        _updateOutputItem(currentOutputItem, amt);
-                      },
-                    ),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close, color: Colors.redAccent, size: 16),
-                  onPressed: () {
-                    setState(() {
-                      _properties.remove("outputItem");
-                    });
-                    _saveChanges();
-                  },
-                ),
-              ],
-            ),
-            
-          const SizedBox(height: 12),
-          
-          if (currentOutputLiquid.isEmpty)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text("Sin Líquido de Salida", style: TextStyle(color: Colors.white38, fontSize: 11)),
-                TextButton.icon(
-                  icon: const Icon(Icons.water_drop, size: 14, color: Colors.blueAccent),
-                  label: const Text("Añadir Líquido", style: TextStyle(color: Colors.blueAccent, fontSize: 11)),
-                  onPressed: () {
-                    final defaultLiq = availableLiquids.isNotEmpty ? availableLiquids.first : "water";
-                    _updateOutputLiquid(defaultLiq, 0.5);
-                  },
-                ),
-              ],
-            )
-          else
-            Row(
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF18181C),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: Colors.white24),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: availableLiquids.contains(currentOutputLiquid) ? currentOutputLiquid : null,
-                        hint: Text(currentOutputLiquid, style: const TextStyle(color: Colors.white70, fontSize: 12)),
-                        dropdownColor: const Color(0xFF222228),
-                        isExpanded: true,
-                        style: const TextStyle(color: Colors.white, fontSize: 12),
-                        items: availableLiquids.map((item) => DropdownMenuItem(value: item, child: Text(item, overflow: TextOverflow.ellipsis))).toList(),
-                        onChanged: (newVal) {
-                          if (newVal != null) {
-                            _updateOutputLiquid(newVal, currentOutputLiquidAmount);
-                          }
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  flex: 2,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF18181C),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: Colors.white24),
-                    ),
-                    child: TextFormField(
-                      initialValue: currentOutputLiquidAmount.toString(),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^[0-9]*\.?[0-9]*'))],
-                      style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace'),
-                      decoration: const InputDecoration(
-                        border: InputBorder.none,
-                        isDense: true,
-                        hintText: "Líquido/seg",
-                        hintStyle: TextStyle(color: Colors.white24, fontSize: 12),
-                      ),
-                      onChanged: (val) {
-                        final amt = double.tryParse(val) ?? 0.0;
-                        _updateOutputLiquid(currentOutputLiquid, amt);
-                      },
-                    ),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close, color: Colors.redAccent, size: 16),
-                  onPressed: () {
-                    setState(() {
-                      _properties.remove("outputLiquid");
-                    });
-                    _saveChanges();
-                  },
-                ),
-              ],
-            ),
-          
-          const SizedBox(height: 12),
-          const Divider(color: Colors.white12),
-          const SizedBox(height: 12),
-          Text("Tiempo de Fabricación (craftTime)", style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            decoration: BoxDecoration(
-              color: const Color(0xFF18181C),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: Colors.white24),
-            ),
-            child: TextFormField(
-              initialValue: _properties["craftTime"]?.toString() ?? "",
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace'),
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                isDense: true,
-                hintText: "Ej: 60 (ticks)",
-                hintStyle: TextStyle(color: Colors.white24, fontSize: 12),
-              ),
-              onChanged: (val) {
-                setState(() {
-                  if (val.isEmpty) {
-                    _properties.remove("craftTime");
-                  } else {
-                    _properties["craftTime"] = double.tryParse(val) ?? 60.0;
-                  }
-                });
-                _saveChanges();
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _updateConsumes(double? power, List<Map<String, dynamic>> itemsList) {
-    setState(() {
-      if (power == null && itemsList.isEmpty) {
-        _properties.remove("consumes");
-      } else {
-        Map<String, dynamic> consumesObj = {};
-        if (power != null) {
-          consumesObj["power"] = power;
-        }
-        if (itemsList.isNotEmpty) {
-          consumesObj["items"] = itemsList.map((r) => "${r['item']}/${r['amount']}").toList();
-        }
-        _properties["consumes"] = consumesObj;
-      }
-    });
-    _saveChanges();
-  }
-
-  void _updateOutputItem(String item, int amount) {
-    setState(() {
-      _properties["outputItem"] = "$item/$amount";
-    });
-    _saveChanges();
-  }
-  
-  void _updateOutputLiquid(String liquid, double amount) {
-    setState(() {
-      _properties["outputLiquid"] = "$liquid/$amount";
-    });
-    _saveChanges();
   }
 
 
