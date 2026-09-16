@@ -438,24 +438,25 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
       return ["speed", "hitSize", "health", "armor", "itemCapacity", "rotateSpeed", "isEnemy", "weapons", "engineOffset", "engineSize", "lowAltitude", "circleTarget", "mechStepParticles", "stepShake", "legCount", "legLength", "legSpeed", "hovering", "allowLegStep", "trailLength", "waterVision"];
     }
     if (fileType == FileType.block) {
+      List<String> props = ["drawer"];
       switch (type) {
-        case 'Drill': case 'BurstDrill': case 'ImpactDrill': return ["tier", "drillTime", "warmupSpeed", "liquidBoostIntensity", "drawMineItem", "drillEffect", "updateEffect"];
-        case 'BeamDrill': return ["range", "tier", "drillTime", "sparkColor"];
-        case 'Pump': case 'SolidPump': case 'Fracker': return ["pumpAmount", "result"];
-        case 'GenericCrafter': case 'Incinerator': return ["craftTime", "craftEffect", "updateEffect", "consumes", "outputItem", "outputItems", "outputLiquid", "outputLiquids"];
-        case 'HeatCrafter': return ["craftTime", "craftEffect", "updateEffect", "consumes", "outputItem", "outputItems", "outputLiquid", "outputLiquids", "heatRequirement", "maxEfficiency"];
-        case 'Separator': return ["craftTime", "results"];
-        case 'ConsumeGenerator': case 'ThermalGenerator': case 'SolarGenerator': return ["powerProduction", "itemDuration", "generateEffect", "consumes"];
-        case 'NuclearReactor': case 'ImpactReactor': return ["powerProduction", "heating", "smokeThreshold", "flashThreshold", "explosionRadius", "explosionDamage"];
-        case 'PowerNode': case 'SurgeTower': case 'BeamNode': return ["maxNodes", "laserRange", "laserColor1", "laserColor2"];
-        case 'ItemTurret': return ["range", "reload", "inaccuracy", "recoil", "targetAir", "targetGround", "ammoTypes"];
-        case 'LiquidTurret': return ["range", "reload", "inaccuracy", "recoil", "targetAir", "targetGround", "extinguish", "ammoTypes"];
-        case 'PowerTurret': case 'LaserTurret': case 'ContinuousTurret': case 'PointDefenseTurret': return ["range", "reload", "chargeTime", "targetAir", "targetGround", "shootType"];
-        case 'Wall': case 'ShieldWall': case 'Door': return ["chanceDeflect", "lightningChance", "lightningDamage", "insulated", "absorbLasers"];
-        case 'ForceProjector': case 'MendProjector': case 'OverdriveProjector': case 'OverdriveDome': return ["radius", "shieldHealth", "cooldownNormal", "cooldownLiquid", "phaseRadiusBoost", "phaseShieldBoost"];
-        case 'Conveyor': case 'ArmoredConveyor': case 'PlastaniumConveyor': case 'StackConveyor': case 'Duct': return ["speed", "displayedSpeed"];
-        case 'MassDriver': return ["range", "reload", "itemCapacity", "bulletSpeed"];
+        case 'Drill': case 'BurstDrill': case 'ImpactDrill': props.addAll(["tier", "drillTime", "warmupSpeed", "liquidBoostIntensity", "drawMineItem", "drillEffect", "updateEffect"]); break;
+        case 'BeamDrill': props.addAll(["range", "tier", "drillTime", "sparkColor"]); break;
+        case 'Pump': case 'SolidPump': case 'Fracker': props.addAll(["pumpAmount", "result"]); break;
+        case 'GenericCrafter': case 'Incinerator': props.addAll(["craftTime", "craftEffect", "updateEffect", "consumes", "outputItem", "outputItems", "outputLiquid", "outputLiquids"]); break;
+        case 'HeatCrafter': props.addAll(["craftTime", "craftEffect", "updateEffect", "consumes", "outputItem", "outputItems", "outputLiquid", "outputLiquids", "heatRequirement", "maxEfficiency"]); break;
+        case 'Separator': props.addAll(["craftTime", "results"]); break;
+        case 'ConsumeGenerator': case 'ThermalGenerator': case 'SolarGenerator': props.addAll(["powerProduction", "itemDuration", "generateEffect", "consumes"]); break;
+        case 'NuclearReactor': case 'ImpactReactor': props.addAll(["powerProduction", "heating", "smokeThreshold", "flashThreshold", "explosionRadius", "explosionDamage"]); break;
+        case 'PowerNode': case 'SurgeTower': case 'BeamNode': props.addAll(["maxNodes", "laserRange", "laserColor1", "laserColor2"]); break;
+        case 'ItemTurret': props.addAll(["range", "reload", "inaccuracy", "recoil", "targetAir", "targetGround", "ammoTypes"]); break;
+        case 'LiquidTurret': props.addAll(["range", "reload", "inaccuracy", "recoil", "targetAir", "targetGround", "extinguish", "ammoTypes"]); break;
+        case 'PowerTurret': case 'LaserTurret': case 'ContinuousTurret': case 'PointDefenseTurret': props.addAll(["range", "reload", "chargeTime", "targetAir", "targetGround", "shootType"]); break;
+        case 'Wall': case 'ShieldWall': case 'Door': props.addAll(["chanceDeflect", "lightningChance", "lightningDamage", "insulated", "absorbLasers"]); break;
+        case 'ForceProjector': case 'MendProjector': case 'OverdriveProjector': case 'OverdriveDome': props.addAll(["radius", "shieldHealth", "cooldownNormal", "cooldownLiquid", "phaseRadiusBoost", "phaseShieldBoost"]); break;
+        case 'Conveyor': case 'ArmoredConveyor': case 'PlastaniumConveyor': case 'StackConveyor': case 'Duct': props.addAll(["speed", "displayedSpeed"]); break;
       }
+      return props;
     }
     return [];
   }
