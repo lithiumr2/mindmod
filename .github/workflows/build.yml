@@ -41,11 +41,11 @@ jobs:
                       with open(filepath, 'r') as f:
                           content = f.read()
                       
-                      content = re.sub(r'compileSdk(?:Version)?\s*=?\s*[0-9]+', 'compileSdkVersion 34', content)
-                      content = re.sub(r'compileSdkVersion\s*=\s*flutter.compileSdkVersion', 'compileSdkVersion = 34', content)
-                      content = re.sub(r'compileSdk\s*=\s*flutter.compileSdkVersion', 'compileSdk = 34', content)
-                      content = re.sub(r'targetSdk(?:Version)?\s*=?\s*[0-9]+', 'targetSdkVersion 34', content)
-                      content = re.sub(r'targetSdkVersion\s*=\s*flutter.targetSdkVersion', 'targetSdkVersion = 34', content)
+                      content = re.sub(r'compileSdk(?:Version)?s*=?s*[0-9]+', 'compileSdkVersion 34', content)
+                      content = re.sub(r'compileSdkVersions*=s*flutter.compileSdkVersion', 'compileSdkVersion = 34', content)
+                      content = re.sub(r'compileSdks*=s*flutter.compileSdkVersion', 'compileSdk = 34', content)
+                      content = re.sub(r'targetSdk(?:Version)?s*=?s*[0-9]+', 'targetSdkVersion 34', content)
+                      content = re.sub(r'targetSdkVersions*=s*flutter.targetSdkVersion', 'targetSdkVersion = 34', content)
                       
                       with open(filepath, 'w') as f:
                           f.write(content)
@@ -55,8 +55,14 @@ jobs:
               with open(root_gradle, 'r') as f:
                   content = f.read()
               
-              if 'ext.kotlin_version' in content:
-                  content = re.sub(r'ext.kotlin_version\s*=\s*['"].*?['"]', 'ext.kotlin_version = \'1.9.10\'', content)
+              # Instead of regex for kotlin version, just split and join to be safe from yaml escaping issues
+              lines = content.split('
+')
+              for i in range(len(lines)):
+                  if 'ext.kotlin_version' in lines[i]:
+                      lines[i] = '        ext.kotlin_version = ' + chr(39) + '1.9.10' + chr(39)
+              content = '
+'.join(lines)
               
               with open(root_gradle, 'w') as f:
                   f.write(content)
@@ -78,7 +84,6 @@ jobs:
           }
           ''')
           "
-
       - name: Instalar dependencias
         run: flutter pub get
 
