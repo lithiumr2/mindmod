@@ -31,10 +31,13 @@ jobs:
           flutter create . --platforms=android --org=com.mindmod
       - name: Forzar compileSdk y minSdk en el proyecto y sus dependencias
         run: |
-          sed -i 's/compileSdk = .*/compileSdk = 34/' android/app/build.gradle
-          sed -i 's/targetSdk = .*/targetSdk = 34/' android/app/build.gradle
           
-          echo "
+                    # Handle both .gradle and .gradle.kts
+                    if [ -f android/app/build.gradle ]; then
+                      sed -i 's/compileSdk = .*/compileSdk = 34/' android/app/build.gradle
+                      sed -i 's/targetSdk = .*/targetSdk = 34/' android/app/build.gradle
+                      
+                      cat << 'EOF' >> android/build.gradle
           subprojects {
               afterEvaluate { project ->
                   if (project.hasProperty('android')) {
@@ -50,7 +53,29 @@ jobs:
                   }
               }
           }
-          " >> android/build.gradle
+          EOF
+                    else
+                      sed -i 's/compileSdk = .*/compileSdk = 34/' android/app/build.gradle.kts
+                      sed -i 's/targetSdk = .*/targetSdk = 34/' android/app/build.gradle.kts
+                      
+                      # For .kts, inject kotlin script
+                      cat << 'EOF' >> android/build.gradle.kts
+          subprojects {
+              afterEvaluate {
+                  val project = this
+                  if (project.hasProperty("android")) {
+                      project.extensions.configure("android") {
+                          val androidExt = this as com.android.build.gradle.BaseExtension
+                          androidExt.compileSdkVersion(34)
+                          androidExt.defaultConfig.targetSdk = 34
+                      }
+                  }
+              }
+          }
+          EOF
+                    fi
+          
+
       - name: Instalar dependencias
         run: flutter pub get
 
