@@ -34,6 +34,7 @@ jobs:
         run: |
           python3 -c "
           import os
+          import re
           for root, dirs, files in os.walk('android'):
               for file in files:
                   if file.startswith('build.gradle'):
@@ -42,9 +43,9 @@ jobs:
                           content = f.read()
                       
                       if 'compileSdk' in content:
-                          import re
-                          content = re.sub(r'compileSdk\s*=*(?:\s*\d+)?', 'compileSdk = 36', content)
-                          content = re.sub(r'compileSdkVersion\s*=*(?:\s*\d+)?', 'compileSdkVersion = 36', content)
+                          content = re.sub(r'compileSdk\s*=.*', 'compileSdk = 36', content)
+                          content = re.sub(r'compileSdkVersion\s+.*', 'compileSdkVersion 36', content)
+                          content = re.sub(r'compileSdkVersion\s*=.*', 'compileSdkVersion = 36', content)
                       
                       with open(filepath, 'w') as f:
                           f.write(content)
