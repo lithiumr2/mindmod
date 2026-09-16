@@ -26,7 +26,7 @@ class TypeCardContainer extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF222228),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: accentColor.withValues(alpha: 0.3), width: 1.2),
+        border: Border.all(color: accentColor.withOpacity(0.3), width: 1.2),
       ),
       padding: const EdgeInsets.all(14),
       margin: const EdgeInsets.only(top: 10, bottom: 6),
@@ -68,7 +68,6 @@ class TypeCardContainer extends StatelessWidget {
   }
 }
 
-/// Campo numérico flotante estricto con validación segura contra nulos
 class MindustryFloatField extends StatefulWidget {
   final String label;
   final double? value;
@@ -167,16 +166,8 @@ class _MindustryFloatFieldState extends State<MindustryFloatField> {
       ),
     );
   }
-},
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
-/// Campo numérico entero estricto con validación segura
 class MindustryIntField extends StatefulWidget {
   final String label;
   final int? value;
@@ -273,16 +264,8 @@ class _MindustryIntFieldState extends State<MindustryIntField> {
       ),
     );
   }
-},
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
-/// Campo de texto plano
 class MindustryStringField extends StatefulWidget {
   final String label;
   final String? value;
@@ -358,7 +341,6 @@ class _MindustryStringFieldState extends State<MindustryStringField> {
   }
 }
 
-/// Control booleano estricto con SwitchListTile
 class MindustryBoolField extends StatelessWidget {
   final String label;
   final bool value;
@@ -388,7 +370,7 @@ class MindustryBoolField extends StatelessWidget {
         subtitle: subtitle != null ? Text(subtitle!, style: const TextStyle(color: Colors.white38, fontSize: 10)) : null,
         value: value,
         activeThumbColor: Colors.amber,
-        activeTrackColor: Colors.amber.withValues(alpha: 0.4),
+        activeTrackColor: Colors.amber.withOpacity(0.4),
         inactiveThumbColor: Colors.white38,
         inactiveTrackColor: Colors.white12,
         onChanged: onChanged,
@@ -397,7 +379,6 @@ class MindustryBoolField extends StatelessWidget {
   }
 }
 
-/// Selector de color hexadecimal (8 caracteres RRGGBBAA o 6 RRGGBB)
 class MindustryHexColorField extends StatefulWidget {
   final String label;
   final String? value;
@@ -441,13 +422,13 @@ class _MindustryHexColorFieldState extends State<MindustryHexColorField> {
     if (hex == null || hex.isEmpty) return Colors.transparent;
     var clean = hex.replaceAll("#", "").trim();
     if (clean.length == 6) {
-      clean = "FF" + clean;
+      clean = "FF$clean";
     } else if (clean.length == 8) {
       final rr = clean.substring(0, 2);
       final gg = clean.substring(2, 4);
       final bb = clean.substring(4, 6);
       final aa = clean.substring(6, 8);
-      clean = aa + rr + gg + bb;
+      clean = "$aa$rr$gg$bb";
     } else {
       return Colors.amber;
     }
@@ -511,7 +492,6 @@ class _MindustryHexColorFieldState extends State<MindustryHexColorField> {
   }
 }
 
-/// Selector Dropdown estándar para ítems, líquidos, efectos o tipos
 class MindustryDropdownField extends StatelessWidget {
   final String label;
   final String? value;
@@ -573,7 +553,6 @@ class MindustryDropdownField extends StatelessWidget {
   }
 }
 
-/// Sub-formulario interactivo para BulletType (Proyectiles de Torretas y Armas)
 class BulletTypeSubform extends StatelessWidget {
   final String title;
   final Map<String, dynamic> bullet;
@@ -610,7 +589,7 @@ class BulletTypeSubform extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF18181D),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.deepOrangeAccent.withValues(alpha: 0.3)),
+        border: Border.all(color: Colors.deepOrangeAccent.withOpacity(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -681,7 +660,6 @@ class BulletTypeSubform extends StatelessWidget {
   }
 }
 
-/// Submódulo dinámico de Consumes (Power, Ítems de entrada, Líquidos de entrada)
 class ConsumesSubmodule extends StatelessWidget {
   final Map<String, dynamic>? consumes;
   final List<String> availableItems;
@@ -701,7 +679,6 @@ class ConsumesSubmodule extends StatelessWidget {
     final consumesMap = consumes != null ? Map<String, dynamic>.from(consumes!) : <String, dynamic>{};
     final power = double.tryParse(consumesMap['power']?.toString() ?? '');
 
-    // Parse items
     final List<Map<String, dynamic>> itemsList = [];
     final rawItems = consumesMap['items'];
     if (rawItems is List) {
@@ -714,7 +691,6 @@ class ConsumesSubmodule extends StatelessWidget {
       }
     }
 
-    // Parse liquids
     final List<Map<String, dynamic>> liquidsList = [];
     final rawLiquids = consumesMap['liquid'] ?? consumesMap['liquids'];
     if (rawLiquids is String && rawLiquids.isNotEmpty) {
@@ -756,7 +732,7 @@ class ConsumesSubmodule extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF18181D),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.amber.withValues(alpha: 0.25)),
+        border: Border.all(color: Colors.amber.withOpacity(0.25)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -773,7 +749,7 @@ class ConsumesSubmodule extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           MindustryFloatField(
-            label: "Consumo de Energía / tick (power)",
+            label: "Consumo Energía/tick (power)",
             value: power,
             hint: "0.0 (Sin energía)",
             icon: Icons.bolt,
@@ -781,7 +757,6 @@ class ConsumesSubmodule extends StatelessWidget {
           ),
           const SizedBox(height: 6),
 
-          // Lista de Ítems de entrada
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -873,7 +848,6 @@ class ConsumesSubmodule extends StatelessWidget {
             }),
 
           const SizedBox(height: 6),
-          // Lista de Líquidos de entrada
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
