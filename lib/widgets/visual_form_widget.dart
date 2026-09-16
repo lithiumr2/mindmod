@@ -722,7 +722,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                       SizedBox(
                         width: constraints.maxWidth,
                         child: DrawerBuilderWidget(
-                          key: ValueKey(activeFile.path),
+                          key: ValueKey(activeFile.name),
                           blockProperties: _properties,
                           availableLiquids: _getAllAvailableLiquids(),
                           onChanged: (newDrawer) {
