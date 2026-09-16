@@ -5,11 +5,11 @@ on:
     branches: [ "main", "experimental" ]
   pull_request:
     branches: [ "main", "experimental" ]
-    
+  workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout del código
         uses: actions/checkout@v4
@@ -34,7 +34,6 @@ jobs:
         run: |
           python3 -c "
           import os
-
           for root, dirs, files in os.walk('android'):
               for file in files:
                   if file.startswith('build.gradle'):
@@ -44,8 +43,8 @@ jobs:
                       
                       if 'compileSdk' in content:
                           import re
-                          content = re.sub(r'compileSdk\s*=*\s*\d+', 'compileSdk = 36', content)
-                          content = re.sub(r'compileSdkVersion\s*=*\s*\d+', 'compileSdkVersion = 36', content)
+                          content = re.sub(r'compileSdk\s*=*(?:\s*\d+)?', 'compileSdk = 36', content)
+                          content = re.sub(r'compileSdkVersion\s*=*(?:\s*\d+)?', 'compileSdkVersion = 36', content)
                       
                       with open(filepath, 'w') as f:
                           f.write(content)
@@ -54,7 +53,6 @@ jobs:
           if os.path.exists(root_gradle):
               with open(root_gradle, 'a') as f:
                   f.write('''
-
           subprojects {
               afterEvaluate { project ->
                   if (project.hasProperty('android')) {
@@ -76,14 +74,9 @@ jobs:
             echo "Usando keystore permanente del repositorio"
             cp mindmod.jks android/app/mindmod.jks
           else
-            echo "Generando un nuevo keystore permanente..."
+            echo "Generando keystore temporal de respaldo..."
             keytool -genkey -v -keystore mindmod.jks -keyalg RSA -keysize 2048 -validity 10000 -alias mindmod -storepass mindmod -keypass mindmod -dname "CN=Mindmod, OU=Mindmod, O=Mindmod, L=Mindmod, ST=Mindmod, C=US"
             cp mindmod.jks android/app/mindmod.jks
-            git config user.name "AI Studio"
-            git config user.email "aistudio@google.com"
-            git add mindmod.jks
-            git commit -m "chore: agregar keystore permanente para firmas de APK deterministas"
-            git push origin HEAD:${GITHUB_REF#refs/heads/}
           fi
           
           python3 -c "
@@ -132,4 +125,3 @@ jobs:
         with:
           name: mindmod-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
-          
