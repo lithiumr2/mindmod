@@ -31,44 +31,11 @@ jobs:
           flutter create . --platforms=android --org=com.mindmod
       - name: Forzar compileSdk y minSdk en el proyecto y sus dependencias
         run: |
-          python3 -c "
-          import os
-          import re
-          for root, dirs, files in os.walk('android'):
-              for file in files:
-                  if file.startswith('build.gradle'):
-                      filepath = os.path.join(root, file)
-                      with open(filepath, 'r') as f:
-                          content = f.read()
-                      
-                      content = re.sub(r'compileSdk(?:Version)?s*=?s*[0-9]+', 'compileSdkVersion 34', content)
-                      content = re.sub(r'compileSdkVersions*=s*flutter.compileSdkVersion', 'compileSdkVersion = 34', content)
-                      content = re.sub(r'compileSdks*=s*flutter.compileSdkVersion', 'compileSdk = 34', content)
-                      content = re.sub(r'targetSdk(?:Version)?s*=?s*[0-9]+', 'targetSdkVersion 34', content)
-                      content = re.sub(r'targetSdkVersions*=s*flutter.targetSdkVersion', 'targetSdkVersion = 34', content)
-                      
-                      with open(filepath, 'w') as f:
-                          f.write(content)
-          
-          root_gradle = 'android/build.gradle'
-          if os.path.exists(root_gradle):
-              with open(root_gradle, 'r') as f:
-                  content = f.read()
-              
-              # Instead of regex for kotlin version, just split and join to be safe from yaml escaping issues
-              lines = content.split('
-')
-              for i in range(len(lines)):
-                  if 'ext.kotlin_version' in lines[i]:
-                      lines[i] = '        ext.kotlin_version = ' + chr(39) + '1.9.10' + chr(39)
-              content = '
-'.join(lines)
-              
-              with open(root_gradle, 'w') as f:
-                  f.write(content)
-                  
-              with open(root_gradle, 'a') as f:
-                  f.write('''
+          find android -name "build.gradle" -exec sed -i -e 's/compileSdk[[:space:]]*=[[:space:]]*flutter.compileSdkVersion/compileSdk = 34/g' -e 's/compileSdkVersion[[:space:]]*=[[:space:]]*flutter.compileSdkVersion/compileSdkVersion = 34/g' -e 's/compileSdkVersion[[:space:]]*[0-9]\+/compileSdkVersion 34/g' -e 's/compileSdk[[:space:]]*[0-9]\+/compileSdk 34/g' -e 's/targetSdk[[:space:]]*=[[:space:]]*flutter.targetSdkVersion/targetSdk = 34/g' -e 's/targetSdkVersion[[:space:]]*=[[:space:]]*flutter.targetSdkVersion/targetSdkVersion = 34/g' -e 's/targetSdkVersion[[:space:]]*[0-9]\+/targetSdkVersion 34/g' -e 's/targetSdk[[:space:]]*[0-9]\+/targetSdk 34/g' {} \;
+          if [ -f android/build.gradle ]; then
+            sed -i "s/ext.kotlin_version = '[^']*'/ext.kotlin_version = '1.9.10'/g" android/build.gradle
+            sed -i 's/ext.kotlin_version = "[^"]*"/ext.kotlin_version = "1.9.10"/g' android/build.gradle
+            cat << 'GRADLE_EXT' >> android/build.gradle
           subprojects {
               afterEvaluate { project ->
                   if (project.hasProperty('android')) {
@@ -82,8 +49,8 @@ jobs:
                   }
               }
           }
-          ''')
-          "
+          GRADLE_EXT
+          fi
       - name: Instalar dependencias
         run: flutter pub get
 
