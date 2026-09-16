@@ -69,7 +69,7 @@ class TypeCardContainer extends StatelessWidget {
 }
 
 /// Campo numérico flotante estricto con validación segura contra nulos
-class MindustryFloatField extends StatelessWidget {
+class MindustryFloatField extends StatefulWidget {
   final String label;
   final double? value;
   final ValueChanged<double?> onChanged;
@@ -86,6 +86,36 @@ class MindustryFloatField extends StatelessWidget {
   });
 
   @override
+  State<MindustryFloatField> createState() => _MindustryFloatFieldState();
+}
+
+class _MindustryFloatFieldState extends State<MindustryFloatField> {
+  late TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.value != null ? widget.value.toString() : "");
+  }
+
+  @override
+  void didUpdateWidget(covariant MindustryFloatField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.value != oldWidget.value) {
+      final strVal = widget.value != null ? widget.value.toString() : "";
+      if (double.tryParse(_controller.text) != widget.value) {
+        _controller.text = strVal;
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -94,11 +124,11 @@ class MindustryFloatField extends StatelessWidget {
         children: [
           Row(
             children: [
-              if (icon != null) ...[
-                Icon(icon, size: 12, color: Colors.white70),
+              if (widget.icon != null) ...[
+                Icon(widget.icon, size: 12, color: Colors.white70),
                 const SizedBox(width: 5),
               ],
-              Text(label, style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600)),
+              Text(widget.label, style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600)),
             ],
           ),
           const SizedBox(height: 4),
@@ -110,8 +140,7 @@ class MindustryFloatField extends StatelessWidget {
               border: Border.all(color: Colors.white24),
             ),
             child: TextFormField(
-              key: ValueKey("float_${label}_${value ?? 'null'}"),
-              initialValue: value != null ? value.toString() : "",
+              controller: _controller,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'^-?[0-9]*\.?[0-9]*')),
@@ -120,18 +149,25 @@ class MindustryFloatField extends StatelessWidget {
               decoration: InputDecoration(
                 border: InputBorder.none,
                 isDense: true,
-                hintText: hint ?? "0.0",
+                hintText: widget.hint ?? "0.0",
                 hintStyle: const TextStyle(color: Colors.white24, fontSize: 12),
               ),
               onChanged: (val) {
                 final trimmed = val.trim();
                 if (trimmed.isEmpty) {
-                  onChanged(null);
+                  widget.onChanged(null);
                 } else {
                   final parsed = double.tryParse(trimmed);
-                  onChanged(parsed);
+                  widget.onChanged(parsed);
                 }
               },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+},
             ),
           ),
         ],
@@ -141,7 +177,7 @@ class MindustryFloatField extends StatelessWidget {
 }
 
 /// Campo numérico entero estricto con validación segura
-class MindustryIntField extends StatelessWidget {
+class MindustryIntField extends StatefulWidget {
   final String label;
   final int? value;
   final ValueChanged<int?> onChanged;
@@ -158,6 +194,36 @@ class MindustryIntField extends StatelessWidget {
   });
 
   @override
+  State<MindustryIntField> createState() => _MindustryIntFieldState();
+}
+
+class _MindustryIntFieldState extends State<MindustryIntField> {
+  late TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.value != null ? widget.value.toString() : "");
+  }
+
+  @override
+  void didUpdateWidget(covariant MindustryIntField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.value != oldWidget.value) {
+      final strVal = widget.value != null ? widget.value.toString() : "";
+      if (int.tryParse(_controller.text) != widget.value) {
+        _controller.text = strVal;
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -166,11 +232,11 @@ class MindustryIntField extends StatelessWidget {
         children: [
           Row(
             children: [
-              if (icon != null) ...[
-                Icon(icon, size: 12, color: Colors.white70),
+              if (widget.icon != null) ...[
+                Icon(widget.icon, size: 12, color: Colors.white70),
                 const SizedBox(width: 5),
               ],
-              Text(label, style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600)),
+              Text(widget.label, style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600)),
             ],
           ),
           const SizedBox(height: 4),
@@ -182,26 +248,32 @@ class MindustryIntField extends StatelessWidget {
               border: Border.all(color: Colors.white24),
             ),
             child: TextFormField(
-              key: ValueKey("int_${label}_${value ?? 'null'}"),
-              initialValue: value != null ? value.toString() : "",
+              controller: _controller,
               keyboardType: const TextInputType.numberWithOptions(decimal: false),
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace'),
               decoration: InputDecoration(
                 border: InputBorder.none,
                 isDense: true,
-                hintText: hint ?? "0",
+                hintText: widget.hint ?? "0",
                 hintStyle: const TextStyle(color: Colors.white24, fontSize: 12),
               ),
               onChanged: (val) {
                 final trimmed = val.trim();
                 if (trimmed.isEmpty) {
-                  onChanged(null);
+                  widget.onChanged(null);
                 } else {
                   final parsed = int.tryParse(trimmed);
-                  onChanged(parsed);
+                  widget.onChanged(parsed);
                 }
               },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+},
             ),
           ),
         ],
@@ -211,7 +283,7 @@ class MindustryIntField extends StatelessWidget {
 }
 
 /// Campo de texto plano
-class MindustryStringField extends StatelessWidget {
+class MindustryStringField extends StatefulWidget {
   final String label;
   final String? value;
   final ValueChanged<String> onChanged;
@@ -226,13 +298,40 @@ class MindustryStringField extends StatelessWidget {
   });
 
   @override
+  State<MindustryStringField> createState() => _MindustryStringFieldState();
+}
+
+class _MindustryStringFieldState extends State<MindustryStringField> {
+  late TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.value ?? "");
+  }
+
+  @override
+  void didUpdateWidget(covariant MindustryStringField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.value != oldWidget.value && widget.value != _controller.text) {
+      _controller.text = widget.value ?? "";
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600)),
+          Text(widget.label, style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600)),
           const SizedBox(height: 4),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -242,16 +341,15 @@ class MindustryStringField extends StatelessWidget {
               border: Border.all(color: Colors.white24),
             ),
             child: TextFormField(
-              key: ValueKey("str_${label}_${value ?? ''}"),
-              initialValue: value ?? "",
+              controller: _controller,
               style: const TextStyle(color: Colors.white, fontSize: 12),
               decoration: InputDecoration(
                 border: InputBorder.none,
                 isDense: true,
-                hintText: hint ?? label,
+                hintText: widget.hint ?? widget.label,
                 hintStyle: const TextStyle(color: Colors.white24, fontSize: 12),
               ),
-              onChanged: onChanged,
+              onChanged: widget.onChanged,
             ),
           ),
         ],
@@ -300,7 +398,7 @@ class MindustryBoolField extends StatelessWidget {
 }
 
 /// Selector de color hexadecimal (8 caracteres RRGGBBAA o 6 RRGGBB)
-class MindustryHexColorField extends StatelessWidget {
+class MindustryHexColorField extends StatefulWidget {
   final String label;
   final String? value;
   final ValueChanged<String> onChanged;
@@ -312,18 +410,44 @@ class MindustryHexColorField extends StatelessWidget {
     required this.onChanged,
   });
 
+  @override
+  State<MindustryHexColorField> createState() => _MindustryHexColorFieldState();
+}
+
+class _MindustryHexColorFieldState extends State<MindustryHexColorField> {
+  late TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.value ?? "");
+  }
+
+  @override
+  void didUpdateWidget(covariant MindustryHexColorField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.value != oldWidget.value && widget.value != _controller.text) {
+      _controller.text = widget.value ?? "";
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
   Color _parseColor(String? hex) {
     if (hex == null || hex.isEmpty) return Colors.transparent;
     var clean = hex.replaceAll("#", "").trim();
     if (clean.length == 6) {
-      clean = "FF$clean";
+      clean = "FF" + clean;
     } else if (clean.length == 8) {
-      // Mindustry uses RRGGBBAA; Flutter Color takes AARRGGBB
       final rr = clean.substring(0, 2);
       final gg = clean.substring(2, 4);
       final bb = clean.substring(4, 6);
       final aa = clean.substring(6, 8);
-      clean = "$aa$rr$gg$bb";
+      clean = aa + rr + gg + bb;
     } else {
       return Colors.amber;
     }
@@ -333,7 +457,7 @@ class MindustryHexColorField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currentColor = _parseColor(value);
+    final currentColor = _parseColor(widget.value);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -343,7 +467,7 @@ class MindustryHexColorField extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(label, style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600)),
+              Text(widget.label, style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600)),
               Container(
                 width: 18,
                 height: 18,
@@ -364,8 +488,7 @@ class MindustryHexColorField extends StatelessWidget {
               border: Border.all(color: Colors.white24),
             ),
             child: TextFormField(
-              key: ValueKey("hex_${label}_${value ?? ''}"),
-              initialValue: value ?? "",
+              controller: _controller,
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'[0-9a-fA-F#]')),
                 LengthLimitingTextInputFormatter(9),
@@ -378,7 +501,7 @@ class MindustryHexColorField extends StatelessWidget {
                 hintStyle: TextStyle(color: Colors.white24, fontSize: 12),
               ),
               onChanged: (val) {
-                onChanged(val.trim());
+                widget.onChanged(val.trim());
               },
             ),
           ),
