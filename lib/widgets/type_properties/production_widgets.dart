@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'common_form_helpers.dart';
 
 const List<String> _crafterEffects = [
-  "none", "smelt", "smoke", "smokeCloud", "steam", "purify",
+  "none", "smeltsmoke", "smoke", "smokeCloud", "steam", "purify",
   "fire", "spark", "bubbles", "magmasmoke"
 ];
 
