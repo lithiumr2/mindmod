@@ -72,6 +72,9 @@ jobs:
       - name: Generar Icono de la App
         run: flutter pub run flutter_launcher_icons
 
+      - name: Generar Splash Screen
+        run: dart run flutter_native_splash:create
+
       - name: Configurar Firma de Release (Keystore)
         run: |
           if [ -f mindmod.jks ]; then
@@ -122,7 +125,7 @@ jobs:
           "
 
       - name: Compilar APK release
-        run: flutter build apk --release --no-tree-shake-icons
+        run: flutter build apk --release --no-tree-shake-icons --build-name=1.0.${{ github.run_number }} --build-number=${{ github.run_number }}
 
       - name: Subir APK generado
         uses: actions/upload-artifact@v4
