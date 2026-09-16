@@ -30,7 +30,7 @@ jobs:
           rm -rf android
           flutter create . --platforms=android --org=com.mindmod
 
-- name: Forzar compileSdk y minSdk en el proyecto y sus dependencias
+      - name: Forzar compileSdk y minSdk en el proyecto y sus dependencias
         run: |
           python3 -c "
           import os
