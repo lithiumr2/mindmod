@@ -717,6 +717,24 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                           },
                         ),
                       ),
+                    if (activeFile.type == FileType.block)
+                      SizedBox(
+                        width: constraints.maxWidth,
+                        child: DrawerBuilderWidget(
+                          blockProperties: _properties,
+                          availableLiquids: _getAllAvailableLiquids(),
+                          onChanged: (newDrawer) {
+                            setState(() {
+                              if (newDrawer == null) {
+                                _properties.remove("drawer");
+                              } else {
+                                _properties["drawer"] = newDrawer;
+                              }
+                            });
+                            _saveChanges();
+                          },
+                        ),
+                      ),
                   ],
                 );
               },
