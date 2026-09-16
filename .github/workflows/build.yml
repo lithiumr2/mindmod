@@ -31,49 +31,8 @@ jobs:
           flutter create . --platforms=android --org=com.mindmod
       - name: Forzar compileSdk y minSdk en el proyecto y sus dependencias
         run: |
-          
-                    # Handle both .gradle and .gradle.kts
-                    if [ -f android/app/build.gradle ]; then
-                      sed -i 's/compileSdk = .*/compileSdk = 34/' android/app/build.gradle
-                      sed -i 's/targetSdk = .*/targetSdk = 34/' android/app/build.gradle
-                      
-                      cat << 'EOF' >> android/build.gradle
-          subprojects {
-              afterEvaluate { project ->
-                  if (project.hasProperty('android')) {
-                      project.android {
-                          if (namespace == null) {
-                              namespace project.group
-                          }
-                          compileSdkVersion 34
-                          defaultConfig {
-                              targetSdkVersion 34
-                          }
-                      }
-                  }
-              }
-          }
-          EOF
-                    else
-                      sed -i 's/compileSdk = .*/compileSdk = 34/' android/app/build.gradle.kts
-                      sed -i 's/targetSdk = .*/targetSdk = 34/' android/app/build.gradle.kts
-                      
-                      # For .kts, inject kotlin script
-                      cat << 'EOF' >> android/build.gradle.kts
-          subprojects {
-              afterEvaluate {
-                  val project = this
-                  if (project.hasProperty("android")) {
-                      project.extensions.configure("android") {
-                          val androidExt = this as com.android.build.gradle.BaseExtension
-                          androidExt.compileSdkVersion(34)
-                          androidExt.defaultConfig.targetSdk = 34
-                      }
-                  }
-              }
-          }
-          EOF
-                    fi
+          if [ -f android/app/build.gradle ]; then\n            sed -i 's/compileSdk = .*/compileSdk = 34/' android/app/build.gradle\n            sed -i 's/targetSdk = .*/targetSdk = 34/' android/app/build.gradle\n            cat << 'EOF' >> android/build.gradle\n            subprojects {\n                afterEvaluate { project ->\n                    if (project.hasProperty('android')) {\n                        project.android {\n                            if (namespace == null) {\n                                namespace project.group\n                            }\n                            compileSdkVersion 34\n                            defaultConfig {\n                                targetSdkVersion 34\n                            }\n                        }\n                    }\n                }\n            }\n          EOF\n          else\n            sed -i 's/compileSdk = .*/compileSdk = 34/' android/app/build.gradle.kts\n            sed -i 's/targetSdk = .*/targetSdk = 34/' android/app/build.gradle.kts\n            cat << 'EOF' >> android/build.gradle.kts\n            subprojects {\n                afterEvaluate {\n                    val project = this\n                    if (project.hasProperty('android')) {\n                        project.extensions.configure('android') {\n                            val androidExt = this as com.android.build.gradle.BaseExtension\n                            androidExt.compileSdkVersion(34)\n                            androidExt.defaultConfig.targetSdk = 34\n                        }\n                    }\n                }\n            }\n          EOF\n          fi
+
           
 
       - name: Instalar dependencias
