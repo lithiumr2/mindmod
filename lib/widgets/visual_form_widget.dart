@@ -8,6 +8,7 @@ import '../providers/project_provider.dart';
 import '../services/hjson_engine.dart';
 import '../providers/locale_provider.dart';
 import 'type_properties/type_properties_dispatcher.dart';
+import 'type_properties/drawer_builder_widget.dart';
 
 class VisualFormWidget extends ConsumerStatefulWidget {
   const VisualFormWidget({super.key});
