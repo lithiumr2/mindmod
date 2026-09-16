@@ -46,34 +46,47 @@ class _DrawerBuilderWidgetState extends ConsumerState<DrawerBuilderWidget> {
     // No resincronizaremos intensivamente a menos que properties['drawer'] cambie radicalmente.
   }
 
+  int _keyCounter = 0;
+
   void _initDrawers() {
     final drawerProp = widget.blockProperties['drawer'];
     _drawers = [];
     if (drawerProp is Map && drawerProp['type'] == 'DrawMulti' && drawerProp['drawers'] is List) {
        for (var d in drawerProp['drawers']) {
          if (d is Map) {
-           _drawers.add(Map<String, dynamic>.from(d));
+           final copy = Map<String, dynamic>.from(d);
+           copy['_key'] = _keyCounter++;
+           _drawers.add(copy);
          }
        }
     } else if (drawerProp is Map && drawerProp['type'] != null) {
-      _drawers.add(Map<String, dynamic>.from(drawerProp));
+      final copy = Map<String, dynamic>.from(drawerProp);
+      copy['_key'] = _keyCounter++;
+      _drawers.add(copy);
     }
     
     if (_drawers.isEmpty || _drawers.first['type'] != 'DrawDefault') {
-       _drawers.insert(0, {'type': 'DrawDefault'});
+       _drawers.insert(0, {'type': 'DrawDefault', '_key': _keyCounter++});
     }
   }
 
   void _save() {
+    // Strip _key before saving
+    final cleanDrawers = _drawers.map((d) {
+      final copy = Map<String, dynamic>.from(d);
+      copy.remove('_key');
+      return copy;
+    }).toList();
+
     widget.onChanged({
       'type': 'DrawMulti',
-      'drawers': _drawers,
+      'drawers': cleanDrawers,
     });
   }
 
   void _addLayer(String type) {
     setState(() {
-      _drawers.add({'type': type});
+      _drawers.add({'type': type, '_key': _keyCounter++});
     });
     _save();
   }
@@ -348,9 +361,10 @@ class _DrawerBuilderWidgetState extends ConsumerState<DrawerBuilderWidget> {
   Widget _buildLayerTile(int index, Map<String, dynamic> layer) {
     final type = layer['type']?.toString() ?? 'Unknown';
     final isDefault = index == 0 && type == 'DrawDefault';
+    final itemKey = layer['_key'] ?? index; // fallback
 
     return Container(
-      key: ValueKey("drawer_${index}_${type}"),
+      key: ValueKey("drawer_id_$itemKey"),
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: const Color(0xFF1C1C24),
