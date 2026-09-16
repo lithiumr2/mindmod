@@ -724,20 +724,6 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     }
 
     final availableItems = _getAllAvailableItems();
-    
-    final outputLiquidStr = _properties["outputLiquid"]?.toString().trim() ?? "";
-    String currentOutputLiquid = "";
-    double currentOutputLiquidAmount = 1.0;
-    if (outputLiquidStr.isNotEmpty) {
-      final parts = outputLiquidStr.split('/');
-      if (parts.length >= 2) {
-        currentOutputLiquid = parts[0].trim();
-        currentOutputLiquidAmount = double.tryParse(parts[1].trim()) ?? 1.0;
-      } else {
-        currentOutputLiquid = outputLiquidStr;
-      }
-    }
-    final availableLiquids = _getAllAvailableLiquids();
 
     return Container(
       decoration: BoxDecoration(
@@ -916,6 +902,20 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     }
 
     final availableItems = _getAllAvailableItems();
+
+    final outputLiquidStr = _properties["outputLiquid"]?.toString().trim() ?? "";
+    String currentOutputLiquid = "";
+    double currentOutputLiquidAmount = 1.0;
+    if (outputLiquidStr.isNotEmpty) {
+      final parts = outputLiquidStr.split('/');
+      if (parts.length >= 2) {
+        currentOutputLiquid = parts[0].trim();
+        currentOutputLiquidAmount = double.tryParse(parts[1].trim()) ?? 1.0;
+      } else {
+        currentOutputLiquid = outputLiquidStr;
+      }
+    }
+    final availableLiquids = _getAllAvailableLiquids();
 
     return Container(
       decoration: BoxDecoration(
