@@ -55,7 +55,7 @@ import '../services/hjson_engine.dart';
       }
 
       // Check Sprites for blocks/items
-      if (file.type == FileType.block || file.type == FileType.item) {
+      if (file.type == FileType.block || file.type == FileType.item || file.type == FileType.unit) {
          final baseName = file.name.replaceAll('.hjson', '').replaceAll('.json', '');
          final hasSprite = files.any((f) => f.isImage && (f.name == '${baseName}.png' || f.name == 'sprites/${baseName}.png'));
          if (!hasSprite) {
@@ -179,6 +179,13 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                         SnackBar(content: Text('${tr('mod_exported_to')} $path')),
                       );
                     }
+                  } else if (value == 'export_backup') {
+                    final path = await ExportService.exportProjectBackup(projectState.files);
+                    if (context.mounted && path != null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Respaldo guardado en: ' + path)),
+                      );
+                    }
                   } else if (value == 'modules') {
                     Navigator.push(
                       context,
@@ -194,6 +201,16 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                         Icon(Icons.extension, color: Color(0xFF58A6FF), size: 18),
                         SizedBox(width: 10),
                         Text('Módulos y Plugins', style: TextStyle(color: Colors.white)),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'export_backup',
+                    child: Row(
+                      children: const [
+                        Icon(Icons.backup_outlined, color: Color(0xFF2EA043), size: 18),
+                        SizedBox(width: 10),
+                        Text('Copia de Respaldo (.mindmod)', style: TextStyle(color: Colors.white)),
                       ],
                     ),
                   ),
@@ -311,8 +328,12 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                             )
 
                             : isModJson
-                                ? (_isCodeView ? const CodeEditorWidget() : const ModJsonFormWidget())
-                                : (activeFile.type == FileType.script || _isCodeView ? const CodeEditorWidget() : const VisualFormWidget()),
+                                ? (_isCodeView
+                                    ? CodeEditorWidget(key: ValueKey("${activeFile.name}_code"))
+                                    : ModJsonFormWidget(key: ValueKey("${activeFile.name}_modjson")))
+                                : (activeFile.type == FileType.script || _isCodeView
+                                    ? CodeEditorWidget(key: ValueKey("${activeFile.name}_code"))
+                                    : VisualFormWidget(key: ValueKey("${activeFile.name}_visual"))),
                   ),
                 ],
               ),
