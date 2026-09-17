@@ -231,7 +231,46 @@ class ProjectListScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 32),
             Expanded(
-              child: GridView.builder(
+              child: projects.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(24),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF202026),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white12),
+                            ),
+                            child: const Icon(Icons.dashboard_customize_outlined, size: 54, color: Colors.amber),
+                          ),
+                          const SizedBox(height: 20),
+                          Text(
+                            tr('no_projects_yet'),
+                            style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            tr('create_first_mod_desc'),
+                            style: const TextStyle(color: Colors.white54, fontSize: 14),
+                          ),
+                          const SizedBox(height: 24),
+                          ElevatedButton.icon(
+                            onPressed: () => _showCreateProjectDialog(context, ref),
+                            icon: const Icon(Icons.add),
+                            label: Text(tr('new_project')),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.amber,
+                              foregroundColor: Colors.black,
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : GridView.builder(
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 3,
                   crossAxisSpacing: 16,
@@ -315,10 +354,15 @@ class ProjectListScreen extends ConsumerWidget {
             child: Text(tr('cancel'), style: const TextStyle(color: Colors.white54)),
           ),
           ElevatedButton(
-            onPressed: () {
-              if (controller.text.trim().isNotEmpty) {
-                ref.read(projectsListProvider.notifier).addProject(controller.text.trim());
-                Navigator.pop(context);
+            onPressed: () async {
+              final raw = controller.text.trim();
+              if (raw.isNotEmpty) {
+                final id = await ref.read(projectsListProvider.notifier).createProject(raw);
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ref.read(currentProjectIdProvider.notifier).state = id;
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const MainScreen()));
+                }
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.amber, foregroundColor: Colors.black),
