@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'export_service.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
