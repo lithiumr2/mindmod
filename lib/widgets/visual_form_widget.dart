@@ -27,6 +27,11 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
   @override
   void initState() {
     super.initState();
+    final initialFile = ref.read(projectProvider).activeFile;
+    if (initialFile != null) {
+      _loadPropertiesForFile(initialFile);
+    }
+
     // Auto-save periodically every 2 seconds to guarantee no data loss
     _autoSaveTimer = Timer.periodic(const Duration(seconds: 2), (_) {
       if (_hasPendingSave && mounted) {
@@ -201,28 +206,21 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     "emptyLightColor", "fullLightColor", "flameColor", "outlineColor", "mechLegColor", "noiseColor"
   };
 
-  void _cleanInvalidProperties(FileType type, Map<String, dynamic> parsed) {
-    if (type == FileType.item) {
-      parsed.removeWhere((k, v) => k != "name" && k != "description" && !_itemProps.contains(k));
-    } else if (type == FileType.liquid) {
-      parsed.removeWhere((k, v) => k != "name" && k != "description" && !_liquidProps.contains(k));
-    } else if (type == FileType.unit) {
-      parsed.removeWhere((k, v) => k != "name" && k != "description" && !_unitProps.contains(k));
-    } else if (type == FileType.status) {
-      parsed.removeWhere((k, v) => k != "name" && k != "description" && !_statusProps.contains(k));
-    } else if (type == FileType.sector) {
-      parsed.removeWhere((k, v) => k != "name" && k != "description" && !_sectorProps.contains(k));
-    } else if (type == FileType.weather) {
-      parsed.removeWhere((k, v) => k != "name" && k != "description" && !_weatherProps.contains(k));
-    } else if (type == FileType.block) {
-      final currentType = parsed["type"]?.toString().replaceAll("\"", "") ?? "Wall";
-      final customTypes = ref.read(activeCustomTypesProvider);
-      final isCustom = customTypes.any((ct) => ct.typeId == currentType);
-      if (!isCustom) {
-        final allowed = Set<String>.from(_baseBlockProps)..addAll(_blockSpecificProps[currentType] ?? []);
-        parsed.removeWhere((k, v) => k != "name" && k != "description" && !allowed.contains(k));
-      }
+    void _loadPropertiesForFile(ProjectFile activeFile) {
+    _loadedFileId = activeFile.name;
+    _properties.clear();
+    _syntaxErrors = HjsonEngine.validateSyntax(activeFile.content);
+    final parsed = HjsonEngine.parse(activeFile.content);
+    if (!parsed.containsKey("name") || parsed["name"].toString().trim().isEmpty) {
+      parsed["name"] = activeFile.name.replaceAll(".hjson", "");
     }
+    if (activeFile.type == FileType.block && !parsed.containsKey("type")) {
+      parsed["type"] = "Wall";
+    }
+    if (activeFile.type == FileType.unit && !parsed.containsKey("type")) {
+      parsed["type"] = "flying";
+    }
+    _properties = parsed;
   }
 
   void _saveChanges() {
@@ -528,27 +526,8 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     if (activeFile == null) return const SizedBox.shrink();
 
     if (_loadedFileId != activeFile.name) {
-      _loadedFileId = activeFile.name;
-      _properties.clear();
-      _syntaxErrors.clear();
-
-      _syntaxErrors = HjsonEngine.validateSyntax(activeFile.content);
-      final parsed = HjsonEngine.parse(activeFile.content);
-      // preserved all properties without stripping
-
-      if (!parsed.containsKey("name") || parsed["name"].toString().trim().isEmpty) {
-        parsed["name"] = activeFile.name.replaceAll(".hjson", "");
-      }
-      if (activeFile.type == FileType.block && !parsed.containsKey("type")) {
-        parsed["type"] = "Wall";
-      }
-      if (activeFile.type == FileType.unit && !parsed.containsKey("type")) {
-        parsed["type"] = "flying";
-      }
-      _properties = parsed;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() {});
-      });
+      _loadPropertiesForFile(activeFile);
+    });
     }
 
     final recommendedProps = _getRecommendedProperties(activeFile.type);
