@@ -51,7 +51,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
 
   void _markForSave() {
     _hasPendingSave = true;
-    _saveChanges();
+    _markForSave();
   }
 
   void _forceDiskSave() {
@@ -223,7 +223,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     _properties = parsed;
   }
 
-  void _saveChanges() {
+  void _markForSave() {
     final activeFile = ref.read(projectProvider).activeFile;
     if (activeFile != null) {
       final hjsonString = HjsonEngine.stringify(_properties);
@@ -250,14 +250,14 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
         _properties[key] = "";
       }
     });
-    _saveChanges();
+    _markForSave();
   }
 
   void _removeProperty(String key) {
     setState(() {
       _properties.remove(key);
     });
-    _saveChanges();
+    _markForSave();
   }
 
   List<String> _getAllAvailableItems() {
@@ -373,7 +373,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
         };
       }
     });
-    _saveChanges();
+    _markForSave();
   }
 
   void _openColorPicker(String key, String currentColorHex) {
@@ -408,7 +408,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                     setState(() {
                       _properties[key] = hex;
                     });
-                    _saveChanges();
+                    _markForSave();
                     Navigator.of(ctx).pop();
                   },
                   child: Container(
@@ -536,139 +536,6 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     final matchingSprite = matchingSprites.isNotEmpty ? matchingSprites.first : null;
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Barra de Validación Sintáctica
-        if (_syntaxErrors.isNotEmpty)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            color: Colors.red.withOpacity(0.2),
-            child: Row(
-              children: [
-                const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 18),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    _syntaxErrors.first,
-                    style: const TextStyle(color: Colors.redAccent, fontSize: 12),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-        // Barra de Herramientas Compacta (Sprite + Plantillas + Recomendadas en una sola fila)
-        Container(
-          height: 42,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: const BoxDecoration(
-            color: Color(0xFF1E1E24),
-            border: Border(bottom: BorderSide(color: Colors.white12)),
-          ),
-          child: Row(
-            children: [
-              // Botón Compacto Sprite con ícono + y selector
-              InkWell(
-                onTap: () => _pickSprite(cleanBase),
-                borderRadius: BorderRadius.circular(6),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: matchingSprite != null ? Colors.green.withOpacity(0.15) : const Color(0xFF2A2A32),
-                    border: Border.all(
-                      color: matchingSprite != null ? Colors.greenAccent.withOpacity(0.5) : Colors.white24,
-                      width: 1,
-                    ),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        matchingSprite != null ? Icons.image : Icons.add_photo_alternate_outlined,
-                        size: 15,
-                        color: matchingSprite != null ? Colors.greenAccent : Colors.amber,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(matchingSprite != null ? tr('png_ok') : tr('add_sprite'),
-                        style: TextStyle(
-                          color: matchingSprite != null ? Colors.greenAccent : Colors.white70,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(height: 20, width: 1, color: Colors.white12),
-              const SizedBox(width: 8),
-              // Scroll Horizontal con Plantillas y Recomendadas
-              Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      Text(tr('presets'), style: const TextStyle(color: Colors.white54, fontSize: 11)),
-                      const SizedBox(width: 4),
-                      if (activeFile.type == FileType.block) ...[
-                        _buildPresetChip(tr('preset_drill'), () => _applyPreset("drill")),
-                        const SizedBox(width: 4),
-                        _buildPresetChip(tr('preset_turret'), () => _applyPreset("turret")),
-                        const SizedBox(width: 4),
-                        _buildPresetChip(tr('preset_crafter'), () => _applyPreset("crafter")),
-                      ] else if (activeFile.type == FileType.unit) ...[
-                        _buildPresetChip(tr('preset_flying'), () => _applyPreset("unit_flying")),
-                        const SizedBox(width: 4),
-                        _buildPresetChip(tr('preset_mech'), () => _applyPreset("unit_mech")),
-                      ] else if (activeFile.type == FileType.item) ...[
-                        _buildPresetChip(tr('preset_basic_item'), () => _applyPreset("item_basic")),
-                      ],
-                      if (recommendedProps.isNotEmpty) ...[
-                        const SizedBox(width: 10),
-                        Container(height: 18, width: 1, color: Colors.white12),
-                        const SizedBox(width: 10),
-                        Text(tr('add_prop'), style: const TextStyle(color: Colors.amber, fontSize: 11, fontWeight: FontWeight.bold)),
-                        const SizedBox(width: 4),
-                        ...recommendedProps.take(25).map((prop) {
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 4),
-                            child: ActionChip(
-                              backgroundColor: const Color(0xFF222228),
-                              side: const BorderSide(color: Colors.white24, width: 0.5),
-                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
-                              label: Text("+ $prop", style: const TextStyle(color: Colors.white70, fontSize: 10)),
-                              onPressed: () => _addProperty(prop),
-                            ),
-                          );
-                        }),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        // Lista de Propiedades Activas
-        Expanded(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.only(
-              left: 16,
-              right: 16,
-              top: 12,
-              bottom: MediaQuery.of(context).viewInsets.bottom + 120,
-            ),
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final isWide = constraints.maxWidth > 500;
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // --- 1. WIDGET DE PROPIEDADES COMUNES (BLOCK / UNIT) ---
                     if (activeFile.type == FileType.block || activeFile.type == FileType.unit)
@@ -687,9 +554,10 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                           _markForSave();
                         },
                       ),
+                      
                     const SizedBox(height: 16),
-
-                    // --- 2. SUB-EDITORES ESPECÍFICOS (DRAWER / TYPE DISPATCHER) ---
+                    
+                    // --- 2. SUB-EDITORES ESPECÍFICOS (TYPE DISPATCHER) ---
                     if (activeFile.type == FileType.block || activeFile.type == FileType.unit)
                       TypePropertiesDispatcher(
                         fileType: activeFile.type,
@@ -703,6 +571,10 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                           _markForSave();
                         },
                       ),
+                      
+                    const SizedBox(height: 16),
+                    
+                    // --- 3. RENDERING DEL DRAWER (Solo Bloques) ---
                     if (activeFile.type == FileType.block)
                       DrawerBuilderWidget(
                         key: ValueKey(activeFile.name),
@@ -719,137 +591,15 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                           _markForSave();
                         },
                       ),
-                    const SizedBox(height: 16),
-
-                    // --- 3. PROPIEDADES EXTRA / PERSONALIZADAS ---
-                    const Padding(
-                      padding: EdgeInsets.only(left: 4, bottom: 8),
-                      child: Text(
-                        "Propiedades Extra / Personalizadas",
-                        style: TextStyle(color: Colors.amber, fontSize: 14, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: [
-                    ..._properties.entries
-                        .where((e) {
-                          final handled = _getHandledProps(activeFile.type, _properties["type"]?.toString().replaceAll('"', ''));
-                          return !handled.contains(e.key);
-                        })
-                        .map((entry) {
-
-                    final key = entry.key;
-                    final value = entry.value;
-                    final isVital = key == "name" || (key == "type" && (activeFile.type == FileType.block || activeFile.type == FileType.unit));
-                    final isComplex = key == "requirements" || key == "outputItems" || key == "results" || key == "description" || key == "details" || key == "weapons" || key == "abilities" || key == "consumes";
-                    final itemWidth = (isWide && !isComplex) ? (constraints.maxWidth / 2.0) - 6.0 : constraints.maxWidth;
-
-              // Editor multilínea especial para requirements
-              if (key == "requirements") {
-                return SizedBox(width: constraints.maxWidth, child: _buildRequirementsCard(key, value, isVital));
-              }
-
-              return SizedBox(
-      width: itemWidth,
-      child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      width: 140,
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              key,
-                              style: TextStyle(
-                                color: isVital ? Colors.amber : Colors.white70,
-                                fontWeight: isVital ? FontWeight.bold : FontWeight.w500,
-                                fontSize: 13,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (isVital)
-                            const Padding(
-                              padding: EdgeInsets.only(left: 4),
-                              child: Icon(Icons.lock_outline, size: 12, color: Colors.amber),
-                            ),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF222228),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.white12),
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        child: _buildInputField(key, value, activeFile.type),
-                      ),
-                    ),
-                    IconButton(
-                      icon: Icon(
-                        isVital ? Icons.lock_outline : Icons.delete_outline,
-                        color: isVital ? Colors.white24 : Colors.redAccent,
-                        size: 20,
-                      ),
-                      onPressed: isVital ? null : () => _removeProperty(key),
-                    ),
                   ],
-                ),
-              );
-            
-                    }).toList(),
-                    if (activeFile.type == FileType.block || activeFile.type == FileType.unit)
-                      SizedBox(
-                        width: constraints.maxWidth,
-                        child: TypePropertiesDispatcher(
-                          fileType: activeFile.type,
-                          properties: _properties,
-                          availableItems: _getAllAvailableItems(),
-                          availableLiquids: _getAllAvailableLiquids(),
-                          onChanged: (newProps) {
-                            setState(() {
-                              _properties = newProps;
-                            });
-                            _saveChanges();
-                          },
-                        ),
-                      ),
-                    if (activeFile.type == FileType.block)
-                      SizedBox(
-                        width: constraints.maxWidth,
-                        child: DrawerBuilderWidget(
-                          key: ValueKey(activeFile.name),
-                          blockProperties: _properties,
-                          availableLiquids: _getAllAvailableLiquids(),
-                          onChanged: (newDrawer) {
-                            setState(() {
-                              if (newDrawer == null) {
-                                _properties.remove("drawer");
-                              } else {
-                                _properties["drawer"] = newDrawer;
-                              }
-                            });
-                            _saveChanges();
-                          },
-                        ),
-                      ),
-                  ],
-                ),
-              ],
-            );
-          },
+                );
+              },
+            ),
+          ),
         ),
-      ),
-    ),
-  ],
-);
+      ],
+    );
   }
-
   Widget _buildPresetChip(String label, VoidCallback onTap) {
     return ActionChip(
       backgroundColor: const Color(0xFF2A2A32),
@@ -1032,7 +782,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     setState(() {
       _properties["requirements"] = formatted;
     });
-    _saveChanges();
+    _markForSave();
   }
 
   Widget _buildInputField(String key, dynamic value, FileType fileType) {
@@ -1054,7 +804,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
               setState(() {
                 _properties[key] = val;
               });
-              _saveChanges();
+              _markForSave();
             }
           },
           items: _blockTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
@@ -1080,7 +830,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
               setState(() {
                 _properties[key] = val;
               });
-              _saveChanges();
+              _markForSave();
             }
           },
           items: _unitTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
@@ -1103,7 +853,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
           onChanged: (val) {
             if (val != null) {
               setState(() { _properties[key] = val; });
-              _saveChanges();
+              _markForSave();
             }
           },
           items: _categories.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
@@ -1125,7 +875,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
           onChanged: (val) {
             if (val != null) {
               setState(() { _properties[key] = val; });
-              _saveChanges();
+              _markForSave();
             }
           },
           items: _buildVisibilities.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
@@ -1197,7 +947,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                 onChanged: (v) {
                   if (v != null) {
                     setState(() => _properties[key] = "$v/$currentAmount");
-                    _saveChanges();
+                    _markForSave();
                   }
                 },
                 items: candidates.map<DropdownMenuItem<String>>((c) => DropdownMenuItem<String>(value: c as String, child: Text(c as String))).toList(),
@@ -1220,7 +970,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
               onChanged: (val) {
                 final amt = int.tryParse(val) ?? 1;
                 setState(() => _properties[key] = "$currentItem/$amt");
-                _saveChanges();
+                _markForSave();
               },
             ),
           ),
@@ -1241,7 +991,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
           onChanged: (v) {
             if (v != null) {
               setState(() => _properties[key] = v);
-              _saveChanges();
+              _markForSave();
             }
           },
           items: candidates.map<DropdownMenuItem<String>>((c) => DropdownMenuItem<String>(value: c as String, child: Text(c as String))).toList(),
@@ -1262,7 +1012,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
           onChanged: (v) {
             if (v != null) {
               setState(() => _properties[key] = v);
-              _saveChanges();
+              _markForSave();
             }
           },
           items: candidates.map<DropdownMenuItem<String>>((c) => DropdownMenuItem<String>(value: c as String, child: Text(c as String))).toList(),
@@ -1283,7 +1033,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
           onChanged: (v) {
             if (v != null) {
               setState(() => _properties[key] = v);
-              _saveChanges();
+              _markForSave();
             }
           },
           items: candidates.map<DropdownMenuItem<String>>((c) => DropdownMenuItem<String>(value: c as String, child: Text(c as String))).toList(),
@@ -1303,7 +1053,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
             setState(() {
               _properties[key] = newVal;
             });
-            _saveChanges();
+            _markForSave();
           },
         ),
       );
@@ -1351,7 +1101,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
               _properties[key] = newVal;
             }
           }
-          _saveChanges();
+          _markForSave();
         },
       ),
     );
