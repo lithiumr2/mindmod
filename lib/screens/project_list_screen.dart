@@ -28,7 +28,7 @@ String _getTr(WidgetRef ref, String key) => ref.read(localeProvider.notifier).tr
         final archive = ZipDecoder().decodeBytes(bytes);
         
         String projName = result.files.single.name.replaceAll('.zip', '');
-        final newId = ref.read(projectsListProvider.notifier).addProject(projName);
+        final newId = await ref.read(projectsListProvider.notifier).createProject(projName);
         
         List<ProjectFile> files = [];
         for (final file in archive) {
@@ -247,12 +247,12 @@ class ProjectListScreen extends ConsumerWidget {
                           ),
                           const SizedBox(height: 20),
                           Text(
-                            tr('no_projects_yet'),
+                            tr('no_projects_yet') ?? 'No projects yet',
                             style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            tr('create_first_mod_desc'),
+                            tr('create_first_mod_desc') ?? 'Create your first mod',
                             style: const TextStyle(color: Colors.white54, fontSize: 14),
                           ),
                           const SizedBox(height: 24),
