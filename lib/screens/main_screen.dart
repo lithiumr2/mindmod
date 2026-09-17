@@ -295,8 +295,8 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                             )
 
                             : isModJson
-                                ? (_isCodeView ? const CodeEditorWidget() : const ModJsonFormWidget())
-                                : (activeFile.type == FileType.script || _isCodeView ? const CodeEditorWidget() : const VisualFormWidget()),
+                                ? (_isCodeView ? CodeEditorWidget(key: ValueKey('${activeFile.name}_code')) : ModJsonFormWidget(key: ValueKey('${activeFile.name}_modjson')))
+                                : (activeFile.type == FileType.script || _isCodeView ? CodeEditorWidget(key: ValueKey('${activeFile.name}_code')) : VisualFormWidget(key: ValueKey('${activeFile.name}_visual'))),
                   ),
                 ],
               ),
