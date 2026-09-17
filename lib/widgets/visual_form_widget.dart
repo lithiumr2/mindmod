@@ -527,7 +527,6 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
 
     if (_loadedFileId != activeFile.name) {
       _loadPropertiesForFile(activeFile);
-    });
     }
 
     final recommendedProps = _getRecommendedProperties(activeFile.type);
