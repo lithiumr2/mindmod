@@ -101,11 +101,19 @@ class ExportService {
 
   static Future<String?> _saveFileToDisk(String fileName, Uint8List bytes) async {
     if (Platform.isAndroid) {
-      Directory downloadDir = Directory('/storage/emulated/0/Download');
-      if (!await downloadDir.exists()) {
-        downloadDir = await getExternalStorageDirectory() ?? await getApplicationDocumentsDirectory();
+      try {
+        Directory downloadDir = Directory('/storage/emulated/0/Download');
+        if (await downloadDir.exists()) {
+          final filePath = '${downloadDir.path}/$fileName';
+          final file = File(filePath);
+          await file.writeAsBytes(bytes);
+          return filePath;
+        }
+      } catch (_) {
+        // Fallback seguro ante restricciones de Scoped Storage en Android 11+
       }
-      final filePath = '${downloadDir.path}/$fileName';
+      final fallbackDir = await getExternalStorageDirectory() ?? await getApplicationDocumentsDirectory();
+      final filePath = '${fallbackDir.path}/$fileName';
       final file = File(filePath);
       await file.writeAsBytes(bytes);
       return filePath;
