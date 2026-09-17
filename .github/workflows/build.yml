@@ -10,6 +10,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout del código
         uses: actions/checkout@v4
@@ -17,52 +18,44 @@ jobs:
       - name: Configurar Java
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          distribution: "temurin"
+          java-version: "17"
 
       - name: Configurar Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
+          channel: "stable"
 
       - name: Regenerar estructura Android limpia (v2 embedding)
         run: |
           rm -rf android
           flutter create . --platforms=android --org=com.mindmod
+
       - name: Forzar compileSdk y minSdk en el proyecto y sus dependencias
         run: |
           python3 -c "
           import os
           import re
-          
+
           gradle_path = 'android/app/build.gradle'
           kts_path = 'android/app/build.gradle.kts'
-          root_gradle = 'android/build.gradle'
-          root_kts = 'android/build.gradle.kts'
-          
-          # Update app level build.gradle
-          if os.path.exists(gradle_path):
-              with open(gradle_path, 'r') as f: content = f.read()
-              content = re.sub(r'compileSdk\s*=\s*.*', 'compileSdk = 34', content)
-              content = re.sub(r'targetSdk\s*=\s*.*', 'targetSdk = 34', content)
-              with open(gradle_path, 'w') as f: f.write(content)
-          elif os.path.exists(kts_path):
-              with open(kts_path, 'r') as f: content = f.read()
-              content = re.sub(r'compileSdk\s*=\s*.*', 'compileSdk = 34', content)
-              content = re.sub(r'targetSdk\s*=\s*.*', 'targetSdk = 34', content)
-              with open(kts_path, 'w') as f: f.write(content)
-          
-          # Inject subprojects in root build.gradle
-          if os.path.exists(root_gradle):
-              with open(root_gradle, 'a') as f:
-                  f.write('\nsubprojects {\n    afterEvaluate { project ->\n        if (project.hasProperty(\'android\')) {\n            project.android {\n                if (namespace == null) {\n                    namespace project.group\n                }\n                compileSdkVersion 34\n                defaultConfig {\n                    targetSdkVersion 34\n                }\n            }\n        }\n    }\n}\n')
-          elif os.path.exists(root_kts):
-              with open(root_kts, 'a') as f:
-                  f.write('\nsubprojects {\n    afterEvaluate {\n        val project = this\n        if (project.hasProperty(\android\)) {\n            project.extensions.configure(\android\) {\n                val androidExt = this as com.android.build.gradle.BaseExtension\n                androidExt.compileSdkVersion(34)\n                androidExt.defaultConfig.targetSdk = 34\n            }\n        }\n    }\n}\n')
+          target = kts_path if os.path.exists(kts_path) else gradle_path
+
+          if os.path.exists(target):
+              with open(target, 'r') as f:
+                  content = f.read()
+              content = re.sub(r'compileSdk\s*=.*', 'compileSdk = 34', content)
+              content = re.sub(r'targetSdk\s*=.*', 'targetSdk = 34', content)
+              content = re.sub(r'minSdk\s*=.*', 'minSdk = 21', content)
+              with open(target, 'w') as f:
+                  f.write(content)
+              print('Patched', target)
+
+          for prop_file in ['android/local.properties', 'android/gradle.properties']:
+              with open(prop_file, 'a') as f:
+                  f.write('\nflutter.compileSdkVersion=34\nflutter.minSdkVersion=21\nflutter.targetSdkVersion=34\n')
+              print('Updated', prop_file)
           "
-
-
-          
 
       - name: Instalar dependencias
         run: flutter pub get
@@ -93,7 +86,7 @@ jobs:
           with open(target, 'r') as f: content = f.read()
           
           if target == kts_path:
-              sign_block = '''
+              sign_block = '\
               signingConfigs {
                   create(\"release\") {
                       storeFile = file(\"mindmod.jks\")
@@ -102,11 +95,11 @@ jobs:
                       keyPassword = \"mindmod\"
                   }
               }
-              '''
+              '\
               content = content.replace('buildTypes {', sign_block + '    buildTypes {')
               content = content.replace('signingConfig = signingConfigs.getByName(\"debug\")', 'signingConfig = signingConfigs.getByName(\"release\")')
           else:
-              sign_block = '''
+              sign_block = '\
               signingConfigs {
                   release {
                       storeFile file(\"mindmod.jks\")
@@ -115,7 +108,7 @@ jobs:
                       keyPassword \"mindmod\"
                   }
               }
-              '''
+              '\
               content = content.replace('buildTypes {', sign_block + '    buildTypes {')
               content = content.replace('signingConfig signingConfigs.debug', 'signingConfig signingConfigs.release')
           
