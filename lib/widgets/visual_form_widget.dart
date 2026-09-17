@@ -9,6 +9,7 @@ import '../services/hjson_engine.dart';
 import '../providers/locale_provider.dart';
 import 'type_properties/type_properties_dispatcher.dart';
 import 'type_properties/drawer_builder_widget.dart';
+import 'common_properties_widget.dart';
 
 class VisualFormWidget extends ConsumerStatefulWidget {
   const VisualFormWidget({super.key});
@@ -22,30 +23,6 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
   Map<String, dynamic> _properties = {};
   List<String> _syntaxErrors = [];
   String _loadedFileId = "";
-
-  @override
-  void initState() {
-    super.initState();
-    _loadFileProperties();
-  }
-
-  void _loadFileProperties() {
-    final activeFile = ref.read(projectProvider).activeFile;
-    if (activeFile == null) return;
-    _loadedFileId = activeFile.name;
-    _syntaxErrors = HjsonEngine.validateSyntax(activeFile.content);
-    final parsed = HjsonEngine.parse(activeFile.content);
-    if (!parsed.containsKey("name") || parsed["name"].toString().trim().isEmpty) {
-      parsed["name"] = activeFile.name.replaceAll(".hjson", "").replaceAll(".json", "");
-    }
-    if (activeFile.type == FileType.block && !parsed.containsKey("type")) {
-      parsed["type"] = "Wall";
-    }
-    if (activeFile.type == FileType.unit && !parsed.containsKey("type")) {
-      parsed["type"] = "flying";
-    }
-    _properties = parsed;
-  }
 
   // 30 tipos de bloques nativos de Mindustry
   final List<String> _blockTypes = [
@@ -185,6 +162,26 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     "color", "barColor", "lightColor", "laserColor1", "laserColor2", "sparkColor",
     "emptyLightColor", "fullLightColor", "flameColor", "outlineColor", "mechLegColor", "noiseColor"
   };
+
+  void _cleanInvalidProperties(FileType type, Map<String, dynamic> parsed) {
+    if (type == FileType.item) {
+      parsed.removeWhere((k, v) => k != "name" && k != "description" && !_itemProps.contains(k));
+    } else if (type == FileType.liquid) {
+      parsed.removeWhere((k, v) => k != "name" && k != "description" && !_liquidProps.contains(k));
+    } else if (type == FileType.unit) {
+      parsed.removeWhere((k, v) => k != "name" && k != "description" && !_unitProps.contains(k));
+    } else if (type == FileType.status) {
+      parsed.removeWhere((k, v) => k != "name" && k != "description" && !_statusProps.contains(k));
+    } else if (type == FileType.sector) {
+      parsed.removeWhere((k, v) => k != "name" && k != "description" && !_sectorProps.contains(k));
+    } else if (type == FileType.weather) {
+      parsed.removeWhere((k, v) => k != "name" && k != "description" && !_weatherProps.contains(k));
+    } else if (type == FileType.block) {
+      final currentType = parsed["type"]?.toString().replaceAll("\"", "") ?? "Wall";
+      final allowed = Set<String>.from(_baseBlockProps)..addAll(_blockSpecificProps[currentType] ?? []);
+      parsed.removeWhere((k, v) => k != "name" && k != "description" && !allowed.contains(k));
+    }
+  }
 
   void _saveChanges() {
     final activeFile = ref.read(projectProvider).activeFile;
@@ -477,7 +474,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
 
       _syntaxErrors = HjsonEngine.validateSyntax(activeFile.content);
       final parsed = HjsonEngine.parse(activeFile.content);
-      
+      _cleanInvalidProperties(activeFile.type, parsed);
 
       if (!parsed.containsKey("name") || parsed["name"].toString().trim().isEmpty) {
         parsed["name"] = activeFile.name.replaceAll(".hjson", "");
