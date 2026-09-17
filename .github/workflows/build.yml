@@ -5,8 +5,7 @@ on:
     branches: [ "main", "experimental" ]
   pull_request:
     branches: [ "main", "experimental" ]
-  workflow_dispatch:
-
+    
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -18,32 +17,58 @@ jobs:
       - name: Configurar Java
         uses: actions/setup-java@v4
         with:
-          distribution: "temurin"
-          java-version: "17"
+          distribution: 'temurin'
+          java-version: '17'
 
       - name: Configurar Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: "stable"
-
-      - name: Instalar Android SDK Platform 36
-        run: |
-          yes | sdkmanager --licenses || true
-          sdkmanager "platforms;android-36" "platforms;android-35" "platforms;android-34" || true
+          channel: 'stable'
 
       - name: Regenerar estructura Android limpia (v2 embedding)
         run: |
           rm -rf android
           flutter create . --platforms=android --org=com.mindmod
 
+      - name: Forzar compileSdk y minSdk en el proyecto y sus dependencias
+        run: |
+          python3 -c "
+          import os
+
+          for root, dirs, files in os.walk('android'):
+              for file in files:
+                  if file.startswith('build.gradle'):
+                      filepath = os.path.join(root, file)
+                      with open(filepath, 'r') as f:
+                          content = f.read()
+                      
+                      if 'compileSdk' in content:
+                          import re
+                          content = re.sub(r'compileSdk\s*=*\s*\d+', 'compileSdk = 36', content)
+                          content = re.sub(r'compileSdkVersion\s*=*\s*\d+', 'compileSdkVersion = 36', content)
+                      
+                      with open(filepath, 'w') as f:
+                          f.write(content)
+
+          root_gradle = 'android/build.gradle'
+          if os.path.exists(root_gradle):
+              with open(root_gradle, 'a') as f:
+                  f.write('''
+
+          subprojects {
+              afterEvaluate { project ->
+                  if (project.hasProperty('android')) {
+                      project.android {
+                          compileSdkVersion 36
+                      }
+                  }
+              }
+          }
+          ''')
+          "
+
       - name: Instalar dependencias
         run: flutter pub get
-
-      - name: Generar Icono de la App
-        run: flutter pub run flutter_launcher_icons
-
-      - name: Generar Splash Screen
-        run: dart run flutter_native_splash:create
 
       - name: Configurar Firma de Release (Keystore)
         run: |
@@ -51,20 +76,60 @@ jobs:
             echo "Usando keystore permanente del repositorio"
             cp mindmod.jks android/app/mindmod.jks
           else
-            echo "Generando keystore temporal de respaldo..."
+            echo "Generando un nuevo keystore permanente..."
             keytool -genkey -v -keystore mindmod.jks -keyalg RSA -keysize 2048 -validity 10000 -alias mindmod -storepass mindmod -keypass mindmod -dname "CN=Mindmod, OU=Mindmod, O=Mindmod, L=Mindmod, ST=Mindmod, C=US"
             cp mindmod.jks android/app/mindmod.jks
+            git config user.name "AI Studio"
+            git config user.email "aistudio@google.com"
+            git add mindmod.jks
+            git commit -m "chore: agregar keystore permanente para firmas de APK deterministas"
+            git push origin HEAD:${GITHUB_REF#refs/heads/}
           fi
-          python3 .github/scripts/configure_signing.py
-
-      - name: Forzar compileSdk 36 en proyecto, dependencias y plugins
-        run: python3 .github/scripts/configure_sdk.py
+          
+          python3 -c "
+          import os
+          import re
+          gradle_path = 'android/app/build.gradle'
+          kts_path = 'android/app/build.gradle.kts'
+          target = kts_path if os.path.exists(kts_path) else gradle_path
+          with open(target, 'r') as f: content = f.read()
+          
+          if target == kts_path:
+              sign_block = '''
+              signingConfigs {
+                  create(\"release\") {
+                      storeFile = file(\"mindmod.jks\")
+                      storePassword = \"mindmod\"
+                      keyAlias = \"mindmod\"
+                      keyPassword = \"mindmod\"
+                  }
+              }
+              '''
+              content = content.replace('buildTypes {', sign_block + '    buildTypes {')
+              content = content.replace('signingConfig = signingConfigs.getByName(\"debug\")', 'signingConfig = signingConfigs.getByName(\"release\")')
+          else:
+              sign_block = '''
+              signingConfigs {
+                  release {
+                      storeFile file(\"mindmod.jks\")
+                      storePassword \"mindmod\"
+                      keyAlias \"mindmod\"
+                      keyPassword \"mindmod\"
+                  }
+              }
+              '''
+              content = content.replace('buildTypes {', sign_block + '    buildTypes {')
+              content = content.replace('signingConfig signingConfigs.debug', 'signingConfig signingConfigs.release')
+          
+          with open(target, 'w') as f: f.write(content)
+          "
 
       - name: Compilar APK release
-        run: flutter build apk --release --no-tree-shake-icons --build-name=1.0.${{ github.run_number }} --build-number=${{ github.run_number }}
+        run: flutter build apk --release --no-tree-shake-icons
 
       - name: Subir APK generado
         uses: actions/upload-artifact@v4
         with:
           name: mindmod-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+          
