@@ -724,7 +724,7 @@ class _ModuleEditorScreenState extends ConsumerState<ModuleEditorScreen> with Si
                         value: p,
                         child: Text(p.name),
                       );
-                    }).toList>,
+                    }).toList(),
                     onChanged: (val) {
                       if (val != null) setDialogState(() => type = val);
                     },

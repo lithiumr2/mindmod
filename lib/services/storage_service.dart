@@ -1,3 +1,4 @@
+import 'export_service.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import '../models/project_file.dart';
@@ -5,6 +6,10 @@ import 'dart:convert';
 import 'package:path/path.dart' as p;
 
 class StorageService {
+  static Future<String?> saveExportedFile(String fileName, List<int> bytes) async {
+    return ExportService.saveFileToDisk(fileName, Uint8List.fromList(bytes));
+  }
+
   static Future<Directory> getModsDirectory() async {
     Directory? baseDir;
     if (Platform.isAndroid) {

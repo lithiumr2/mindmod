@@ -97,6 +97,8 @@ class ExportService {
   }
 
   /// Guarda el archivo directamente en la carpeta pública de Descargas en Android
+  static Future<String?> saveFileToDisk(String fileName, Uint8List bytes) => _saveFileToDisk(fileName, bytes);
+
   static Future<String?> _saveFileToDisk(String fileName, Uint8List bytes) async {
     if (Platform.isAndroid) {
       Directory downloadDir = Directory('/storage/emulated/0/Download');
