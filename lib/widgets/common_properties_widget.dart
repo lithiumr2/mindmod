@@ -1,35 +1,10 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/project_file.dart';
-import '../providers/locale_provider.dart';
 
-final commonPropsProvider = StateNotifierProvider.family<CommonPropsNotifier, Map<String, dynamic>, String>((ref, id) {
-  return CommonPropsNotifier();
-});
-
-class CommonPropsNotifier extends StateNotifier<Map<String, dynamic>> {
-  CommonPropsNotifier() : super({});
-
-  void setAll(Map<String, dynamic> initial) {
-    state = Map<String, dynamic>.from(initial);
-  }
-
-  void updateField(String key, dynamic value, Function(String, dynamic) onExternalChange) {
-    state = {...state, key: value};
-    onExternalChange(key, value);
-  }
-
-  void removeField(String key, Function(String, dynamic) onExternalChange) {
-    final updated = Map<String, dynamic>.from(state);
-    updated.remove(key);
-    state = updated;
-    onExternalChange(key, null);
-  }
-}
-
-class CommonPropertiesContainer extends ConsumerStatefulWidget {
+/// Contenedor unificado de propiedades comunes para Bloques y Unidades
+/// Organizado en pares compactos (2 por fila) para máxima densidad visual.
+class CommonPropertiesContainer extends StatelessWidget {
   final String fileId;
   final FileType type;
   final Map<String, dynamic> properties;
@@ -44,487 +19,963 @@ class CommonPropertiesContainer extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<CommonPropertiesContainer> createState() => _CommonPropertiesContainerState();
-}
-
-class _CommonPropertiesContainerState extends ConsumerState<CommonPropertiesContainer> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(commonPropsProvider(widget.fileId).notifier).setAll(widget.properties);
-    });
-  }
-
-  @override
-  void didUpdateWidget(covariant CommonPropertiesContainer oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.fileId != widget.fileId || oldWidget.properties != widget.properties) {
-      ref.read(commonPropsProvider(widget.fileId).notifier).setAll(widget.properties);
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    if (widget.type == FileType.block) {
+    if (type == FileType.block) {
       return CommonBlockPropertiesWidget(
-        fileId: widget.fileId,
-        onChanged: widget.onChanged,
+        fileId: fileId,
+        properties: properties,
+        onChanged: onChanged,
       );
-    } else if (widget.type == FileType.unit) {
+    } else if (type == FileType.unit) {
       return CommonUnitPropertiesWidget(
-        fileId: widget.fileId,
-        onChanged: widget.onChanged,
+        fileId: fileId,
+        properties: properties,
+        onChanged: onChanged,
       );
     }
     return const SizedBox.shrink();
   }
 }
 
-class CommonBlockPropertiesWidget extends ConsumerWidget {
-  final String fileId;
-  final Function(String, dynamic) onChanged;
-
-  static const List<String> categories = [
-    "turret", "production", "distribution", "liquid", "power", "defense", 
-    "crafting", "units", "effect", "logic"
-  ];
-
-  const CommonBlockPropertiesWidget({super.key, required this.fileId, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(commonPropsProvider(fileId));
-    final notifier = ref.read(commonPropsProvider(fileId).notifier);
-
-    void update(String k, dynamic v) => notifier.updateField(k, v, onChanged);
-
-    final bool hasItems = state['hasItems'] == true || state['hasItems'] == 'true';
-    final bool hasLiquids = state['hasLiquids'] == true || state['hasLiquids'] == 'true';
-    final bool hasPower = state['hasPower'] == true || state['hasPower'] == 'true';
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionHeader("Información General", Icons.info_outline),
-        _buildCard([
-          _buildTextField(fileId, 'name', 'Name', state['name'], (v) => update('name', v)),
-          _buildTextField(fileId, 'description', 'Description', state['description'], (v) => update('description', v), multiline: true),
-          _buildTextField(fileId, 'details', 'Details', state['details'], (v) => update('details', v), multiline: true),
-        ]),
-
-        _buildSectionHeader("Dimensiones y Resistencia", Icons.shield_outlined),
-        _buildCard([
-          _buildNumField(fileId, 'size', 'Size (1-16)', state['size'], (v) => update('size', v?.toInt() ?? 1)),
-          _buildNumField(fileId, 'health', 'Health (HP Base)', state['health'], (v) => update('health', v?.toInt() ?? 100)),
-          _buildNumField(fileId, 'buildCostMultiplier', 'Build Cost Multiplier', state['buildCostMultiplier'], (v) => update('buildCostMultiplier', v ?? 1.0), isDouble: true),
-        ]),
-
-        _buildSectionHeader("Construcción e Investigación", Icons.construction_outlined),
-        _buildCard([
-          _buildDropdown(fileId, 'category', 'Category', state['category']?.toString(), categories, (v) => update('category', v)),
-          _buildTextField(fileId, 'research', 'Research (Padre en Árbol)', state['research'], (v) => update('research', v)),
-          _buildSwitch('alwaysUnlocked', 'Always Unlocked (Siempre Desbloqueado)', state['alwaysUnlocked'], (v) => update('alwaysUnlocked', v)),
-          const Divider(color: Colors.white12, height: 24),
-          RequirementsBuilder(
-            fileId: fileId,
-            requirements: state['requirements'],
-            onChanged: (v) => update('requirements', v),
-          ),
-        ]),
-
-        _buildSectionHeader("Almacenamiento y Capacidades", Icons.inventory_2_outlined),
-        _buildCard([
-          _buildSwitch('hasItems', 'Has Items (Almacena Ítems)', state['hasItems'], (v) => update('hasItems', v)),
-          if (hasItems) 
-            Padding(
-              padding: const EdgeInsets.only(left: 12, top: 4),
-              child: _buildNumField(fileId, 'itemCapacity', 'Item Capacity', state['itemCapacity'], (v) => update('itemCapacity', v?.toInt() ?? 10)),
-            ),
-          const Divider(color: Colors.white12, height: 16),
-          _buildSwitch('hasLiquids', 'Has Liquids (Almacena Líquidos)', state['hasLiquids'], (v) => update('hasLiquids', v)),
-          if (hasLiquids)
-            Padding(
-              padding: const EdgeInsets.only(left: 12, top: 4),
-              child: _buildNumField(fileId, 'liquidCapacity', 'Liquid Capacity', state['liquidCapacity'], (v) => update('liquidCapacity', v ?? 10.0), isDouble: true),
-            ),
-          const Divider(color: Colors.white12, height: 16),
-          _buildSwitch('hasPower', 'Has Power (Gestiona Energía)', state['hasPower'], (v) => update('hasPower', v)),
-          if (hasPower) ...[
-            Padding(
-              padding: const EdgeInsets.only(left: 12, top: 4),
-              child: Column(
-                children: [
-                  _buildSwitch('outputsPower', 'Outputs Power (Produce Energía)', state['outputsPower'], (v) => update('outputsPower', v)),
-                  _buildSwitch('consumesPower', 'Consumes Power (Consume Energía)', state['consumesPower'], (v) => update('consumesPower', v)),
-                ],
-              ),
-            ),
-          ],
-        ]),
-
-        _buildSectionHeader("Físicas y Comportamiento", Icons.settings_input_component_outlined),
-        _buildCard([
-          _buildSwitch('solid', 'Solid (Sólido)', state['solid'], (v) => update('solid', v), defaultVal: true),
-          _buildSwitch('targetable', 'Targetable (Apuntable por Enemigos)', state['targetable'], (v) => update('targetable', v), defaultVal: true),
-          _buildSwitch('destructible', 'Destructible', state['destructible'], (v) => update('destructible', v), defaultVal: true),
-          _buildSwitch('canOverdrive', 'Can Overdrive (Acelerable por Overdrive)', state['canOverdrive'], (v) => update('canOverdrive', v), defaultVal: true),
-          _buildSwitch('update', 'Update (Lógica Activa en Cada Tick)', state['update'], (v) => update('update', v), defaultVal: true),
-        ]),
-      ],
-    );
-  }
-}
-
-class CommonUnitPropertiesWidget extends ConsumerWidget {
-  final String fileId;
-  final Function(String, dynamic) onChanged;
-
-  const CommonUnitPropertiesWidget({super.key, required this.fileId, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(commonPropsProvider(fileId));
-    final notifier = ref.read(commonPropsProvider(fileId).notifier);
-
-    void update(String k, dynamic v) => notifier.updateField(k, v, onChanged);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionHeader("Información General", Icons.info_outline),
-        _buildCard([
-          _buildTextField(fileId, 'name', 'Name', state['name'], (v) => update('name', v)),
-          _buildTextField(fileId, 'description', 'Description', state['description'], (v) => update('description', v), multiline: true),
-          _buildTextField(fileId, 'research', 'Research (Padre en Árbol)', state['research'], (v) => update('research', v)),
-        ]),
-
-        _buildSectionHeader("Estadísticas Vitales", Icons.favorite_border),
-        _buildCard([
-          _buildNumField(fileId, 'health', 'Health (HP)', state['health'], (v) => update('health', v ?? 100.0), isDouble: true),
-          _buildNumField(fileId, 'armor', 'Armor (Blindaje)', state['armor'], (v) => update('armor', v ?? 0.0), isDouble: true),
-          _buildNumField(fileId, 'speed', 'Speed (Velocidad)', state['speed'], (v) => update('speed', v ?? 1.0), isDouble: true),
-          _buildNumField(fileId, 'hitSize', 'Hit Size (Radio de Impacto)', state['hitSize'], (v) => update('hitSize', v ?? 8.0), isDouble: true),
-          _buildNumField(fileId, 'accel', 'Acceleration (Aceleración)', state['accel'], (v) => update('accel', v ?? 0.5), isDouble: true),
-          _buildNumField(fileId, 'drag', 'Drag (Fricción/Resistencia)', state['drag'], (v) => update('drag', v ?? 0.1), isDouble: true),
-          _buildNumField(fileId, 'rotateSpeed', 'Rotate Speed (Velocidad de Giro)', state['rotateSpeed'], (v) => update('rotateSpeed', v ?? 2.0), isDouble: true),
-        ]),
-
-        _buildSectionHeader("Capacidades Operativas", Icons.handyman_outlined),
-        _buildCard([
-          _buildNumField(fileId, 'itemCapacity', 'Item Capacity', state['itemCapacity'], (v) => update('itemCapacity', v?.toInt() ?? 0)),
-          _buildNumField(fileId, 'buildSpeed', 'Build Speed (Vel. Construcción)', state['buildSpeed'], (v) => update('buildSpeed', v ?? 0.5), isDouble: true),
-          _buildNumField(fileId, 'mineSpeed', 'Mine Speed (Vel. Minado)', state['mineSpeed'], (v) => update('mineSpeed', v ?? 1.0), isDouble: true),
-          _buildNumField(fileId, 'mineTier', 'Mine Tier (Nivel de Minado)', state['mineTier'], (v) => update('mineTier', v?.toInt() ?? 1)),
-        ]),
-
-        _buildSectionHeader("Flags y Control", Icons.tune),
-        _buildCard([
-          _buildSwitch('flying', 'Flying (Unidad Voladora)', state['flying'], (v) => update('flying', v)),
-          _buildSwitch('lowAltitude', 'Low Altitude (Baja Altura)', state['lowAltitude'], (v) => update('lowAltitude', v)),
-          _buildSwitch('isEnemy', 'Is Enemy (Enemigo por Defecto)', state['isEnemy'], (v) => update('isEnemy', v), defaultVal: true),
-          _buildSwitch('targetable', 'Targetable (Apuntable)', state['targetable'], (v) => update('targetable', v), defaultVal: true),
-          _buildSwitch('hittable', 'Hittable (Recibe Daño)', state['hittable'], (v) => update('hittable', v), defaultVal: true),
-          _buildSwitch('playerControllable', 'Player Controllable (Controlable por Jugador)', state['playerControllable'], (v) => update('playerControllable', v), defaultVal: true),
-          _buildSwitch('logicControllable', 'Logic Controllable (Controlable por Procesador)', state['logicControllable'], (v) => update('logicControllable', v), defaultVal: true),
-          _buildSwitch('useUnitCap', 'Use Unit Cap (Usa Límite de Unidades)', state['useUnitCap'], (v) => update('useUnitCap', v), defaultVal: true),
-        ]),
-      ],
-    );
-  }
-}
-
-// --- HELPER WIDGETS ---
-
-Widget _buildSectionHeader(String title, IconData icon) {
-  return Padding(
-    padding: const EdgeInsets.only(top: 20, bottom: 8, left: 4),
-    child: Row(
-      children: [
-        Icon(icon, size: 18, color: Colors.amber),
-        const SizedBox(width: 8),
-        Text(
-          title,
-          style: const TextStyle(color: Colors.amber, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 0.5),
-        ),
-      ],
-    ),
-  );
-}
-
-Widget _buildCard(List<Widget> children) {
+/// Helper para crear tarjetas agrupadas con encabezado
+Widget _buildGroupCard({
+  required String title,
+  required IconData icon,
+  required List<Widget> children,
+  Color accentColor = const Color(0xFF58A6FF),
+}) {
   return Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(16),
     margin: const EdgeInsets.only(bottom: 12),
     decoration: BoxDecoration(
-      color: const Color(0xFF1E1E24),
-      borderRadius: BorderRadius.circular(12),
+      color: const Color(0xFF161B22),
+      borderRadius: BorderRadius.circular(8),
       border: Border.all(color: Colors.white12),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: children,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: accentColor.withValues(alpha: 0.1),
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(7),
+              topRight: Radius.circular(7),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 15, color: accentColor),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: TextStyle(
+                  color: accentColor,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: children,
+          ),
+        ),
+      ],
     ),
   );
 }
 
-Widget _buildTextField(String fileId, String key, String label, dynamic value, Function(String) onChanged, {bool multiline = false}) {
-  return Padding(
-    padding: const EdgeInsets.only(bottom: 12),
-    child: TextFormField(
-      key: ValueKey("${fileId}_$key"),
-      initialValue: value?.toString() ?? '',
-      style: const TextStyle(color: Colors.white, fontSize: 13),
-      maxLines: multiline ? 3 : 1,
-      minLines: 1,
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(color: Colors.white70, fontSize: 12),
-        filled: true,
-        fillColor: const Color(0xFF262630),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        isDense: true,
+/// Widget para inputs de texto o numéricos con estilo oscuro compacto
+Widget _buildInputField({
+  required String label,
+  required String valueKey,
+  required dynamic initialValue,
+  required Function(dynamic) onChanged,
+  bool isNumeric = false,
+  bool isInteger = false,
+  int maxLines = 1,
+  String? hint,
+}) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        label,
+        style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w500),
       ),
-      onChanged: (val) => onChanged(val),
-    ),
-  );
-}
-
-Widget _buildNumField(String fileId, String key, String label, dynamic value, Function(num?) onChanged, {bool isDouble = false}) {
-  return Padding(
-    padding: const EdgeInsets.only(bottom: 12),
-    child: TextFormField(
-      key: ValueKey("${fileId}_$key"),
-      initialValue: value?.toString() ?? '',
-      keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^-?[0-9]*\.?[0-9]*'))],
-      style: const TextStyle(color: Colors.white, fontSize: 13, fontFamily: 'monospace'),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(color: Colors.white70, fontSize: 12),
-        filled: true,
-        fillColor: const Color(0xFF262630),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        isDense: true,
+      const SizedBox(height: 4),
+      TextFormField(
+        key: ValueKey(valueKey),
+        initialValue: initialValue?.toString() ?? '',
+        maxLines: maxLines,
+        keyboardType: isNumeric
+            ? TextInputType.numberWithOptions(decimal: !isInteger, signed: true)
+            : TextInputType.text,
+        inputFormatters: isNumeric
+            ? [
+                FilteringTextInputFormatter.allow(
+                  isInteger ? RegExp(r'^-?[0-9]*') : RegExp(r'^-?[0-9]*\.?[0-9]*'),
+                ),
+              ]
+            : null,
+        style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace'),
+        decoration: InputDecoration(
+          isDense: true,
+          hintText: hint,
+          hintStyle: const TextStyle(color: Colors.white24, fontSize: 11),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          filled: true,
+          fillColor: const Color(0xFF21262D),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(6),
+            borderSide: const BorderSide(color: Colors.white10),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(6),
+            borderSide: const BorderSide(color: Colors.white10),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(6),
+            borderSide: const BorderSide(color: Color(0xFF58A6FF)),
+          ),
+        ),
+        onChanged: (val) {
+          if (val.trim().isEmpty) {
+            onChanged(null);
+            return;
+          }
+          if (isNumeric) {
+            if (isInteger) {
+              final n = int.tryParse(val);
+              onChanged(n);
+            } else {
+              final n = double.tryParse(val);
+              onChanged(n);
+            }
+          } else {
+            onChanged(val);
+          }
+        },
       ),
-      onChanged: (val) {
-        if (val.isEmpty || val == '-') {
-          onChanged(null);
-          return;
-        }
-        if (isDouble) {
-          onChanged(double.tryParse(val));
-        } else {
-          onChanged(int.tryParse(val));
-        }
-      },
-    ),
+    ],
   );
 }
 
-Widget _buildSwitch(String key, String label, dynamic value, Function(bool) onChanged, {bool defaultVal = false}) {
-  bool boolVal = defaultVal;
-  if (value != null) {
-    if (value is bool) boolVal = value;
-    else if (value.toString().toLowerCase() == 'true') boolVal = true;
-    else if (value.toString().toLowerCase() == 'false') boolVal = false;
-  }
+/// Widget compacto para switches booleanos
+Widget _buildCompactSwitch({
+  required String label,
+  required bool value,
+  required Function(bool) onChanged,
+  String? subtitle,
+}) {
   return Container(
-    margin: const EdgeInsets.symmetric(vertical: 2),
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     decoration: BoxDecoration(
-      color: const Color(0xFF24242C),
-      borderRadius: BorderRadius.circular(8),
+      color: const Color(0xFF21262D),
+      borderRadius: BorderRadius.circular(6),
+      border: Border.all(color: Colors.white10),
     ),
-    child: SwitchListTile(
-      title: Text(label, style: const TextStyle(color: Colors.white, fontSize: 13)),
-      value: boolVal,
-      activeColor: Colors.amber,
-      dense: true,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-      onChanged: onChanged,
+    child: Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500),
+                overflow: TextOverflow.ellipsis,
+              ),
+              if (subtitle != null)
+                Text(
+                  subtitle,
+                  style: const TextStyle(color: Colors.white38, fontSize: 9),
+                  overflow: TextOverflow.ellipsis,
+                ),
+            ],
+          ),
+        ),
+        Transform.scale(
+          scale: 0.75,
+          child: Switch(
+            value: value,
+            activeColor: const Color(0xFF58A6FF),
+            activeTrackColor: const Color(0xFF1F6FEB).withValues(alpha: 0.5),
+            inactiveThumbColor: Colors.white38,
+            inactiveTrackColor: Colors.white10,
+            onChanged: onChanged,
+          ),
+        ),
+      ],
     ),
   );
 }
 
-Widget _buildDropdown(String fileId, String key, String label, String? value, List<String> options, Function(String) onChanged) {
-  return Padding(
-    padding: const EdgeInsets.only(bottom: 12),
-    child: DropdownButtonFormField<String>(
-      key: ValueKey("${fileId}_$key"),
-      value: (value != null && options.contains(value)) ? value : null,
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(color: Colors.white70, fontSize: 12),
-        filled: true,
-        fillColor: const Color(0xFF262630),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        isDense: true,
+/// Widget dropdown compacto
+Widget _buildDropdownField({
+  required String label,
+  required String valueKey,
+  required String? currentValue,
+  required List<String> items,
+  required Function(String?) onChanged,
+}) {
+  final actualVal = items.contains(currentValue) ? currentValue : (items.isNotEmpty ? items.first : null);
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        label,
+        style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w500),
       ),
-      dropdownColor: const Color(0xFF262630),
-      style: const TextStyle(color: Colors.white, fontSize: 13),
-      items: options.map((opt) => DropdownMenuItem(value: opt, child: Text(opt))).toList(),
-      onChanged: (v) {
-        if (v != null) onChanged(v);
-      },
-    ),
+      const SizedBox(height: 4),
+      Container(
+        height: 36,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF21262D),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: Colors.white10),
+        ),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            value: actualVal,
+            isExpanded: true,
+            dropdownColor: const Color(0xFF21262D),
+            icon: const Icon(Icons.arrow_drop_down, color: Colors.white54, size: 18),
+            style: const TextStyle(color: Colors.white, fontSize: 12),
+            items: items.map((item) {
+              return DropdownMenuItem<String>(
+                value: item,
+                child: Text(item, overflow: TextOverflow.ellipsis),
+              );
+            }).toList(),
+            onChanged: onChanged,
+          ),
+        ),
+      ),
+    ],
   );
 }
 
-// --- Requirements Builder ---
-class RequirementsBuilder extends StatefulWidget {
+/// ---------------------------------------------------------------------------
+/// PROPIEDADES COMUNES DE BLOQUES
+/// ---------------------------------------------------------------------------
+class CommonBlockPropertiesWidget extends StatelessWidget {
   final String fileId;
-  final dynamic requirements;
-  final Function(List<dynamic>) onChanged;
+  final Map<String, dynamic> properties;
+  final Function(String, dynamic) onChanged;
 
-  const RequirementsBuilder({super.key, required this.fileId, required this.requirements, required this.onChanged});
+  const CommonBlockPropertiesWidget({
+    super.key,
+    required this.fileId,
+    required this.properties,
+    required this.onChanged,
+  });
 
-  @override
-  State<RequirementsBuilder> createState() => _RequirementsBuilderState();
-}
-
-class _RequirementsBuilderState extends State<RequirementsBuilder> {
-  static const List<String> vanillaItems = [
-    "copper", "lead", "metaglass", "graphite", "sand", "coal",
-    "titanium", "thorium", "silicon", "plastanium", "phase-fabric",
-    "surge-alloy", "spore-pod", "blast-compound", "pyratite",
-    "beryllium", "tungsten", "oxide", "carbide"
+  static const List<String> categories = [
+    'distribution',
+    'liquid',
+    'power',
+    'production',
+    'defense',
+    'turret',
+    'units',
+    'effect',
+    'logic',
+    'crafting',
   ];
 
-  List<String> _reqList = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _parseReqs();
-  }
-
-  @override
-  void didUpdateWidget(covariant RequirementsBuilder oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.requirements != oldWidget.requirements || widget.fileId != oldWidget.fileId) {
-      _parseReqs();
-    }
-  }
-
-  void _parseReqs() {
-    if (widget.requirements is List) {
-      _reqList = (widget.requirements as List).map((e) => e.toString().trim()).toList();
-    } else {
-      _reqList = [];
-    }
-  }
-
-  void _notify() {
-    widget.onChanged(_reqList);
-  }
+  static const List<String> standardItems = [
+    'copper', 'lead', 'metaglass', 'graphite', 'sand', 'coal', 'titanium',
+    'thorium', 'scrap', 'silicon', 'plastanium', 'phase-fabric', 'surge-alloy',
+    'spore-pod', 'blast-compound', 'pyratite', 'beryllium', 'tungsten',
+    'oxide', 'carbide', 'fissile-matter', 'dormant-cyst'
+  ];
 
   @override
   Widget build(BuildContext context) {
+    final hasItems = properties['hasItems'] == true;
+    final hasLiquids = properties['hasLiquids'] == true;
+    final hasPower = properties['hasPower'] == true;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        // 1. Identificación y Dimensiones
+        _buildGroupCard(
+          title: "Identificación y Dimensiones",
+          icon: Icons.info_outline,
+          accentColor: const Color(0xFF58A6FF),
           children: [
-            const Text("Requirements (Coste de Recursos)", style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
-            TextButton.icon(
-              style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
-              onPressed: () {
-                setState(() => _reqList.add("copper/10"));
-                _notify();
-              },
-              icon: const Icon(Icons.add, color: Colors.amber, size: 16),
-              label: const Text("Añadir", style: TextStyle(color: Colors.amber, fontSize: 12)),
+            Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: _buildInputField(
+                    label: "Nombre para Mostrar (localizedName)",
+                    valueKey: "${fileId}_localizedName",
+                    initialValue: properties['localizedName'] ?? properties['name'],
+                    onChanged: (v) => onChanged('localizedName', v),
+                    hint: "Mi Gran Bloque",
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 2,
+                  child: _buildInputField(
+                    label: "Tamaño (size en tiles)",
+                    valueKey: "${fileId}_size",
+                    initialValue: properties['size'] ?? 1,
+                    isNumeric: true,
+                    isInteger: true,
+                    onChanged: (v) => onChanged('size', v),
+                    hint: "1, 2, 3, 4...",
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            _buildInputField(
+              label: "Descripción (description)",
+              valueKey: "${fileId}_description",
+              initialValue: properties['description'],
+              maxLines: 2,
+              onChanged: (v) => onChanged('description', v),
+              hint: "Descripción del bloque en el juego...",
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildDropdownField(
+                    label: "Categoría de Construcción (category)",
+                    valueKey: "${fileId}_category",
+                    currentValue: properties['category']?.toString(),
+                    items: categories,
+                    onChanged: (v) => onChanged('category', v),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildInputField(
+                    label: "Árbol Tecnológico (research)",
+                    valueKey: "${fileId}_research",
+                    initialValue: properties['research'] ?? properties['requirements'] != null ? 'core-shard' : null,
+                    onChanged: (v) => onChanged('research', v),
+                    hint: "ej: duo, core-shard",
+                  ),
+                ),
+              ],
             ),
           ],
         ),
-        const SizedBox(height: 8),
-        if (_reqList.isEmpty)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFF262630),
-              borderRadius: BorderRadius.circular(8),
+
+        // 2. Vitalidad y Construcción
+        _buildGroupCard(
+          title: "Vitalidad y Construcción",
+          icon: Icons.favorite_border,
+          accentColor: const Color(0xFFF778BA),
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: _buildInputField(
+                    label: "Vida / Salud (health)",
+                    valueKey: "${fileId}_health",
+                    initialValue: properties['health'] ?? 100,
+                    isNumeric: true,
+                    isInteger: true,
+                    onChanged: (v) => onChanged('health', v),
+                    hint: "100",
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildInputField(
+                    label: "Mult. Tiempo Const. (buildCostMultiplier)",
+                    valueKey: "${fileId}_buildCostMultiplier",
+                    initialValue: properties['buildCostMultiplier'] ?? 1.0,
+                    isNumeric: true,
+                    onChanged: (v) => onChanged('buildCostMultiplier', v),
+                    hint: "1.0",
+                  ),
+                ),
+              ],
             ),
-            child: const Text(
-              "Sin costes asignados. Toca 'Añadir' para requerir ítems.",
-              style: TextStyle(color: Colors.white38, fontSize: 12, fontStyle: FontStyle.italic),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildCompactSwitch(
+                    label: "Siempre Desbloqueado",
+                    subtitle: "alwaysUnlocked",
+                    value: properties['alwaysUnlocked'] == true,
+                    onChanged: (v) => onChanged('alwaysUnlocked', v ? true : null),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildCompactSwitch(
+                    label: "Sólido (Bloquea paso)",
+                    subtitle: "solid",
+                    value: properties['solid'] != false,
+                    onChanged: (v) => onChanged('solid', v ? null : false),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildCompactSwitch(
+                    label: "Destructible",
+                    subtitle: "destructible",
+                    value: properties['destructible'] != false,
+                    onChanged: (v) => onChanged('destructible', v ? null : false),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildCompactSwitch(
+                    label: "Objetivo Enemigo",
+                    subtitle: "targetable",
+                    value: properties['targetable'] != false,
+                    onChanged: (v) => onChanged('targetable', v ? null : false),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildCompactSwitch(
+                    label: "Acelerable por Overdrive",
+                    subtitle: "canOverdrive",
+                    value: properties['canOverdrive'] != false,
+                    onChanged: (v) => onChanged('canOverdrive', v ? null : false),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildCompactSwitch(
+                    label: "Actualizar Tick (update)",
+                    subtitle: "update",
+                    value: properties['update'] != false,
+                    onChanged: (v) => onChanged('update', v ? null : false),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+
+        // 3. Capacidades y Energía
+        _buildGroupCard(
+          title: "Capacidades y Energía",
+          icon: Icons.flash_on,
+          accentColor: const Color(0xFFE3B341),
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: _buildCompactSwitch(
+                    label: "Almacena Ítems (hasItems)",
+                    value: hasItems,
+                    onChanged: (v) => onChanged('hasItems', v ? true : false),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildInputField(
+                    label: "Capacidad Ítems (itemCapacity)",
+                    valueKey: "${fileId}_itemCapacity",
+                    initialValue: properties['itemCapacity'] ?? 10,
+                    isNumeric: true,
+                    isInteger: true,
+                    onChanged: (v) => onChanged('itemCapacity', v),
+                    hint: "10",
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildCompactSwitch(
+                    label: "Almacena Líquidos (hasLiquids)",
+                    value: hasLiquids,
+                    onChanged: (v) => onChanged('hasLiquids', v ? true : false),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildInputField(
+                    label: "Capacidad Líquidos (liquidCapacity)",
+                    valueKey: "${fileId}_liquidCapacity",
+                    initialValue: properties['liquidCapacity'] ?? 10.0,
+                    isNumeric: true,
+                    onChanged: (v) => onChanged('liquidCapacity', v),
+                    hint: "10.0",
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildCompactSwitch(
+                    label: "Usa Energía (hasPower)",
+                    value: hasPower,
+                    onChanged: (v) => onChanged('hasPower', v ? true : false),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildCompactSwitch(
+                    label: "Emite Energía (outputsPower)",
+                    value: properties['outputsPower'] == true,
+                    onChanged: (v) => onChanged('outputsPower', v ? true : null),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+
+        // 4. Requisitos de Construcción (requirements)
+        _buildRequirementsCard(
+          fileId: fileId,
+          requirements: properties['requirements'],
+          availableItems: standardItems,
+          onChanged: (newReqs) => onChanged('requirements', newReqs),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRequirementsCard({
+    required String fileId,
+    required dynamic requirements,
+    required List<String> availableItems,
+    required Function(dynamic) onChanged,
+  }) {
+    List<Map<String, dynamic>> reqList = [];
+    if (requirements is List) {
+      for (var item in requirements) {
+        if (item is Map) {
+          reqList.add(Map<String, dynamic>.from(item));
+        } else if (item is String) {
+          // Si viene en formato Mindustry "copper/10"
+          final parts = item.split('/');
+          if (parts.length == 2) {
+            reqList.add({'item': parts[0], 'amount': int.tryParse(parts[1]) ?? 10});
+          }
+        }
+      }
+    }
+
+    return _buildGroupCard(
+      title: "Requisitos de Construcción (requirements)",
+      icon: Icons.inventory_2_outlined,
+      accentColor: const Color(0xFF7EE787),
+      children: [
+        if (reqList.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 4),
+            child: Text(
+              "Sin costes asignados (gratuito o bloque de entorno).",
+              style: TextStyle(color: Colors.white38, fontSize: 11, fontStyle: FontStyle.italic),
             ),
           )
         else
-          ..._reqList.asMap().entries.map((entry) {
-            int idx = entry.key;
-            String reqStr = entry.value;
-            List<String> parts = reqStr.split('/');
-            String item = parts.isNotEmpty ? parts[0].trim() : 'copper';
-            String qty = parts.length > 1 ? parts[1].trim() : '1';
+          ...List.generate(reqList.length, (index) {
+            final entry = reqList[index];
+            final currentItem = entry['item']?.toString() ?? 'copper';
+            final amount = entry['amount']?.toString() ?? '10';
 
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+            return Container(
+              margin: const EdgeInsets.only(bottom: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFF21262D),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: Colors.white10),
+              ),
               child: Row(
                 children: [
                   Expanded(
                     flex: 3,
-                    child: DropdownButtonFormField<String>(
-                      value: vanillaItems.contains(item) ? item : (vanillaItems.isNotEmpty ? vanillaItems.first : null),
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: const Color(0xFF262630),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: availableItems.contains(currentItem) ? currentItem : availableItems.first,
+                        dropdownColor: const Color(0xFF21262D),
                         isDense: true,
+                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                        items: availableItems.map((it) {
+                          return DropdownMenuItem(value: it, child: Text(it));
+                        }).toList(),
+                        onChanged: (newItem) {
+                          if (newItem != null) {
+                            reqList[index]['item'] = newItem;
+                            onChanged(reqList);
+                          }
+                        },
                       ),
-                      dropdownColor: const Color(0xFF262630),
-                      style: const TextStyle(color: Colors.white, fontSize: 13),
-                      items: vanillaItems.map((opt) => DropdownMenuItem(value: opt, child: Text(opt))).toList(),
-                      onChanged: (v) {
-                        if (v != null) {
-                          setState(() => _reqList[idx] = "$v/$qty");
-                          _notify();
-                        }
-                      },
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     flex: 2,
                     child: TextFormField(
-                      initialValue: qty,
+                      key: ValueKey("${fileId}_req_${index}_$amount"),
+                      initialValue: amount,
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      style: const TextStyle(color: Colors.white, fontSize: 13, fontFamily: 'monospace'),
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: const Color(0xFF262630),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                      decoration: const InputDecoration(
                         isDense: true,
+                        contentPadding: EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                        border: OutlineInputBorder(borderSide: BorderSide.none),
                         hintText: "Cant.",
-                        hintStyle: const TextStyle(color: Colors.white24, fontSize: 12),
+                        hintStyle: TextStyle(color: Colors.white24, fontSize: 11),
                       ),
-                      onChanged: (val) {
-                        final n = int.tryParse(val) ?? 1;
-                        setState(() => _reqList[idx] = "$item/$n");
-                        _notify();
+                      onChanged: (v) {
+                        final val = int.tryParse(v) ?? 1;
+                        reqList[index]['amount'] = val;
+                        onChanged(reqList);
                       },
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                    icon: const Icon(Icons.close, color: Colors.redAccent, size: 16),
+                    visualDensity: VisualDensity.compact,
                     onPressed: () {
-                      setState(() => _reqList.removeAt(idx));
-                      _notify();
+                      reqList.removeAt(index);
+                      onChanged(reqList.isEmpty ? null : reqList);
                     },
                   ),
                 ],
               ),
             );
-          }).toList(),
+          }),
+        const SizedBox(height: 4),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              backgroundColor: const Color(0xFF21262D),
+            ),
+            icon: const Icon(Icons.add, size: 14, color: Color(0xFF7EE787)),
+            label: const Text(
+              "Añadir Ítem",
+              style: TextStyle(color: Color(0xFF7EE787), fontSize: 11, fontWeight: FontWeight.bold),
+            ),
+            onPressed: () {
+              reqList.add({'item': 'copper', 'amount': 10});
+              onChanged(reqList);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// ---------------------------------------------------------------------------
+/// PROPIEDADES COMUNES DE UNIDADES
+/// ---------------------------------------------------------------------------
+class CommonUnitPropertiesWidget extends StatelessWidget {
+  final String fileId;
+  final Map<String, dynamic> properties;
+  final Function(String, dynamic) onChanged;
+
+  const CommonUnitPropertiesWidget({
+    super.key,
+    required this.fileId,
+    required this.properties,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 1. Identificación y Atributos Básicos
+        _buildGroupCard(
+          title: "Identificación y Dimensiones de Unidad",
+          icon: Icons.badge_outlined,
+          accentColor: const Color(0xFF58A6FF),
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: _buildInputField(
+                    label: "Nombre de Unidad (localizedName)",
+                    valueKey: "${fileId}_localizedName",
+                    initialValue: properties['localizedName'] ?? properties['name'],
+                    onChanged: (v) => onChanged('localizedName', v),
+                    hint: "Dardo Alfa",
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 2,
+                  child: _buildInputField(
+                    label: "Tamaño de Colisión (hitSize)",
+                    valueKey: "${fileId}_hitSize",
+                    initialValue: properties['hitSize'] ?? 8.0,
+                    isNumeric: true,
+                    onChanged: (v) => onChanged('hitSize', v),
+                    hint: "8.0, 12.0...",
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            _buildInputField(
+              label: "Descripción (description)",
+              valueKey: "${fileId}_description",
+              initialValue: properties['description'],
+              maxLines: 2,
+              onChanged: (v) => onChanged('description', v),
+              hint: "Rol o características de la unidad...",
+            ),
+          ],
+        ),
+
+        // 2. Blindaje, Salud y Maniobrabilidad
+        _buildGroupCard(
+          title: "Estadísticas de Supervivencia y Movimiento",
+          icon: Icons.shield_outlined,
+          accentColor: const Color(0xFFF778BA),
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: _buildInputField(
+                    label: "Salud Máxima (health)",
+                    valueKey: "${fileId}_health",
+                    initialValue: properties['health'] ?? 150,
+                    isNumeric: true,
+                    isInteger: true,
+                    onChanged: (v) => onChanged('health', v),
+                    hint: "150",
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildInputField(
+                    label: "Blindaje Base (armor)",
+                    valueKey: "${fileId}_armor",
+                    initialValue: properties['armor'] ?? 0.0,
+                    isNumeric: true,
+                    onChanged: (v) => onChanged('armor', v),
+                    hint: "0.0",
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildInputField(
+                    label: "Velocidad de Avance (speed)",
+                    valueKey: "${fileId}_speed",
+                    initialValue: properties['speed'] ?? 1.2,
+                    isNumeric: true,
+                    onChanged: (v) => onChanged('speed', v),
+                    hint: "1.2",
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildInputField(
+                    label: "Velocidad de Giro (rotateSpeed)",
+                    valueKey: "${fileId}_rotateSpeed",
+                    initialValue: properties['rotateSpeed'] ?? 5.0,
+                    isNumeric: true,
+                    onChanged: (v) => onChanged('rotateSpeed', v),
+                    hint: "5.0",
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildInputField(
+                    label: "Aceleración (accel)",
+                    valueKey: "${fileId}_accel",
+                    initialValue: properties['accel'] ?? 0.5,
+                    isNumeric: true,
+                    onChanged: (v) => onChanged('accel', v),
+                    hint: "0.5",
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildInputField(
+                    label: "Fricción / Inercia (drag)",
+                    valueKey: "${fileId}_drag",
+                    initialValue: properties['drag'] ?? 0.05,
+                    isNumeric: true,
+                    onChanged: (v) => onChanged('drag', v),
+                    hint: "0.05",
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+
+        // 3. Capacidades de Trabajo y Utilidad
+        _buildGroupCard(
+          title: "Minería, Construcción e Inventario",
+          icon: Icons.build_circle_outlined,
+          accentColor: const Color(0xFFE3B341),
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: _buildInputField(
+                    label: "Velocidad Minado (mineSpeed)",
+                    valueKey: "${fileId}_mineSpeed",
+                    initialValue: properties['mineSpeed'] ?? 0.0,
+                    isNumeric: true,
+                    onChanged: (v) => onChanged('mineSpeed', v),
+                    hint: "0.0",
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildInputField(
+                    label: "Nivel Minado (mineTier)",
+                    valueKey: "${fileId}_mineTier",
+                    initialValue: properties['mineTier'] ?? 0,
+                    isNumeric: true,
+                    isInteger: true,
+                    onChanged: (v) => onChanged('mineTier', v),
+                    hint: "1, 2, 3...",
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildInputField(
+                    label: "Velocidad Const. (buildSpeed)",
+                    valueKey: "${fileId}_buildSpeed",
+                    initialValue: properties['buildSpeed'] ?? 0.0,
+                    isNumeric: true,
+                    onChanged: (v) => onChanged('buildSpeed', v),
+                    hint: "0.0, 1.0...",
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildInputField(
+                    label: "Capacidad Ítems (itemCapacity)",
+                    valueKey: "${fileId}_itemCapacity",
+                    initialValue: properties['itemCapacity'] ?? 20,
+                    isNumeric: true,
+                    isInteger: true,
+                    onChanged: (v) => onChanged('itemCapacity', v),
+                    hint: "20",
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+
+        // 4. Banderas de Control y Comportamiento
+        _buildGroupCard(
+          title: "Banderas de Control y Comportamiento",
+          icon: Icons.toggle_on_outlined,
+          accentColor: const Color(0xFF7EE787),
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: _buildCompactSwitch(
+                    label: "Unidad Voladora (flying)",
+                    value: properties['flying'] == true,
+                    onChanged: (v) => onChanged('flying', v ? true : null),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildCompactSwitch(
+                    label: "Baja Altitud (lowAltitude)",
+                    value: properties['lowAltitude'] == true,
+                    onChanged: (v) => onChanged('lowAltitude', v ? true : null),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildCompactSwitch(
+                    label: "Objetivo Enemigo (targetable)",
+                    value: properties['targetable'] != false,
+                    onChanged: (v) => onChanged('targetable', v ? null : false),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildCompactSwitch(
+                    label: "Controlable por Jugador",
+                    subtitle: "playerControllable",
+                    value: properties['playerControllable'] != false,
+                    onChanged: (v) => onChanged('playerControllable', v ? null : false),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildCompactSwitch(
+                    label: "Controlable por Lógica",
+                    subtitle: "logicControllable",
+                    value: properties['logicControllable'] != false,
+                    onChanged: (v) => onChanged('logicControllable', v ? null : false),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildCompactSwitch(
+                    label: "Usa Límite de Unidades",
+                    subtitle: "useUnitCap",
+                    value: properties['useUnitCap'] != false,
+                    onChanged: (v) => onChanged('useUnitCap', v ? null : false),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ],
     );
   }
