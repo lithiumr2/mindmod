@@ -35,27 +35,7 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(tr('workspace'), style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13)),
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.settings, color: Colors.white54, size: 18),
-                  color: const Color(0xFF222228),
-                  onSelected: (value) {
-                    if (value == 'import') {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('import_soon'))));
-                    } else if (value == 'data') {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('data_config_soon'))));
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    PopupMenuItem(
-                      value: 'import',
-                      child: Text(tr('import_mod'), style: const TextStyle(color: Colors.white)),
-                    ),
-                    PopupMenuItem(
-                      value: 'data',
-                      child: Text(tr('data_config'), style: const TextStyle(color: Colors.white)),
-                    ),
-                  ],
-                ),
+const Icon(Icons.folder_open, color: Colors.amber, size: 18),
               ],
             ),
           ),
