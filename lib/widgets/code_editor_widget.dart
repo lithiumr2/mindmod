@@ -15,15 +15,8 @@ class _CodeEditorWidgetState extends ConsumerState<CodeEditorWidget> {
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController();
-    
-    // Cargar contenido inicial al montar el widget si existe
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final activeFile = ref.read(projectProvider).activeFile;
-      if (activeFile != null) {
-        _controller.text = activeFile.content;
-      }
-    });
+    final initialText = ref.read(projectProvider).activeFile?.content ?? '';
+    _controller = TextEditingController(text: initialText);
   }
 
   @override
