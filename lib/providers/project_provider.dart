@@ -1,6 +1,7 @@
-import 'dart:io';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/project_file.dart';
 import '../services/storage_service.dart';
 
@@ -8,10 +9,7 @@ class ProjectState {
   final List<ProjectFile> files;
   final String? activeFileName;
 
-  ProjectState({
-    required this.files,
-    this.activeFileName,
-  });
+  ProjectState({required this.files, this.activeFileName});
 
   ProjectFile? get activeFile {
     if (activeFileName == null) return null;
@@ -48,10 +46,11 @@ class ProjectNotifier extends StateNotifier<ProjectState> {
     }
 
     final List<ProjectFile> loadedFiles = [];
+    
     final entities = projectDir.listSync(recursive: true);
     for (var entity in entities) {
       if (entity is File) {
-        final relativePath = entity.path.replaceFirst('${projectDir.path}/', '').replaceAll(Platform.pathSeparator, '/');
+        final relativePath = entity.path.replaceFirst('${projectDir.path}/', '');
         final type = StorageService.getTypeFromPath(relativePath);
         final name = relativePath.split('/').last;
         
@@ -63,7 +62,7 @@ class ProjectNotifier extends StateNotifier<ProjectState> {
           } catch (_) {}
         } else {
           try {
-            final bytes = await entity.readAsBytes();
+            final bytes = await (entity as File).readAsBytes();
             content = base64Encode(bytes);
           } catch (_) {}
         }
@@ -76,8 +75,7 @@ class ProjectNotifier extends StateNotifier<ProjectState> {
       }
     }
     
-    // Ensure mod.json exists on disk and in memory
-    if (!loadedFiles.any((f) => f.name == 'mod.json' || f.name == 'mod.hjson')) {
+    if (loadedFiles.isEmpty) {
       await _ensureModStructureAndJson(projectDir);
       return;
     }
@@ -109,9 +107,10 @@ class ProjectNotifier extends StateNotifier<ProjectState> {
         await d.create(recursive: true);
       }
     }
-
+    
     final modJsonFile = File('${projectDir.path}/mod.json');
     String content = '{\n  "name": "$projectId",\n  "displayName": "$projectId",\n  "author": "Creator",\n  "description": "An awesome Mindustry mod",\n  "version": "1.0",\n  "minGameVersion": "146"\n}';
+    
     if (await modJsonFile.exists()) {
       try {
         content = await modJsonFile.readAsString();
@@ -119,13 +118,13 @@ class ProjectNotifier extends StateNotifier<ProjectState> {
     } else {
       await modJsonFile.writeAsString(content);
     }
-
+    
     final file = ProjectFile(
       name: 'mod.json',
       type: FileType.modJson,
       content: content,
     );
-
+    
     state = state.copyWith(files: [file], activeFileName: 'mod.json');
   }
 
@@ -149,42 +148,39 @@ class ProjectNotifier extends StateNotifier<ProjectState> {
     }
   }
 
-  // Re-read file directly from physical disk to guarantee zero data loss between changes
-  Future<void> reloadFileFromDisk(String fileName) async {
+  Future<void> selectFile(String fileName) async {
+    // Before switching, let's make sure we have the latest content from disk if it's a text file
     try {
       final modsDir = await StorageService.getModsDirectory();
       final file = state.files.firstWhere((f) => f.name == fileName);
-      final relativePath = StorageService.getRelativePathForType(file);
-      final physicalFile = File('${modsDir.path}/$projectId/$relativePath');
-      if (await physicalFile.exists()) {
-        if (file.isImage) {
-          final bytes = await physicalFile.readAsBytes();
-          final base64Content = base64Encode(bytes);
-          final updatedFiles = state.files.map((f) => f.name == fileName ? f.copyWith(content: base64Content) : f).toList();
-          state = state.copyWith(files: updatedFiles);
-        } else {
+      if (!file.isImage) {
+        final relativePath = StorageService.getRelativePathForType(file);
+        final physicalFile = File('${modsDir.path}/$projectId/$relativePath');
+        if (await physicalFile.exists()) {
           final content = await physicalFile.readAsString();
-          final updatedFiles = state.files.map((f) => f.name == fileName ? f.copyWith(content: content) : f).toList();
-          state = state.copyWith(files: updatedFiles);
+          final updatedFiles = state.files.map((f) {
+            if (f.name == fileName) return f.copyWith(content: content);
+            return f;
+          }).toList();
+          state = state.copyWith(files: updatedFiles, activeFileName: fileName);
+          return;
         }
       }
-    } catch (_) {}
-  }
-
-  Future<void> selectFile(String fileName) async {
-    await reloadFileFromDisk(fileName);
+    } catch(e) {
+      print("Error reading file from disk on switch: $e");
+    }
     state = state.copyWith(activeFileName: fileName);
   }
 
   void setActiveFile(ProjectFile file) {
     selectFile(file.name);
   }
-
-  Future<void> updateFileContent(String fileName, String newContent) async {
+  
+  void updateFileContent(String fileName, String newContent) {
     final updatedFiles = state.files.map((file) {
       if (file.name == fileName) {
         final newFile = file.copyWith(content: newContent);
-        _saveFileToDisk(newFile);
+        _saveFileToDisk(newFile); // Async save
         return newFile;
       }
       return file;
@@ -197,22 +193,22 @@ class ProjectNotifier extends StateNotifier<ProjectState> {
     updateFileContent(state.activeFileName!, newContent);
   }
 
-  Future<void> addFile(ProjectFile file) async {
-    final updatedFiles = [...state.files.where((f) => f.name != file.name), file];
+  void addFile(ProjectFile file) {
+    final updatedFiles = [...state.files, file];
     state = state.copyWith(files: updatedFiles, activeFileName: file.name);
-    await _saveFileToDisk(file);
+    _saveFileToDisk(file);
   }
 
-  Future<void> createNewFile(String name, FileType type, {String content = ''}) async {
-    await addFile(ProjectFile(name: name, type: type, content: content));
+  void createNewFile(String name, FileType type, {String content = ''}) {
+    addFile(ProjectFile(name: name, type: type, content: content));
   }
 
   Future<void> renameFile(String oldName, String newName) async {
     if (oldName == newName) return;
     
     String finalName = newName;
-    if (oldName.startsWith('sprites/') && !newName.startsWith('sprites/')) {
-        finalName = 'sprites/' + newName;
+    if (oldName.startsWith('sprites/') && !newName.startsWith('sprites/')) { 
+       finalName = 'sprites/' + newName;
     }
     
     final fileToRename = state.files.firstWhere((f) => f.name == oldName);
@@ -246,7 +242,6 @@ class ProjectNotifier extends StateNotifier<ProjectState> {
     if (state.activeFileName == fileName) {
       nextActive = updatedFiles.isNotEmpty ? updatedFiles.first.name : null;
     }
-
     state = state.copyWith(files: updatedFiles, activeFileName: nextActive);
   }
 }
@@ -261,7 +256,7 @@ class ProjectsListNotifier extends StateNotifier<List<Map<String, String>>> {
   ProjectsListNotifier() : super([]) {
     _load();
   }
-
+  
   Future<void> _load() async {
     final modsDir = await StorageService.getModsDirectory();
     final entities = modsDir.listSync();
@@ -278,8 +273,8 @@ class ProjectsListNotifier extends StateNotifier<List<Map<String, String>>> {
           try {
             final content = await modJson.readAsString();
             final parsed = jsonDecode(content);
-            if (parsed['displayName'] != null && parsed['displayName'].toString().trim().isNotEmpty) {
-              name = parsed['displayName'].toString();
+            if (parsed['displayName'] != null) {
+              name = parsed['displayName'];
             }
           } catch (_) {}
         }
@@ -288,76 +283,33 @@ class ProjectsListNotifier extends StateNotifier<List<Map<String, String>>> {
       }
     }
     
-    // Si no hay mods en el directorio, el estado queda vacío tal como solicita el usuario
+    // if (projects.isEmpty) { ... }
+    
     state = projects;
   }
-
-  Future<String> createProject(String rawName) async {
-    final cleanName = rawName.trim();
-    String id = cleanName.toLowerCase().replaceAll(RegExp(r'\s+'), '_').replaceAll(RegExp(r'[^a-z0-9_-]'), '');
-    if (id.isEmpty) {
-      id = 'mod_${DateTime.now().millisecondsSinceEpoch}';
-    }
-
+  
+  Future<String> createProject(String name) async {
+    final id = name.toLowerCase().replaceAll(RegExp(r'\s+'), '_');
+    state = [...state, {'id': id, 'name': name}];
+    // Also create it on disk right now
     final modsDir = await StorageService.getModsDirectory();
     final projectDir = Directory('${modsDir.path}/$id');
     if (!await projectDir.exists()) {
       await projectDir.create(recursive: true);
     }
-
-    // Crear las carpetas scripts, sprites y content vacías sin jsons
-    final subdirs = [
-      'scripts',
-      'sprites',
-      'content',
-      'content/blocks',
-      'content/items',
-      'content/liquids',
-      'content/units',
-      'content/status',
-      'content/sectors',
-      'content/weathers',
-    ];
-    for (var sub in subdirs) {
-      final d = Directory('${projectDir.path}/$sub');
-      if (!await d.exists()) {
-        await d.create(recursive: true);
-      }
-    }
-
-    // Crear el archivo mod.json inicial
-    final modJsonFile = File('${projectDir.path}/mod.json');
-    if (!await modJsonFile.exists()) {
-      final initialData = {
-        "name": id,
-        "displayName": cleanName,
-        "author": "Creator",
-        "description": "An awesome Mindustry mod",
-        "version": "1.0",
-        "minGameVersion": "146"
-      };
-      const encoder = JsonEncoder.withIndent('  ');
-      await modJsonFile.writeAsString(encoder.convert(initialData));
-    }
-
-    if (!state.any((p) => p['id'] == id)) {
-      state = [...state, {'id': id, 'name': cleanName}];
-    }
     return id;
   }
 
-  String addProject(String name) {
-    createProject(name);
-    return name.toLowerCase().replaceAll(RegExp(r'\s+'), '_').replaceAll(RegExp(r'[^a-z0-9_-]'), '');
-  }
-
   void renameProject(String id, String newName) {
+    // Note: We are not renaming the folder here to keep it simple, just updating the list
+    // A proper rename would rename the folder on disk. For now, we just update state 
+    // and ideally the mod.json
     state = state.map((p) {
       if (p['id'] == id) return {'id': id, 'name': newName};
       return p;
     }).toList();
   }
-
+  
   Future<void> deleteProject(String id) async {
     final modsDir = await StorageService.getModsDirectory();
     final projectDir = Directory('${modsDir.path}/$id');
