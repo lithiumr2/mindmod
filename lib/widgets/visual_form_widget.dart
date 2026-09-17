@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -19,6 +20,42 @@ class VisualFormWidget extends ConsumerStatefulWidget {
 }
 
 class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
+  Timer? _autoSaveTimer;
+  bool _hasPendingSave = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Auto-save periodically every 2 seconds to guarantee no data loss
+    _autoSaveTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+      if (_hasPendingSave && mounted) {
+        _forceDiskSave();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _autoSaveTimer?.cancel();
+    if (_hasPendingSave) {
+      _forceDiskSave();
+    }
+    super.dispose();
+  }
+
+  void _markForSave() {
+    _hasPendingSave = true;
+    _saveChanges();
+  }
+
+  void _forceDiskSave() {
+    _hasPendingSave = false;
+    final activeFile = ref.read(projectProvider).activeFile;
+    if (activeFile != null) {
+      final hjsonString = HjsonEngine.stringify(_properties);
+      ref.read(projectProvider.notifier).updateActiveFileContent(hjsonString);
+    }
+  }
   String tr(String key) => ref.read(localeProvider.notifier).tr(key);
   Map<String, dynamic> _properties = {};
   List<String> _syntaxErrors = [];
@@ -188,9 +225,11 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     if (activeFile != null) {
       final hjsonString = HjsonEngine.stringify(_properties);
       ref.read(projectProvider.notifier).updateActiveFileContent(hjsonString);
-      setState(() {
-        _syntaxErrors = HjsonEngine.validateSyntax(hjsonString);
-      });
+      if (mounted) {
+        setState(() {
+          _syntaxErrors = HjsonEngine.validateSyntax(hjsonString);
+        });
+      }
     }
   }
 
@@ -436,10 +475,24 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
 
   List<String> _getHandledProps(FileType fileType, String? type) {
     if (fileType == FileType.unit) {
-      return ["speed", "hitSize", "health", "armor", "itemCapacity", "rotateSpeed", "isEnemy", "weapons", "engineOffset", "engineSize", "lowAltitude", "circleTarget", "mechStepParticles", "stepShake", "legCount", "legLength", "legSpeed", "hovering", "allowLegStep", "trailLength", "waterVision"];
+      return [
+        "name", "description", "research", "health", "armor", "speed", "hitSize", 
+        "accel", "drag", "rotateSpeed", "itemCapacity", "buildSpeed", "mineSpeed", 
+        "mineTier", "flying", "lowAltitude", "isEnemy", "targetable", "hittable", 
+        "playerControllable", "logicControllable", "useUnitCap", "type",
+        "weapons", "engineOffset", "engineSize", "circleTarget", 
+        "mechStepParticles", "stepShake", "legCount", "legLength", "legSpeed", 
+        "hovering", "allowLegStep", "trailLength", "waterVision"
+      ];
     }
     if (fileType == FileType.block) {
-      List<String> props = ["drawer"];
+      List<String> props = [
+        "name", "description", "details", "size", "health", "buildCostMultiplier", 
+        "category", "research", "alwaysUnlocked", "requirements", "hasItems", 
+        "itemCapacity", "hasLiquids", "liquidCapacity", "hasPower", "outputsPower", 
+        "consumesPower", "solid", "targetable", "destructible", "canOverdrive", 
+        "update", "type", "drawer"
+      ];
       switch (type) {
         case 'Drill': case 'BurstDrill': case 'ImpactDrill': props.addAll(["tier", "drillTime", "warmupSpeed", "liquidBoostIntensity", "drawMineItem", "drillEffect", "updateEffect"]); break;
         case 'BeamDrill': props.addAll(["range", "tier", "drillTime", "sparkColor"]); break;
@@ -474,7 +527,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
 
       _syntaxErrors = HjsonEngine.validateSyntax(activeFile.content);
       final parsed = HjsonEngine.parse(activeFile.content);
-      _cleanInvalidProperties(activeFile.type, parsed);
+      // preserved all properties without stripping
 
       if (!parsed.containsKey("name") || parsed["name"].toString().trim().isEmpty) {
         parsed["name"] = activeFile.name.replaceAll(".hjson", "");
@@ -629,10 +682,72 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final isWide = constraints.maxWidth > 500;
-                return Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // --- 1. WIDGET DE PROPIEDADES COMUNES (BLOCK / UNIT) ---
+                    if (activeFile.type == FileType.block || activeFile.type == FileType.unit)
+                      CommonPropertiesContainer(
+                        fileId: _loadedFileId,
+                        type: activeFile.type,
+                        properties: _properties,
+                        onChanged: (key, val) {
+                          setState(() {
+                            if (val == null) {
+                              _properties.remove(key);
+                            } else {
+                              _properties[key] = val;
+                            }
+                          });
+                          _markForSave();
+                        },
+                      ),
+                    const SizedBox(height: 16),
+
+                    // --- 2. SUB-EDITORES ESPECÍFICOS (DRAWER / TYPE DISPATCHER) ---
+                    if (activeFile.type == FileType.block || activeFile.type == FileType.unit)
+                      TypePropertiesDispatcher(
+                        fileType: activeFile.type,
+                        properties: _properties,
+                        availableItems: _getAllAvailableItems(),
+                        availableLiquids: _getAllAvailableLiquids(),
+                        onChanged: (newProps) {
+                          setState(() {
+                            _properties = newProps;
+                          });
+                          _markForSave();
+                        },
+                      ),
+                    if (activeFile.type == FileType.block)
+                      DrawerBuilderWidget(
+                        key: ValueKey(activeFile.name),
+                        blockProperties: _properties,
+                        availableLiquids: _getAllAvailableLiquids(),
+                        onChanged: (newDrawer) {
+                          setState(() {
+                            if (newDrawer == null) {
+                              _properties.remove("drawer");
+                            } else {
+                              _properties["drawer"] = newDrawer;
+                            }
+                          });
+                          _markForSave();
+                        },
+                      ),
+                    const SizedBox(height: 16),
+
+                    // --- 3. PROPIEDADES EXTRA / PERSONALIZADAS ---
+                    const Padding(
+                      padding: EdgeInsets.only(left: 4, bottom: 8),
+                      child: Text(
+                        "Propiedades Extra / Personalizadas",
+                        style: TextStyle(color: Colors.amber, fontSize: 14, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
                     ..._properties.entries
                         .where((e) {
                           final handled = _getHandledProps(activeFile.type, _properties["type"]?.toString().replaceAll('"', ''));
