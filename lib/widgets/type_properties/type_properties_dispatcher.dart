@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/project_file.dart';
+import '../../models/module_schema.dart';
+import '../../providers/module_registry_provider.dart';
+import '../dynamic_type_form_widget.dart';
 import 'extraction_widgets.dart';
 import 'production_widgets.dart';
 import 'power_widgets.dart';
@@ -8,8 +12,8 @@ import 'defense_logistics_widgets.dart';
 import 'unit_widgets.dart';
 
 /// Despachador inteligente que renderiza el widget de propiedades exclusivo
-/// según el 'type' de Mindustry (v8) y el FileType activo.
-class TypePropertiesDispatcher extends StatelessWidget {
+/// según el 'type' de Mindustry (v8), tipos dinámicos de módulos y el FileType activo.
+class TypePropertiesDispatcher extends ConsumerWidget {
   final FileType fileType;
   final Map<String, dynamic> properties;
   final List<String> availableItems;
@@ -26,8 +30,25 @@ class TypePropertiesDispatcher extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    // 1. Unidades
+  Widget build(BuildContext context, WidgetRef ref) {
+    final rawType = properties['type']?.toString().replaceAll('"', '').trim() ?? (fileType == FileType.unit ? "flying" : "GenericCrafter");
+
+    // 1. Verificación e instanciación de Tipos Dinámicos de Módulos Personalizados (Schema-Driven UI)
+    final customTypes = ref.watch(activeCustomTypesProvider);
+    final matchingCustom = customTypes.cast<CustomTypeSchema?>().firstWhere(
+      (ct) => ct?.typeId == rawType,
+      orElse: () => null,
+    );
+
+    if (matchingCustom != null) {
+      return DynamicTypeFormWidget(
+        schema: matchingCustom,
+        data: properties,
+        onChanged: onChanged,
+      );
+    }
+
+    // 2. Unidades Nativas
     if (fileType == FileType.unit) {
       return UnitBasePropertiesWidget(
         properties: properties,
@@ -35,10 +56,8 @@ class TypePropertiesDispatcher extends StatelessWidget {
       );
     }
 
-    // 2. Bloques
+    // 3. Bloques Nativos de Mindustry
     if (fileType == FileType.block) {
-      final rawType = properties['type']?.toString().replaceAll('"', '').trim() ?? "GenericCrafter";
-
       switch (rawType) {
         // --- 1. EXTRACCIÓN ---
         case 'Drill':
@@ -48,13 +67,11 @@ class TypePropertiesDispatcher extends StatelessWidget {
             properties: properties,
             onChanged: onChanged,
           );
-
         case 'BeamDrill':
           return BeamDrillPropertiesWidget(
             properties: properties,
             onChanged: onChanged,
           );
-
         case 'Pump':
         case 'SolidPump':
         case 'Fracker':
@@ -73,7 +90,6 @@ class TypePropertiesDispatcher extends StatelessWidget {
             availableLiquids: availableLiquids,
             onChanged: onChanged,
           );
-
         case 'HeatCrafter':
           return HeatCrafterPropertiesWidget(
             properties: properties,
@@ -81,7 +97,6 @@ class TypePropertiesDispatcher extends StatelessWidget {
             availableLiquids: availableLiquids,
             onChanged: onChanged,
           );
-
         case 'Separator':
           return SeparatorPropertiesWidget(
             properties: properties,
@@ -99,14 +114,12 @@ class TypePropertiesDispatcher extends StatelessWidget {
             availableLiquids: availableLiquids,
             onChanged: onChanged,
           );
-
         case 'NuclearReactor':
         case 'ImpactReactor':
           return NuclearReactorPropertiesWidget(
             properties: properties,
             onChanged: onChanged,
           );
-
         case 'PowerNode':
         case 'SurgeTower':
         case 'BeamNode':
@@ -122,14 +135,12 @@ class TypePropertiesDispatcher extends StatelessWidget {
             availableItems: availableItems,
             onChanged: onChanged,
           );
-
         case 'LiquidTurret':
           return LiquidTurretPropertiesWidget(
             properties: properties,
             availableLiquids: availableLiquids,
             onChanged: onChanged,
           );
-
         case 'PowerTurret':
         case 'LaserTurret':
         case 'ContinuousTurret':
@@ -147,7 +158,6 @@ class TypePropertiesDispatcher extends StatelessWidget {
             properties: properties,
             onChanged: onChanged,
           );
-
         case 'ForceProjector':
         case 'MendProjector':
         case 'OverdriveProjector':
@@ -156,7 +166,6 @@ class TypePropertiesDispatcher extends StatelessWidget {
             properties: properties,
             onChanged: onChanged,
           );
-
         case 'Conveyor':
         case 'ArmoredConveyor':
         case 'PlastaniumConveyor':
@@ -166,7 +175,6 @@ class TypePropertiesDispatcher extends StatelessWidget {
             properties: properties,
             onChanged: onChanged,
           );
-
         case 'MassDriver':
           return MassDriverPropertiesWidget(
             properties: properties,

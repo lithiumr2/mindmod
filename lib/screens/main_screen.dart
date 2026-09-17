@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'module_management_screen.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -178,9 +179,24 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                         SnackBar(content: Text('${tr('mod_exported_to')} $path')),
                       );
                     }
+                  } else if (value == 'modules') {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const ModuleManagementScreen()),
+                    );
                   }
                 },
                 itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: 'modules',
+                    child: Row(
+                      children: const [
+                        Icon(Icons.extension, color: Color(0xFF58A6FF), size: 18),
+                        SizedBox(width: 10),
+                        Text('Módulos y Plugins', style: TextStyle(color: Colors.white)),
+                      ],
+                    ),
+                  ),
                   PopupMenuItem(
                     value: 'export_zip',
                     child: Row(

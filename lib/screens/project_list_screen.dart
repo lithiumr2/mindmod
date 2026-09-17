@@ -11,6 +11,7 @@ import 'dart:convert';
 import '../models/project_file.dart';
 import 'dart:typed_data';
 import 'main_screen.dart';
+import 'module_management_screen.dart';
 
 String _getTr(WidgetRef ref, String key) => ref.read(localeProvider.notifier).tr(key);
 
@@ -155,6 +156,26 @@ void _showSettingsDialog(BuildContext context, WidgetRef ref) {
                       }
                     },
                   ),
+                  const SizedBox(height: 20),
+                  const Divider(color: Colors.white12),
+                  const SizedBox(height: 10),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const CircleAvatar(
+                      backgroundColor: Color(0xFF161B22),
+                      child: Icon(Icons.extension, color: Color(0xFF58A6FF), size: 20),
+                    ),
+                    title: const Text('Módulos y Plugins Dinámicos', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+                    subtitle: const Text('Gestionar extensiones de mods (MultiLib, etc.)', style: TextStyle(color: Colors.white38, fontSize: 11)),
+                    trailing: const Icon(Icons.chevron_right, color: Colors.white54),
+                    onTap: () {
+                      Navigator.of(ctx).pop();
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ModuleManagementScreen()),
+                      );
+                    },
+                  ),
                 ],
               ),
               actions: [
@@ -185,7 +206,18 @@ class ProjectListScreen extends ConsumerWidget {
         backgroundColor: const Color(0xFF202026),
         actions: [
           IconButton(
+            icon: const Icon(Icons.extension, color: Color(0xFF58A6FF)),
+            tooltip: 'Módulos y Plugins de Extensión',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ModuleManagementScreen()),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.settings, color: Colors.white70),
+            tooltip: 'Configuración',
             onPressed: () => _showSettingsDialog(context, ref),
           )
         ],
