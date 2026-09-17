@@ -32,30 +32,7 @@ jobs:
           flutter create . --platforms=android --org=com.mindmod
 
       - name: Forzar compileSdk y minSdk en el proyecto y sus dependencias
-        run: |
-          python3 -c "
-          import os
-          import re
-
-          gradle_path = 'android/app/build.gradle'
-          kts_path = 'android/app/build.gradle.kts'
-          target = kts_path if os.path.exists(kts_path) else gradle_path
-
-          if os.path.exists(target):
-              with open(target, 'r') as f:
-                  content = f.read()
-              content = re.sub(r'compileSdk\s*=.*', 'compileSdk = 34', content)
-              content = re.sub(r'targetSdk\s*=.*', 'targetSdk = 34', content)
-              content = re.sub(r'minSdk\s*=.*', 'minSdk = 21', content)
-              with open(target, 'w') as f:
-                  f.write(content)
-              print('Patched', target)
-
-          for prop_file in ['android/local.properties', 'android/gradle.properties']:
-              with open(prop_file, 'a') as f:
-                  f.write('\nflutter.compileSdkVersion=34\nflutter.minSdkVersion=21\nflutter.targetSdkVersion=34\n')
-              print('Updated', prop_file)
-          "
+        run: python3 .github/scripts/configure_sdk.py
 
       - name: Instalar dependencias
         run: flutter pub get
@@ -76,44 +53,7 @@ jobs:
             keytool -genkey -v -keystore mindmod.jks -keyalg RSA -keysize 2048 -validity 10000 -alias mindmod -storepass mindmod -keypass mindmod -dname "CN=Mindmod, OU=Mindmod, O=Mindmod, L=Mindmod, ST=Mindmod, C=US"
             cp mindmod.jks android/app/mindmod.jks
           fi
-          
-          python3 -c "
-          import os
-          import re
-          gradle_path = 'android/app/build.gradle'
-          kts_path = 'android/app/build.gradle.kts'
-          target = kts_path if os.path.exists(kts_path) else gradle_path
-          with open(target, 'r') as f: content = f.read()
-          
-          if target == kts_path:
-              sign_block = '\
-              signingConfigs {
-                  create(\"release\") {
-                      storeFile = file(\"mindmod.jks\")
-                      storePassword = \"mindmod\"
-                      keyAlias = \"mindmod\"
-                      keyPassword = \"mindmod\"
-                  }
-              }
-              '\
-              content = content.replace('buildTypes {', sign_block + '    buildTypes {')
-              content = content.replace('signingConfig = signingConfigs.getByName(\"debug\")', 'signingConfig = signingConfigs.getByName(\"release\")')
-          else:
-              sign_block = '\
-              signingConfigs {
-                  release {
-                      storeFile file(\"mindmod.jks\")
-                      storePassword \"mindmod\"
-                      keyAlias \"mindmod\"
-                      keyPassword \"mindmod\"
-                  }
-              }
-              '\
-              content = content.replace('buildTypes {', sign_block + '    buildTypes {')
-              content = content.replace('signingConfig signingConfigs.debug', 'signingConfig signingConfigs.release')
-          
-          with open(target, 'w') as f: f.write(content)
-          "
+          python3 .github/scripts/configure_signing.py
 
       - name: Compilar APK release
         run: flutter build apk --release --no-tree-shake-icons --build-name=1.0.${{ github.run_number }} --build-number=${{ github.run_number }}
