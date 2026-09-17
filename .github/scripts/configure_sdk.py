@@ -35,58 +35,14 @@ tasks.configureEach { task ->
         f.write(content)
     print("Patched app target:", target)
 
-# 2. Patch root android/build.gradle(.kts)
-root_gradle = 'android/build.gradle'
-root_kts = 'android/build.gradle.kts'
-root_target = root_kts if os.path.exists(root_kts) else root_gradle
-
-if os.path.exists(root_target):
-    with open(root_target, 'r') as f:
-        root_content = f.read()
-    if 'subprojects' not in root_content or 'compileSdk' not in root_content:
-        if root_target.endswith('.kts'):
-            root_content += """
-subprojects {
-    afterEvaluate {
-        val androidExt = project.extensions.findByName("android")
-        if (androidExt != null) {
-            try {
-                val method = androidExt::class.java.getMethod("compileSdkVersion", Int::class.javaPrimitiveType)
-                method.invoke(androidExt, 36)
-            } catch (e: Throwable) {
-                try {
-                    val method = androidExt::class.java.getMethod("setCompileSdk", java.lang.Integer::class.java)
-                    method.invoke(androidExt, 36)
-                } catch (e2: Throwable) {}
-            }
-        }
-    }
-}
-"""
-        else:
-            root_content += """
-subprojects {
-    afterEvaluate { project ->
-        if (project.hasProperty('android')) {
-            project.android {
-                compileSdkVersion 36
-            }
-        }
-    }
-}
-"""
-        with open(root_target, 'w') as f:
-            f.write(root_content)
-        print("Patched root target:", root_target)
-
-# 3. Update properties
+# 2. Update properties
 for prop_file in ['android/local.properties', 'android/gradle.properties']:
     if os.path.exists(prop_file):
         with open(prop_file, 'a') as f:
             f.write('\nflutter.compileSdkVersion=36\nflutter.minSdkVersion=21\nflutter.targetSdkVersion=34\n')
         print("Updated property file:", prop_file)
 
-# 4. Patch ~/.pub-cache plugins directly
+# 3. Patch ~/.pub-cache plugins directly
 pub_cache_dirs = [os.path.expanduser('~/.pub-cache'), os.path.expanduser('~/.pub-cache/hosted/pub.dev')]
 for pub_dir in pub_cache_dirs:
     if os.path.exists(pub_dir):
