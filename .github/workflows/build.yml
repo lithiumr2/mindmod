@@ -26,6 +26,11 @@ jobs:
         with:
           channel: "stable"
 
+      - name: Instalar Android SDK Platform 36
+        run: |
+          yes | sdkmanager --licenses || true
+          sdkmanager "platforms;android-36" "platforms;android-35" || true
+
       - name: Regenerar estructura Android limpia (v2 embedding)
         run: |
           rm -rf android
