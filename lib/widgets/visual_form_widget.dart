@@ -10,6 +10,7 @@ import '../services/hjson_engine.dart';
 import '../providers/locale_provider.dart';
 import 'type_properties/type_properties_dispatcher.dart';
 import 'type_properties/drawer_builder_widget.dart';
+import 'type_properties/resource_widgets.dart';
 import 'common_properties_widget.dart';
 import '../providers/module_registry_provider.dart';
 
@@ -679,6 +680,19 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                         availableItems: _getAllAvailableItems(),
                         availableLiquids: _getAllAvailableLiquids(),
                         availableUnits: _getAllAvailableUnits(),
+                        onChanged: (newProps) {
+                          setState(() {
+                            _properties = newProps;
+                          });
+                          _markForSave();
+                        },
+                      ),
+                      
+                    if (activeFile.type == FileType.item || activeFile.type == FileType.liquid || activeFile.type == FileType.status)
+                      ResourcePropertiesDispatcher(
+                        fileType: activeFile.type,
+                        properties: _properties,
+                        availableStatus: ['none', 'burning', 'freezing', 'melting', 'wet', 'muddy', 'tarred', 'overdrive', 'boss', 'shocked', 'blasted'],
                         onChanged: (newProps) {
                           setState(() {
                             _properties = newProps;
