@@ -343,7 +343,7 @@ class _MindustryStringFieldState extends State<MindustryStringField> {
 
 class MindustryBoolField extends StatelessWidget {
   final String label;
-  final bool value;
+  final dynamic value;
   final ValueChanged<bool> onChanged;
   final String? subtitle;
 
@@ -368,7 +368,7 @@ class MindustryBoolField extends StatelessWidget {
         dense: true,
         title: Text(label, style: const TextStyle(color: Colors.white, fontSize: 12)),
         subtitle: subtitle != null ? Text(subtitle!, style: const TextStyle(color: Colors.white38, fontSize: 10)) : null,
-        value: value,
+        value: value == true,
         activeThumbColor: Colors.amber,
         activeTrackColor: Colors.amber.withOpacity(0.4),
         inactiveThumbColor: Colors.white38,
