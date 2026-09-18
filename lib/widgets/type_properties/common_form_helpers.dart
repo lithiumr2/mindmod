@@ -70,7 +70,7 @@ class TypeCardContainer extends StatelessWidget {
 
 class MindustryFloatField extends StatefulWidget {
   final String label;
-  final double? value;
+  final num? value;
   final ValueChanged<double?> onChanged;
   final String? hint;
   final IconData? icon;
@@ -102,7 +102,7 @@ class _MindustryFloatFieldState extends State<MindustryFloatField> {
     super.didUpdateWidget(oldWidget);
     if (widget.value != oldWidget.value) {
       final strVal = widget.value != null ? widget.value.toString() : "";
-      if (double.tryParse(_controller.text) != widget.value) {
+      if (double.tryParse(_controller.text) != widget.value?.toDouble()) {
         _controller.text = strVal;
       }
     }
@@ -170,7 +170,7 @@ class _MindustryFloatFieldState extends State<MindustryFloatField> {
 
 class MindustryIntField extends StatefulWidget {
   final String label;
-  final int? value;
+  final num? value;
   final ValueChanged<int?> onChanged;
   final String? hint;
   final IconData? icon;
@@ -202,7 +202,7 @@ class _MindustryIntFieldState extends State<MindustryIntField> {
     super.didUpdateWidget(oldWidget);
     if (widget.value != oldWidget.value) {
       final strVal = widget.value != null ? widget.value.toString() : "";
-      if (int.tryParse(_controller.text) != widget.value) {
+      if (int.tryParse(_controller.text) != widget.value?.toInt()) {
         _controller.text = strVal;
       }
     }
