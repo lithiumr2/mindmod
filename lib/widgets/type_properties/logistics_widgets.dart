@@ -37,7 +37,7 @@ class ItemBridgePropertiesWidget extends StatelessWidget {
   const ItemBridgePropertiesWidget({super.key, required this.properties, required this.onChanged});
   @override Widget build(BuildContext context) {
     return TypeCardContainer(
-      title: "Puente de Ítems", icon: Icons.bridge, accentColor: Colors.deepOrange,
+      title: "Puente de Ítems", icon: Icons.alt_route, accentColor: Colors.deepOrange,
       child: Column(children: [
         MindustryIntField(label: 'range', value: properties['range'], onChanged: (v) { properties['range'] = v; onChanged(properties); }),
         MindustryFloatField(label: 'transportTime', value: properties['transportTime'], onChanged: (v) { properties['transportTime'] = v; onChanged(properties); }),

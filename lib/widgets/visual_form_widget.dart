@@ -287,6 +287,19 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     return liquids.toList();
   }
 
+  List<String> _getAllAvailableUnits() {
+    final files = ref.watch(projectProvider).files;
+    final dynamicUnits = ref.watch(allAvailableUnitTypesProvider);
+    final Set<String> units = Set.from(dynamicUnits);
+    for (var f in files) {
+      if (f.type == FileType.unit) {
+        final clean = f.name.replaceAll(".hjson", "").replaceAll(".json", "");
+        units.add(clean);
+      }
+    }
+    return units.toList();
+  }
+
   void _applyPreset(String presetKey) {
     final activeFile = ref.read(projectProvider).activeFile;
     if (activeFile == null) return;

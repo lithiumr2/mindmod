@@ -47,7 +47,7 @@ class ConsumeGeneratorPropertiesWidget extends StatelessWidget {
         MindustryFloatField(label: 'itemDuration', value: properties['itemDuration'], onChanged: (v) { properties['itemDuration'] = v; onChanged(properties); }),
         MindustryDropdownField(label: 'generateEffect', value: properties['generateEffect']?.toString(), items: const ['none', 'smeltsmoke', 'steam', 'fire'], onChanged: (v) { properties['generateEffect'] = v; onChanged(properties); }),
         ConsumesSubmodule(
-          data: properties['consumes'] is Map ? (properties['consumes'] as Map).cast<String, dynamic>() : {},
+          consumes: properties['consumes'] is Map ? (properties['consumes'] as Map).cast<String, dynamic>() : {},
           availableItems: availableItems,
           availableLiquids: availableLiquids,
           onChanged: (v) { properties['consumes'] = v; onChanged(properties); }

@@ -36,7 +36,7 @@ class GenericCrafterPropertiesWidget extends StatelessWidget {
             onUpdate: (v) { properties['outputLiquids'] = v; onChanged(properties); },
           ),
           ConsumesSubmodule(
-            data: properties['consumes'] is Map ? (properties['consumes'] as Map).cast<String, dynamic>() : {},
+            consumes: properties['consumes'] is Map ? (properties['consumes'] as Map).cast<String, dynamic>() : {},
             availableItems: availableItems,
             availableLiquids: availableLiquids,
             onChanged: (v) { properties['consumes'] = v; onChanged(properties); }
@@ -69,7 +69,7 @@ class HeatCrafterPropertiesWidget extends StatelessWidget {
           MindustryFloatField(label: 'heatOutput', value: properties['heatOutput'], onChanged: (v) { properties['heatOutput'] = v; onChanged(properties); }),
           MindustryBoolField(label: 'overheatDestroys', value: properties['overheatDestroys'], onChanged: (v) { properties['overheatDestroys'] = v; onChanged(properties); }),
           ConsumesSubmodule(
-            data: properties['consumes'] is Map ? (properties['consumes'] as Map).cast<String, dynamic>() : {},
+            consumes: properties['consumes'] is Map ? (properties['consumes'] as Map).cast<String, dynamic>() : {},
             availableItems: availableItems,
             availableLiquids: availableLiquids,
             onChanged: (v) { properties['consumes'] = v; onChanged(properties); }

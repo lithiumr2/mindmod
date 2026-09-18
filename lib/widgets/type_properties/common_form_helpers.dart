@@ -668,11 +668,12 @@ class ConsumesSubmodule extends StatelessWidget {
 
   const ConsumesSubmodule({
     super.key,
-    required this.consumes,
+    Map<String, dynamic>? consumes,
+    Map<String, dynamic>? data,
     required this.availableItems,
     required this.availableLiquids,
     required this.onChanged,
-  });
+  }) : consumes = consumes ?? data;
 
   @override
   Widget build(BuildContext context) {
