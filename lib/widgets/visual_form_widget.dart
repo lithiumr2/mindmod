@@ -678,6 +678,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
                         properties: _properties,
                         availableItems: _getAllAvailableItems(),
                         availableLiquids: _getAllAvailableLiquids(),
+                        availableUnits: _getAllAvailableUnits(),
                         onChanged: (newProps) {
                           setState(() {
                             _properties = newProps;
