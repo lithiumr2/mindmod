@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/project_file.dart';
+import '../providers/module_registry_provider.dart';
 
 // =====================================================================
 // 1. COMPONENTES BASE (Seguros contra nulos y tipos estrictos)
@@ -104,21 +105,16 @@ class PropDropdown extends StatelessWidget {
 // 2. CONSTRUCTOR DE REQUERIMIENTOS
 // =====================================================================
 
-class RequirementsBuilder extends StatelessWidget {
+class RequirementsBuilder extends ConsumerWidget {
   final List<dynamic> requirements;
   final Function(List<dynamic>) onUpdate;
 
   const RequirementsBuilder({super.key, required this.requirements, required this.onUpdate});
 
-  static const List<String> mindustryItems = [
-    'copper', 'lead', 'metaglass', 'graphite', 'sand', 'coal', 'titanium', 
-    'thorium', 'scrap', 'silicon', 'plastanium', 'phase-fabric', 'surge-alloy',
-    'spore-pod', 'blast-compound', 'pyratite', 'beryllium', 'tungsten',
-    'oxide', 'carbide', 'fissile-matter', 'dormant-cyst'
-  ];
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final availableItems = ref.watch(allAvailableItemsProvider);
+
     return Card(
       shape: RoundedRectangleBorder(side: BorderSide(color: Colors.amber.withOpacity(0.5)), borderRadius: BorderRadius.circular(8)),
       child: Padding(
@@ -135,7 +131,8 @@ class RequirementsBuilder extends StatelessWidget {
                   label: const Text('Añadir', style: TextStyle(fontSize: 12)),
                   style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(60, 30)),
                   onPressed: () {
-                    final newList = List.from(requirements)..add({'item': 'copper', 'amount': 10});
+                    final defaultItem = availableItems.isNotEmpty ? availableItems.first : 'copper';
+                    final newList = List.from(requirements)..add({'item': defaultItem, 'amount': 10});
                     onUpdate(newList);
                   },
                 )
@@ -145,6 +142,12 @@ class RequirementsBuilder extends StatelessWidget {
             ...requirements.asMap().entries.map((entry) {
               final index = entry.key;
               final req = entry.value is Map ? (entry.value as Map<String, dynamic>) : {'item': 'copper', 'amount': 10};
+              final currentItem = req['item']?.toString() ?? 'copper';
+              final itemOptions = List<String>.from(availableItems);
+              if (!itemOptions.contains(currentItem)) {
+                itemOptions.insert(0, currentItem);
+              }
+
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8.0),
                 child: Row(
@@ -152,9 +155,9 @@ class RequirementsBuilder extends StatelessWidget {
                     Expanded(
                       flex: 3,
                       child: DropdownButtonFormField<String>(
-                        value: mindustryItems.contains(req['item']) ? req['item'] : 'copper',
+                        value: currentItem,
                         decoration: const InputDecoration(isDense: true, border: OutlineInputBorder()),
-                        items: mindustryItems.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 12)))).toList(),
+                        items: itemOptions.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 12)))).toList(),
                         onChanged: (v) {
                           final newList = List.from(requirements);
                           newList[index] = {...req, 'item': v};
@@ -210,18 +213,40 @@ class CommonBlockPropertiesWidget extends ConsumerWidget {
 
   const CommonBlockPropertiesWidget({super.key, required this.data, required this.onUpdate});
 
-  static const List<String> blockTypes = [
-    'Wall', 'GenericCrafter', 'HeatCrafter', 'Separator',
-    'Drill', 'BeamDrill', 'Pump', 'SolidPump',
-    'ItemTurret', 'LiquidTurret', 'PowerTurret',
-    'ConsumeGenerator', 'NuclearReactor', 'PowerNode',
-    'Conveyor', 'MassDriver', 'ForceProjector'
-  ];
-
-  static const List<String> categories = [
-    'distribution', 'liquid', 'power', 'production', 'defense',
-    'turret', 'units', 'effect', 'logic', 'crafting'
-  ];
+  void _showCustomTypeDialog(BuildContext context, String currentType) {
+    final controller = TextEditingController(text: currentType);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Escribir Tipo Personalizado'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            labelText: 'Tipo de Bloque',
+            hintText: 'ej. CustomCrafter, MyModdedBlock',
+            border: OutlineInputBorder(),
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final val = controller.text.trim();
+              if (val.isNotEmpty) {
+                onUpdate('type', val);
+              }
+              Navigator.of(ctx).pop();
+            },
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -230,8 +255,21 @@ class CommonBlockPropertiesWidget extends ConsumerWidget {
     final hasPower = data['hasPower'] == true || data['hasPower'] == 'true';
     final reqs = data['requirements'] is List ? data['requirements'] as List : [];
     
-    // Cleanup string types correctly
-    final safeType = data['type']?.toString().replaceAll('"', '');
+    // Lista dinámica de tipos de bloques (Base Mindustry exhaustivo + Módulos activos)
+    final availableBlockTypes = ref.watch(allAvailableBlockTypesProvider);
+    final availableCategories = ref.watch(allAvailableCategoriesProvider);
+
+    final safeType = data['type']?.toString().replaceAll('"', '').trim();
+    final blockTypesList = List<String>.from(availableBlockTypes);
+    if (safeType != null && safeType.isNotEmpty && !blockTypesList.contains(safeType)) {
+      blockTypesList.insert(0, safeType);
+    }
+
+    final safeCategory = data['category']?.toString().replaceAll('"', '').trim();
+    final categoryList = List<String>.from(availableCategories);
+    if (safeCategory != null && safeCategory.isNotEmpty && !categoryList.contains(safeCategory)) {
+      categoryList.insert(0, safeCategory);
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -244,12 +282,25 @@ class CommonBlockPropertiesWidget extends ConsumerWidget {
               children: [
                 Expanded(child: PropTextField(label: 'name (ID Interno)', value: data['name'], onChanged: (v) => onUpdate('name', v))),
                 const SizedBox(width: 12),
-                Expanded(child: PropDropdown(
-                  label: 'type (Tipo)', 
-                  value: blockTypes.contains(safeType) ? safeType : null, 
-                  options: blockTypes, 
-                  onChanged: (v) => onUpdate('type', v)
-                )),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: PropDropdown(
+                          label: 'type (Tipo de Bloque)', 
+                          value: (safeType != null && safeType.isNotEmpty) ? safeType : null, 
+                          options: blockTypesList, 
+                          onChanged: (v) => onUpdate('type', v),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Escribir tipo personalizado',
+                        icon: const Icon(Icons.edit_note, color: Colors.amber),
+                        onPressed: () => _showCustomTypeDialog(context, safeType ?? ''),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -271,8 +322,8 @@ class CommonBlockPropertiesWidget extends ConsumerWidget {
                     const SizedBox(width: 8),
                     Expanded(child: PropDropdown(
                       label: 'category', 
-                      value: categories.contains(data['category']) ? data['category'] : null, 
-                      options: categories, 
+                      value: (safeCategory != null && safeCategory.isNotEmpty) ? safeCategory : null, 
+                      options: categoryList, 
                       onChanged: (v) => onUpdate('category', v)
                     )),
                   ],
@@ -333,13 +384,49 @@ class CommonUnitPropertiesWidget extends ConsumerWidget {
 
   const CommonUnitPropertiesWidget({super.key, required this.data, required this.onUpdate});
 
-  static const List<String> unitTypes = [
-    'flying', 'mech', 'legs', 'naval', 'payload'
-  ];
+  void _showCustomUnitTypeDialog(BuildContext context, String currentType) {
+    final controller = TextEditingController(text: currentType);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Escribir Tipo de Unidad'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            labelText: 'Tipo de Unidad',
+            hintText: 'ej. flying, mech, missile, custom-unit',
+            border: OutlineInputBorder(),
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final val = controller.text.trim();
+              if (val.isNotEmpty) {
+                onUpdate('type', val);
+              }
+              Navigator.of(ctx).pop();
+            },
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final safeType = data['type']?.toString().replaceAll('"', '');
+    final availableUnitTypes = ref.watch(allAvailableUnitTypesProvider);
+    final safeType = data['type']?.toString().replaceAll('"', '').trim();
+    final unitTypesList = List<String>.from(availableUnitTypes);
+    if (safeType != null && safeType.isNotEmpty && !unitTypesList.contains(safeType)) {
+      unitTypesList.insert(0, safeType);
+    }
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -351,12 +438,25 @@ class CommonUnitPropertiesWidget extends ConsumerWidget {
               children: [
                 Expanded(child: PropTextField(label: 'name (ID Interno)', value: data['name'], onChanged: (v) => onUpdate('name', v))),
                 const SizedBox(width: 12),
-                Expanded(child: PropDropdown(
-                  label: 'type (Tipo de Unidad)', 
-                  value: unitTypes.contains(safeType) ? safeType : null, 
-                  options: unitTypes, 
-                  onChanged: (v) => onUpdate('type', v)
-                )),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: PropDropdown(
+                          label: 'type (Tipo de Unidad)', 
+                          value: (safeType != null && safeType.isNotEmpty) ? safeType : null, 
+                          options: unitTypesList, 
+                          onChanged: (v) => onUpdate('type', v),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Escribir tipo de unidad personalizado',
+                        icon: const Icon(Icons.edit_note, color: Colors.amber),
+                        onPressed: () => _showCustomUnitTypeDialog(context, safeType ?? ''),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
