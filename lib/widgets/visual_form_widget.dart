@@ -68,16 +68,37 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
   List<String> _syntaxErrors = [];
   String _loadedFileId = "";
 
-  // 30 tipos de bloques nativos de Mindustry
+  // Catálogo completo de tipos de bloques nativos de Mindustry (v7/v8)
   final List<String> _blockTypes = [
-    "Wall", "ShieldWall", "Door", "MendProjector", "OverdriveProjector", "OverdriveDome",
-    "ForceProjector", "Conveyor", "ArmoredConveyor", "PlastaniumConveyor", "StackConveyor",
-    "Duct", "MassDriver", "Drill", "BurstDrill", "ImpactDrill", "Pump", "SolidPump", "Fracker",
-    "BeamDrill", "GenericCrafter", "HeatCrafter", "Separator", "Incinerator", "ItemTurret", "LiquidTurret", "PowerTurret",
-    "ContinuousTurret", "PointDefenseTurret", "LaserTurret", "PowerNode", "SurgeTower", "BeamNode", "Battery",
-    "SolarGenerator", "ThermalGenerator", "ConsumeGenerator", "NuclearReactor", "ImpactReactor", "LiquidRouter", "LiquidJunction",
-    "Router", "Junction", "Sorter", "LogicSorter", "ItemBridge", "Conduit", "ArmoredConduit", "LiquidBridge",
-    "UnitFactory", "Reconstructor", "UnitAssembler", "MessageBlock", "LogicBlock", "MemoryBlock", "StorageBlock", "CoreBlock"
+    // Defensa
+    "Wall", "ShieldWall", "Door", "AutoDoor", "MendProjector", "OverdriveProjector", "OverdriveDome",
+    "ForceProjector", "DirectionalForceProjector", "RegenProjector", "ShockMine", "Radar",
+    // Torretas
+    "ItemTurret", "LiquidTurret", "PowerTurret", "LaserTurret", "ContinuousTurret", 
+    "ContinuousLiquidTurret", "PointDefenseTurret", "TractorBeamTurret", "PayloadAmmoTurret",
+    // Extracción y Minería
+    "Drill", "BurstDrill", "ImpactDrill", "BeamDrill", "Pump", "SolidPump", "Fracker",
+    // Fábricas y Producción
+    "GenericCrafter", "HeatCrafter", "Incinerator", "Separator", "Cultivator", "HeatProducer",
+    // Distribución y Logística de Ítems
+    "Conveyor", "ArmoredConveyor", "PlastaniumConveyor", "StackConveyor", "Duct", "ArmoredDuct",
+    "DuctRouter", "DuctBridge", "OverflowDuct", "Router", "Distributor", "Junction", "ItemBridge",
+    "Sorter", "InvertedSorter", "OverflowGate", "UnderflowGate", "MassDriver", "Unloader", "DirectionalUnloader",
+    // Payload
+    "PayloadConveyor", "PayloadRouter", "PayloadMassDriver", "UnitCargoLoader", "UnitCargoUnloadPoint",
+    // Líquidos
+    "Conduit", "ArmoredConduit", "LiquidRouter", "LiquidJunction", "LiquidBridge", "LiquidTank", "LiquidContainer",
+    // Energía
+    "PowerNode", "SurgeTower", "BeamNode", "PowerDiode", "Battery", "BatteryLarge",
+    "SolarGenerator", "ThermalGenerator", "ConsumeGenerator", "NuclearReactor", "ImpactReactor", "VariableReactor",
+    // Fábricas de Unidades
+    "UnitFactory", "Reconstructor", "UnitAssembler", "UnitAssemblerModule", "RepairTower", "RepairPoint",
+    // Almacenamiento y Núcleo
+    "StorageBlock", "CoreBlock",
+    // Lógica y Pantallas
+    "MessageBlock", "LogicBlock", "MemoryBlock", "CanvasBlock", "LightBlock",
+    // Sandbox / Pruebas
+    "ItemSource", "LiquidSource", "PowerSource", "ItemVoid", "LiquidVoid", "PowerVoid",
   ];
 
     final List<String> _categories = [
@@ -90,7 +111,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
 
   // Tipos de unidades de Mindustry
   final List<String> _unitTypes = [
-    "flying", "mech", "legs", "naval", "payload", "crawl", "tether", "unit"
+    "flying", "mech", "legs", "naval", "payload", "crawl", "tether", "missile", "hover", "tank", "unit"
   ];
 
   // Ítems vanilla nativos de Mindustry con prefijo @
@@ -930,9 +951,17 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
   Widget _buildInputField(String key, dynamic value, FileType fileType) {
     // 1. Selector masivo para la propiedad type en Bloques
     if (key == "type" && fileType == FileType.block) {
-      String current = value.toString().replaceAll("\"", "");
-      if (!_blockTypes.contains(current)) {
-        current = _blockTypes.first;
+      String current = value.toString().replaceAll("\"", "").trim();
+      final types = List<String>.from(_blockTypes);
+      final activeTypes = ref.watch(allAvailableBlockTypesProvider);
+      for (final t in activeTypes) {
+        if (!types.contains(t)) types.add(t);
+      }
+      if (current.isNotEmpty && !types.contains(current)) {
+        types.insert(0, current);
+      }
+      if (!types.contains(current)) {
+        current = types.isNotEmpty ? types.first : "Wall";
       }
       return DropdownButtonHideUnderline(
         child: DropdownButton<String>(
@@ -949,16 +978,24 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
               _saveChanges();
             }
           },
-          items: _blockTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+          items: types.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
         ),
       );
     }
 
     // 2. Selector masivo para la propiedad type en Unidades
     if (key == "type" && fileType == FileType.unit) {
-      String current = value.toString().replaceAll("\"", "");
-      if (!_unitTypes.contains(current)) {
-        current = _unitTypes.first;
+      String current = value.toString().replaceAll("\"", "").trim();
+      final types = List<String>.from(_unitTypes);
+      final activeTypes = ref.watch(allAvailableUnitTypesProvider);
+      for (final t in activeTypes) {
+        if (!types.contains(t)) types.add(t);
+      }
+      if (current.isNotEmpty && !types.contains(current)) {
+        types.insert(0, current);
+      }
+      if (!types.contains(current)) {
+        current = types.isNotEmpty ? types.first : "flying";
       }
       return DropdownButtonHideUnderline(
         child: DropdownButton<String>(
@@ -975,7 +1012,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
               _saveChanges();
             }
           },
-          items: _unitTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+          items: types.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
         ),
       );
     }
@@ -983,8 +1020,16 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     
     // 2.5 Selector masivo para category
     if (key == "category" && fileType == FileType.block) {
-      String current = value.toString().replaceAll("\"", "");
-      if (!_categories.contains(current)) current = _categories.first;
+      String current = value.toString().replaceAll("\"", "").trim();
+      final cats = List<String>.from(_categories);
+      final activeCats = ref.watch(allAvailableCategoriesProvider);
+      for (final c in activeCats) {
+        if (!cats.contains(c)) cats.add(c);
+      }
+      if (current.isNotEmpty && !cats.contains(current)) {
+        cats.insert(0, current);
+      }
+      if (!cats.contains(current)) current = cats.first;
       return DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: current,
@@ -998,7 +1043,7 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
               _saveChanges();
             }
           },
-          items: _categories.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+          items: cats.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
         ),
       );
     }
