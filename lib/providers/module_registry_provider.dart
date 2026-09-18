@@ -224,12 +224,46 @@ final allAvailableCategoriesProvider = Provider<List<String>>((ref) {
 /// Lista combinada de Tipos de Bloques disponibles (Base Mindustry + CustomTypes activos de categoría block)
 final allAvailableBlockTypesProvider = Provider<List<String>>((ref) {
   final List<String> baseBlockTypes = [
-    "Wall", "ShieldWall", "Door", "MendProjector", "OverdriveProjector", "OverdriveDome", "ForceProjector",
-    "GenericCrafter", "HeatCrafter", "Incinerator", "Separator",
-    "ConsumeGenerator", "ThermalGenerator", "SolarGenerator", "NuclearReactor", "ImpactReactor", "PowerNode", "SurgeTower", "BeamNode",
-    "ItemTurret", "LiquidTurret", "PowerTurret", "LaserTurret", "ContinuousTurret", "PointDefenseTurret",
+    // Defensa
+    "Wall", "ShieldWall", "Door", "AutoDoor", "MendProjector", "OverdriveProjector", "OverdriveDome",
+    "ForceProjector", "DirectionalForceProjector", "RegenProjector", "ShockMine", "Radar",
+    
+    // Torretas
+    "ItemTurret", "LiquidTurret", "PowerTurret", "LaserTurret", "ContinuousTurret", 
+    "ContinuousLiquidTurret", "PointDefenseTurret", "TractorBeamTurret", "PayloadAmmoTurret",
+    
+    // Extracción y Minería
     "Drill", "BurstDrill", "ImpactDrill", "BeamDrill", "Pump", "SolidPump", "Fracker",
-    "Conveyor", "ArmoredConveyor", "PlastaniumConveyor", "StackConveyor", "Duct", "MassDriver",
+    
+    // Fábricas y Producción
+    "GenericCrafter", "HeatCrafter", "Incinerator", "Separator", "Cultivator", "HeatProducer",
+    
+    // Distribución y Logística de Ítems
+    "Conveyor", "ArmoredConveyor", "PlastaniumConveyor", "StackConveyor", "Duct", "ArmoredDuct",
+    "DuctRouter", "DuctBridge", "OverflowDuct", "Router", "Distributor", "Junction", "ItemBridge",
+    "Sorter", "InvertedSorter", "OverflowGate", "UnderflowGate", "MassDriver", "Unloader", "DirectionalUnloader",
+    
+    // Logística de Payload (Carga)
+    "PayloadConveyor", "PayloadRouter", "PayloadMassDriver", "UnitCargoLoader", "UnitCargoUnloadPoint",
+    
+    // Distribución de Líquidos
+    "Conduit", "ArmoredConduit", "LiquidRouter", "LiquidJunction", "LiquidBridge", "LiquidTank", "LiquidContainer",
+    
+    // Energía
+    "PowerNode", "SurgeTower", "BeamNode", "PowerDiode", "Battery", "BatteryLarge",
+    "SolarGenerator", "ThermalGenerator", "ConsumeGenerator", "NuclearReactor", "ImpactReactor", "VariableReactor",
+    
+    // Fábricas y Ensamblaje de Unidades
+    "UnitFactory", "Reconstructor", "UnitAssembler", "UnitAssemblerModule", "RepairTower", "RepairPoint",
+    
+    // Almacenamiento y Núcleo
+    "StorageBlock", "CoreBlock",
+    
+    // Lógica y Pantallas
+    "MessageBlock", "LogicBlock", "MemoryBlock", "CanvasBlock", "LightBlock",
+    
+    // Sandbox / Pruebas
+    "ItemSource", "LiquidSource", "PowerSource", "ItemVoid", "LiquidVoid", "PowerVoid",
   ];
 
   final customTypes = ref.watch(activeCustomTypesProvider);
@@ -246,7 +280,7 @@ final allAvailableBlockTypesProvider = Provider<List<String>>((ref) {
 /// Lista combinada de Tipos de Unidades disponibles (Base Mindustry + CustomTypes activos de categoría unit)
 final allAvailableUnitTypesProvider = Provider<List<String>>((ref) {
   final List<String> baseUnitTypes = [
-    "flying", "mech", "legs", "naval", "payload", "tether", "crawl"
+    "flying", "mech", "legs", "naval", "payload", "tether", "crawl", "missile", "hover", "tank", "unit"
   ];
 
   final customTypes = ref.watch(activeCustomTypesProvider);
