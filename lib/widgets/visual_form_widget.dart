@@ -242,12 +242,50 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
     if (activeFile.type == FileType.unit && !parsed.containsKey("type")) {
       parsed["type"] = "flying";
     }
+    if (parsed.containsKey("requirements") && parsed["requirements"] is List) {
+      final rawReqs = parsed["requirements"] as List;
+      final cleanReqs = <String>[];
+      for (var r in rawReqs) {
+        if (r == null) continue;
+        final str = r.toString().trim().replaceAll('@', '');
+        if (str.isEmpty || str == '{' || str == '}' || str.contains('{') || str.contains('}')) continue;
+        if (str.contains('/')) {
+          cleanReqs.add(str);
+        } else if (r is Map) {
+          final it = r['item']?.toString().replaceAll('@', '').trim() ?? 'copper';
+          final am = r['amount']?.toString().trim() ?? '10';
+          if (it != '{' && it != '}') cleanReqs.add('$it/$am');
+        } else if (!str.contains(':')) {
+          cleanReqs.add('$str/10');
+        }
+      }
+      parsed["requirements"] = cleanReqs;
+    }
     _properties = parsed;
   }
 
   void _saveChanges() {
     final activeFile = ref.read(projectProvider).activeFile;
     if (activeFile != null) {
+      if (_properties.containsKey("requirements") && _properties["requirements"] is List) {
+        final rawReqs = _properties["requirements"] as List;
+        final cleanReqs = <String>[];
+        for (var r in rawReqs) {
+          if (r == null) continue;
+          final str = r.toString().trim().replaceAll('@', '');
+          if (str.isEmpty || str == '{' || str == '}' || str.contains('{') || str.contains('}')) continue;
+          if (str.contains('/')) {
+            cleanReqs.add(str);
+          } else if (r is Map) {
+            final it = r['item']?.toString().replaceAll('@', '').trim() ?? 'copper';
+            final am = r['amount']?.toString().trim() ?? '10';
+            if (it != '{' && it != '}') cleanReqs.add('$it/$am');
+          } else if (!str.contains(':')) {
+            cleanReqs.add('$str/10');
+          }
+        }
+        _properties["requirements"] = cleanReqs;
+      }
       final hjsonString = HjsonEngine.stringify(_properties);
       ref.read(projectProvider.notifier).updateActiveFileContent(hjsonString);
       if (mounted) {
@@ -641,31 +679,103 @@ class _VisualFormWidgetState extends ConsumerState<VisualFormWidget> {
               const SizedBox(width: 8),
               Container(height: 20, width: 1, color: Colors.white12),
               const SizedBox(width: 8),
-              // Scroll Horizontal con Plantillas y Recomendadas
-              Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
+              // Menú desplegable compacto de Plantillas para evitar desbordamientos
+              PopupMenuButton<String>(
+                tooltip: tr('presets'),
+                color: const Color(0xFF222228),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                onSelected: (presetKey) => _applyPreset(presetKey),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF222228),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Colors.white24, width: 1),
+                  ),
                   child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(tr('presets'), style: const TextStyle(color: Colors.white54, fontSize: 11)),
-                      const SizedBox(width: 4),
-                      if (activeFile.type == FileType.block) ...[
-                        _buildPresetChip(tr('preset_drill'), () => _applyPreset("drill")),
-                        const SizedBox(width: 4),
-                        _buildPresetChip(tr('preset_turret'), () => _applyPreset("turret")),
-                        const SizedBox(width: 4),
-                        _buildPresetChip(tr('preset_crafter'), () => _applyPreset("crafter")),
-                      ] else if (activeFile.type == FileType.unit) ...[
-                        _buildPresetChip(tr('preset_flying'), () => _applyPreset("unit_flying")),
-                        const SizedBox(width: 4),
-                        _buildPresetChip(tr('preset_mech'), () => _applyPreset("unit_mech")),
-                      ] else if (activeFile.type == FileType.item) ...[
-                        _buildPresetChip(tr('preset_basic_item'), () => _applyPreset("item_basic")),
-                      ],
-                      
+                      const Icon(Icons.auto_awesome, size: 14, color: Colors.amber),
+                      const SizedBox(width: 5),
+                      Text(
+                        '${tr('presets')} ▾',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ],
                   ),
                 ),
+                itemBuilder: (context) {
+                  final List<PopupMenuEntry<String>> items = [];
+                  if (activeFile.type == FileType.block) {
+                    items.add(PopupMenuItem(
+                      value: 'drill',
+                      child: Row(
+                        children: [
+                          const Icon(Icons.build_circle_outlined, size: 16, color: Colors.amber),
+                          const SizedBox(width: 8),
+                          Text(tr('preset_drill'), style: const TextStyle(color: Colors.white, fontSize: 12)),
+                        ],
+                      ),
+                    ));
+                    items.add(PopupMenuItem(
+                      value: 'turret',
+                      child: Row(
+                        children: [
+                          const Icon(Icons.gps_fixed, size: 16, color: Colors.redAccent),
+                          const SizedBox(width: 8),
+                          Text(tr('preset_turret'), style: const TextStyle(color: Colors.white, fontSize: 12)),
+                        ],
+                      ),
+                    ));
+                    items.add(PopupMenuItem(
+                      value: 'crafter',
+                      child: Row(
+                        children: [
+                          const Icon(Icons.precision_manufacturing, size: 16, color: Colors.blueAccent),
+                          const SizedBox(width: 8),
+                          Text(tr('preset_crafter'), style: const TextStyle(color: Colors.white, fontSize: 12)),
+                        ],
+                      ),
+                    ));
+                  } else if (activeFile.type == FileType.unit) {
+                    items.add(PopupMenuItem(
+                      value: 'unit_flying',
+                      child: Row(
+                        children: [
+                          const Icon(Icons.flight, size: 16, color: Colors.cyanAccent),
+                          const SizedBox(width: 8),
+                          Text(tr('preset_flying'), style: const TextStyle(color: Colors.white, fontSize: 12)),
+                        ],
+                      ),
+                    ));
+                    items.add(PopupMenuItem(
+                      value: 'unit_mech',
+                      child: Row(
+                        children: [
+                          const Icon(Icons.smart_toy, size: 16, color: Colors.orangeAccent),
+                          const SizedBox(width: 8),
+                          Text(tr('preset_mech'), style: const TextStyle(color: Colors.white, fontSize: 12)),
+                        ],
+                      ),
+                    ));
+                  } else if (activeFile.type == FileType.item) {
+                    items.add(PopupMenuItem(
+                      value: 'item_basic',
+                      child: Row(
+                        children: [
+                          const Icon(Icons.inventory_2_outlined, size: 16, color: Colors.amber),
+                          const SizedBox(width: 8),
+                          Text(tr('preset_basic_item'), style: const TextStyle(color: Colors.white, fontSize: 12)),
+                        ],
+                      ),
+                    ));
+                  }
+                  return items;
+                },
               ),
             ],
           ),
