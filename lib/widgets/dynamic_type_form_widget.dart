@@ -619,25 +619,26 @@ class DynamicTypeFormWidget extends ConsumerWidget {
     );
   }
 
-  InputDecoration _inputDecoration({String? hint}) {
+  InputDecoration _inputDecoration({String? hint, BuildContext? context}) {
+    final outlineColor = context != null ? Theme.of(context).colorScheme.outlineVariant : const Color(0xFF30363D);
     return InputDecoration(
       isDense: true,
       hintText: hint,
-      hintStyle: const TextStyle(color: Colors.white24, fontSize: 11),
+      hintStyle: TextStyle(color: Colors.white.withOpacity(0.72), fontSize: 11),
       contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       filled: true,
       fillColor: const Color(0xFF21262D),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(6),
-        borderSide: const BorderSide(color: Colors.white10),
+        borderSide: BorderSide(color: outlineColor, width: 1.0),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(6),
-        borderSide: const BorderSide(color: Colors.white10),
+        borderSide: BorderSide(color: outlineColor.withOpacity(0.5), width: 1.0),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(6),
-        borderSide: const BorderSide(color: Color(0xFF58A6FF)),
+        borderSide: const BorderSide(color: Color(0xFF58A6FF), width: 1.5),
       ),
     );
   }
