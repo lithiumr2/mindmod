@@ -40,10 +40,11 @@ class _DrawerBuilderWidgetState extends ConsumerState<DrawerBuilderWidget> {
   }
 
   @override
-  void didUpdateWidget(covariant DrawerBuilderWidget oldWidget) {
+    void didUpdateWidget(covariant DrawerBuilderWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Para simplificar, la fuente principal de la verdad es el propio estado del widget
-    // No resincronizaremos intensivamente a menos que properties['drawer'] cambie radicalmente.
+    // Solo resincronizar si el nuevo valor viene de AFUERA (por ejemplo, cambio de archivo), 
+    // pero como usamos un ValueKey por archivo, eso ya reinicia el widget. 
+    // Evitamos llamar a _initDrawers al guardar porque rompe el estado interno de las llaves _key.
   }
 
   int _keyCounter = 0;
@@ -375,25 +376,56 @@ class _DrawerBuilderWidgetState extends ConsumerState<DrawerBuilderWidget> {
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
           initiallyExpanded: !isDefault,
-          leading: Icon(isDefault ? Icons.image : Icons.layers, color: isDefault ? Colors.white54 : Colors.amber),
-          title: Text(type, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (!isDefault)
-                IconButton(
-                  icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 18),
-                  onPressed: () => _confirmDeleteLayer(index),
-                ),
-              if (!isDefault)
-                ReorderableDragStartListener(
-                  index: index,
-                  child: const Icon(Icons.drag_handle, color: Colors.white54),
+          tilePadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+          leading: isDefault
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    SizedBox(
+                      width: 40,
+                      height: 48,
+                      child: Icon(Icons.lock_outline, color: Colors.white24, size: 18),
+                    ),
+                    SizedBox(width: 4),
+                    Icon(Icons.image, color: Colors.white54, size: 20),
+                  ],
                 )
-              else
-                const Icon(Icons.lock_outline, color: Colors.white24, size: 18),
-            ],
-          ),
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ReorderableDragStartListener(
+                      index: index,
+                      child: Tooltip(
+                        message: "Mantén presionado para reordenar",
+                        child: Container(
+                          width: 40,
+                          height: 48,
+                          alignment: Alignment.center,
+                          child: const Icon(Icons.reorder, color: Colors.white54, size: 20),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.layers, color: Colors.amber, size: 20),
+                  ],
+                ),
+          title: Text(type, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+          trailing: isDefault
+              ? const SizedBox(width: 48, height: 48)
+              : Padding(
+                  padding: const EdgeInsets.only(left: 6.0),
+                  child: SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: IconButton(
+                      padding: const EdgeInsets.all(12),
+                      constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                      icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                      tooltip: "Eliminar Capa",
+                      onPressed: () => _confirmDeleteLayer(index),
+                    ),
+                  ),
+                ),
           children: [
             if (isDefault)
               const Padding(
