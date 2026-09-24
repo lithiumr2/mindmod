@@ -35,7 +35,27 @@ class _SidebarWidgetState extends ConsumerState<SidebarWidget> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(tr('workspace'), style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13)),
-const Icon(Icons.folder_open, color: Colors.amber, size: 18),
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.settings, color: Colors.white54, size: 18),
+                  color: const Color(0xFF222228),
+                  onSelected: (value) {
+                    if (value == 'import') {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('import_soon'))));
+                    } else if (value == 'data') {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('data_config_soon'))));
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    PopupMenuItem(
+                      value: 'import',
+                      child: Text(tr('import_mod'), style: const TextStyle(color: Colors.white)),
+                    ),
+                    PopupMenuItem(
+                      value: 'data',
+                      child: Text(tr('data_config'), style: const TextStyle(color: Colors.white)),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -73,20 +93,30 @@ const Icon(Icons.folder_open, color: Colors.amber, size: 18),
                   children: [
                     ...files.where((f) => f.isImage).map((file) => ListTile(
                           dense: true,
-                          contentPadding: const EdgeInsets.only(left: 20.0, right: 8.0),
+                          contentPadding: const EdgeInsets.only(left: 16.0, right: 0.0),
                           leading: const Icon(Icons.image, color: Colors.purpleAccent, size: 16),
                           title: Text(file.name.replaceAll('.hjson', ''), style: const TextStyle(color: Colors.white, fontSize: 12)),
                           selected: projectState.activeFileName == file.name,
                           selectedTileColor: const Color(0xFF202026),
                           onTap: () => ref.read(projectProvider.notifier).selectFile(file.name),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.delete_outline, size: 16, color: Colors.redAccent),
-                            onPressed: () => ref.read(projectProvider.notifier).deleteFile(file.name),
+                          trailing: Padding(
+                            padding: const EdgeInsets.only(right: 8.0),
+                            child: SizedBox(
+                              width: 48,
+                              height: 48,
+                              child: IconButton(
+                                padding: const EdgeInsets.all(12),
+                                constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                                icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
+                                tooltip: 'Eliminar sprite',
+                                onPressed: () => ref.read(projectProvider.notifier).deleteFile(file.name),
+                              ),
+                            ),
                           ),
                         )),
                     ListTile(
                       dense: true,
-                      contentPadding: const EdgeInsets.only(left: 20.0, right: 8.0),
+                      contentPadding: const EdgeInsets.only(left: 16.0, right: 8.0),
                       leading: const Icon(Icons.add_circle_outline, color: Colors.amber, size: 16),
                       title: Text(tr('new_sprite'), style: const TextStyle(color: Colors.amber, fontSize: 12)),
                       onTap: () {
@@ -141,20 +171,30 @@ const Icon(Icons.folder_open, color: Colors.amber, size: 18),
       children: [
         ...categoryFiles.map((file) => ListTile(
               dense: true,
-              contentPadding: const EdgeInsets.only(left: 20.0, right: 8.0),
+              contentPadding: const EdgeInsets.only(left: 16.0, right: 0.0),
               leading: const Icon(Icons.insert_drive_file, color: Colors.amber, size: 16),
               title: Text(file.name.replaceAll('.hjson', ''), style: const TextStyle(color: Colors.white, fontSize: 12)),
               selected: projectState.activeFileName == file.name,
               selectedTileColor: const Color(0xFF202026),
               onTap: () => ref.read(projectProvider.notifier).selectFile(file.name),
-              trailing: IconButton(
-                icon: const Icon(Icons.delete_outline, size: 16, color: Colors.redAccent),
-                onPressed: () => ref.read(projectProvider.notifier).deleteFile(file.name),
+              trailing: Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: SizedBox(
+                  width: 48,
+                  height: 48,
+                  child: IconButton(
+                    padding: const EdgeInsets.all(12),
+                    constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                    icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
+                    tooltip: 'Eliminar archivo',
+                    onPressed: () => ref.read(projectProvider.notifier).deleteFile(file.name),
+                  ),
+                ),
               ),
             )),
         ListTile(
           dense: true,
-          contentPadding: const EdgeInsets.only(left: 20.0, right: 8.0),
+          contentPadding: const EdgeInsets.only(left: 16.0, right: 8.0),
           leading: const Icon(Icons.add_circle_outline, color: Colors.amber, size: 16),
           title: Text(tr(folderKey == 'items' ? 'new_item' : folderKey == 'liquids' ? 'new_liquid' : folderKey == 'units' ? 'new_unit' : folderKey == 'status' ? 'new_status' : folderKey == 'scripts' ? 'new_script' : folderKey == 'blocks' ? 'new_block' : 'new_project'), style: const TextStyle(color: Colors.amber, fontSize: 12)),
           onTap: () {
@@ -192,7 +232,7 @@ const Icon(Icons.folder_open, color: Colors.amber, size: 18),
     final tr = ref.read(localeProvider.notifier).tr;
     String defaultName = 'copper-wall';
     String title = tr('new_block');
-    String defaultContent = '{\n  name: "copper-wall"\n  type: "Wall"\n  health: 200\n  size: 1\n}';
+    String defaultContent = '{\n  name: "copper-wall"\n  type: "Wall"\n  health: 200\n  size: 1\n  category: "defense"\n  requirements: [\n    copper/20\n  ]\n}';
 
     if (folder == 'items') {
       defaultName = 'custom-item';
