@@ -111,9 +111,47 @@ class RequirementsBuilder extends ConsumerWidget {
 
   const RequirementsBuilder({super.key, required this.requirements, required this.onUpdate});
 
+  List<Map<String, dynamic>> _getNormalized() {
+    final List<Map<String, dynamic>> list = [];
+    for (final entry in requirements) {
+      if (entry == null) continue;
+      if (entry is Map) {
+        final item = entry['item']?.toString().replaceAll('@', '').trim() ?? 'copper';
+        final amount = int.tryParse(entry['amount']?.toString().trim() ?? '10') ?? 10;
+        if (item.isNotEmpty && item != '{' && item != '}' && !item.contains('{') && !item.contains('}')) {
+          list.add({'item': item, 'amount': amount});
+        }
+      } else if (entry is String) {
+        final str = entry.trim();
+        if (str.isEmpty || str == '{' || str == '}' || str == '""') continue;
+        final clean = str.replaceAll('@', '').trim();
+        final parts = clean.split('/');
+        if (parts.length >= 2) {
+          final item = parts[0].trim();
+          final amount = int.tryParse(parts[1].trim()) ?? 10;
+          if (item.isNotEmpty && item != '{' && item != '}' && !item.contains('{') && !item.contains('}')) {
+            list.add({'item': item, 'amount': amount});
+          }
+        } else if (clean.isNotEmpty && clean != '{' && clean != '}' && !clean.contains(':')) {
+          list.add({'item': clean, 'amount': 10});
+        }
+      }
+    }
+    return list;
+  }
+
+  void _emitChanges(List<Map<String, dynamic>> items) {
+    final formatted = items
+        .where((r) => r['item'] != null && r['item'].toString().trim().isNotEmpty && r['item'] != '{' && r['item'] != '}')
+        .map((r) => "${r['item']}/${r['amount']}")
+        .toList();
+    onUpdate(formatted);
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final availableItems = ref.watch(allAvailableItemsProvider);
+    final normalized = _getNormalized();
 
     return Card(
       shape: RoundedRectangleBorder(side: BorderSide(color: Colors.amber.withOpacity(0.5)), borderRadius: BorderRadius.circular(8)),
@@ -132,16 +170,22 @@ class RequirementsBuilder extends ConsumerWidget {
                   style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(60, 30)),
                   onPressed: () {
                     final defaultItem = availableItems.isNotEmpty ? availableItems.first : 'copper';
-                    final newList = List.from(requirements)..add({'item': defaultItem, 'amount': 10});
-                    onUpdate(newList);
+                    final updated = List<Map<String, dynamic>>.from(normalized)
+                      ..add({'item': defaultItem, 'amount': 10});
+                    _emitChanges(updated);
                   },
                 )
               ],
             ),
             const Divider(),
-            ...requirements.asMap().entries.map((entry) {
+            if (normalized.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 4.0),
+                child: Text('Sin requisitos (Gratuito o Bloque Base)', style: TextStyle(color: Colors.white54, fontSize: 12, fontStyle: FontStyle.italic)),
+              ),
+            ...normalized.asMap().entries.map((entry) {
               final index = entry.key;
-              final req = entry.value is Map ? (entry.value as Map<String, dynamic>) : {'item': 'copper', 'amount': 10};
+              final req = entry.value;
               final currentItem = req['item']?.toString() ?? 'copper';
               final itemOptions = List<String>.from(availableItems);
               if (!itemOptions.contains(currentItem)) {
@@ -159,9 +203,10 @@ class RequirementsBuilder extends ConsumerWidget {
                         decoration: const InputDecoration(isDense: true, border: OutlineInputBorder()),
                         items: itemOptions.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 12)))).toList(),
                         onChanged: (v) {
-                          final newList = List.from(requirements);
-                          newList[index] = {...req, 'item': v};
-                          onUpdate(newList);
+                          if (v == null) return;
+                          final updated = List<Map<String, dynamic>>.from(normalized);
+                          updated[index] = {...req, 'item': v};
+                          _emitChanges(updated);
                         },
                       ),
                     ),
@@ -175,23 +220,28 @@ class RequirementsBuilder extends ConsumerWidget {
                         style: const TextStyle(fontSize: 12),
                         onChanged: (v) {
                           final parsed = int.tryParse(v);
-                          if (parsed != null) {
-                            final newList = List.from(requirements);
-                            newList[index] = {...req, 'amount': parsed};
-                            onUpdate(newList);
+                          if (parsed != null && parsed >= 0) {
+                            final updated = List<Map<String, dynamic>>.from(normalized);
+                            updated[index] = {...req, 'amount': parsed};
+                            _emitChanges(updated);
                           }
                         },
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Colors.red, size: 18),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                      onPressed: () {
-                        final newList = List.from(requirements)..removeAt(index);
-                        onUpdate(newList);
-                      },
-                    )
+                    SizedBox(
+                      width: 48,
+                      height: 48,
+                      child: IconButton(
+                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                        padding: const EdgeInsets.all(12),
+                        constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                        tooltip: 'Eliminar requerimiento',
+                        onPressed: () {
+                          final updated = List<Map<String, dynamic>>.from(normalized)..removeAt(index);
+                          _emitChanges(updated);
+                        },
+                      ),
+                    ),
                   ],
                 ),
               );
