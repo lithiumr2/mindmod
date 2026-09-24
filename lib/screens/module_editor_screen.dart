@@ -171,20 +171,6 @@ class _ModuleEditorScreenState extends ConsumerState<ModuleEditorScreen> with Si
           widget.module != null ? 'Editar: ${widget.module!.name}' : 'Crear Nuevo Módulo',
           style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
         ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF238636),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              ),
-              icon: const Icon(Icons.check, size: 16, color: Colors.white),
-              label: const Text('Guardar Módulo', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-              onPressed: _saveModule,
-            ),
-          ),
-        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: const Color(0xFF58A6FF),
@@ -197,6 +183,48 @@ class _ModuleEditorScreenState extends ConsumerState<ModuleEditorScreen> with Si
             Tab(icon: Icon(Icons.category_outlined, size: 16), text: 'Tipos'),
             Tab(icon: Icon(Icons.tune_outlined, size: 16), text: 'Propiedades'),
             Tab(icon: Icon(Icons.add_link_outlined, size: 16), text: 'Inyecciones'),
+          ],
+        ),
+      ),
+      bottomNavigationBar: BottomAppBar(
+        color: const Color(0xFF161B22),
+        elevation: 8,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Flexible(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.extension_outlined, size: 16, color: Color(0xFF58A6FF)),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      _nameController.text.trim().isNotEmpty ? _nameController.text.trim() : 'Módulo Mindustry',
+                      style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF238636),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                elevation: 3,
+              ),
+              icon: const Icon(Icons.check, size: 18, color: Colors.white),
+              label: const Text(
+                'Guardar Módulo',
+                style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+              ),
+              onPressed: _saveModule,
+            ),
           ],
         ),
       ),
@@ -296,12 +324,18 @@ class _ModuleEditorScreenState extends ConsumerState<ModuleEditorScreen> with Si
   Widget _buildTypesTab() {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: const Color(0xFF238636),
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('Añadir Tipo', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        onPressed: _showAddEditTypeDialog,
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 8, right: 12),
+        child: FloatingActionButton.extended(
+          heroTag: 'fab_add_type',
+          backgroundColor: const Color(0xFF1F6FEB),
+          elevation: 4,
+          icon: const Icon(Icons.add, color: Colors.white),
+          label: const Text('Añadir Tipo', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          onPressed: _showAddEditTypeDialog,
+        ),
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       body: _customTypes.isEmpty
           ? Center(
               child: Column(
@@ -351,14 +385,15 @@ class _ModuleEditorScreenState extends ConsumerState<ModuleEditorScreen> with Si
                         Text(ct.displayName, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF21262D),
+                            color: Colors.cyanAccent.withOpacity(0.18),
                             borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: Colors.cyanAccent.withOpacity(0.4), width: 1),
                           ),
                           child: Text(
                             ct.category.name.toUpperCase(),
-                            style: const TextStyle(color: Colors.white54, fontSize: 9, fontWeight: FontWeight.bold),
+                            style: const TextStyle(color: Colors.cyanAccent, fontSize: 10, fontWeight: FontWeight.w600),
                           ),
                         ),
                       ],
@@ -383,17 +418,23 @@ class _ModuleEditorScreenState extends ConsumerState<ModuleEditorScreen> with Si
                           tooltip: 'Editar Tipo',
                           onPressed: () => _showAddEditTypeDialog(existingIndex: idx),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 18),
-                          tooltip: 'Eliminar Tipo',
-                          onPressed: () {
-                            setState(() {
-                              _customTypes.removeAt(idx);
-                              if (_selectedTypeIndex >= _customTypes.length) {
-                                _selectedTypeIndex = _customTypes.isEmpty ? 0 : _customTypes.length - 1;
-                              }
-                            });
-                          },
+                        SizedBox(
+                          width: 48,
+                          height: 48,
+                          child: IconButton(
+                            padding: const EdgeInsets.all(12),
+                            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                            icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                            tooltip: 'Eliminar Tipo',
+                            onPressed: () {
+                              setState(() {
+                                _customTypes.removeAt(idx);
+                                if (_selectedTypeIndex >= _customTypes.length) {
+                                  _selectedTypeIndex = _customTypes.isEmpty ? 0 : _customTypes.length - 1;
+                                }
+                              });
+                            },
+                          ),
                         ),
                       ],
                     ),
@@ -533,37 +574,59 @@ class _ModuleEditorScreenState extends ConsumerState<ModuleEditorScreen> with Si
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: const Color(0xFF238636),
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('Nueva Propiedad', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        onPressed: () => _showAddEditPropertyDialog(activeTypeIndex: _selectedTypeIndex),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 8, right: 12),
+        child: FloatingActionButton.extended(
+          heroTag: 'fab_new_prop',
+          backgroundColor: const Color(0xFF1F6FEB),
+          elevation: 4,
+          icon: const Icon(Icons.add, color: Colors.white),
+          label: const Text('Nueva Propiedad', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          onPressed: () => _showAddEditPropertyDialog(activeTypeIndex: _selectedTypeIndex),
+        ),
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       body: Column(
         children: [
-          // Selector de tipo activo
+          // Selector de tipo activo con protección anti-desbordamiento
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             color: const Color(0xFF161B22),
             child: Row(
               children: [
-                const Text('Tipo activo:', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)),
-                const SizedBox(width: 10),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(minWidth: 80, maxWidth: 110),
+                  child: const Text(
+                    'Tipo activo:',
+                    style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
                 Expanded(
-                  child: DropdownButton<int>(
-                    value: _selectedTypeIndex,
-                    dropdownColor: const Color(0xFF21262D),
-                    isExpanded: true,
-                    style: const TextStyle(color: Color(0xFF58A6FF), fontSize: 13, fontWeight: FontWeight.bold),
-                    items: List.generate(_customTypes.length, (i) {
-                      return DropdownMenuItem(
-                        value: i,
-                        child: Text('${_customTypes[i].displayName} (${_customTypes[i].typeId})'),
-                      );
-                    }),
-                    onChanged: (val) {
-                      if (val != null) setState(() => _selectedTypeIndex = val);
-                    },
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 450),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<int>(
+                        value: _selectedTypeIndex,
+                        dropdownColor: const Color(0xFF21262D),
+                        isExpanded: true,
+                        style: const TextStyle(color: Color(0xFF58A6FF), fontSize: 13, fontWeight: FontWeight.bold),
+                        items: List.generate(_customTypes.length, (i) {
+                          return DropdownMenuItem(
+                            value: i,
+                            child: Text(
+                              '${_customTypes[i].displayName} (${_customTypes[i].typeId})',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          );
+                        }),
+                        onChanged: (val) {
+                          if (val != null) setState(() => _selectedTypeIndex = val);
+                        },
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -591,74 +654,141 @@ class _ModuleEditorScreenState extends ConsumerState<ModuleEditorScreen> with Si
                       ],
                     ),
                   )
-                : ListView.builder(
+                : ReorderableListView.builder(
                     padding: const EdgeInsets.all(16),
                     itemCount: activeType.properties.length,
+                    onReorder: (oldIdx, newIdx) {
+                      setState(() {
+                        if (newIdx > oldIdx) newIdx -= 1;
+                        final currentProps = List<PropertyDefinition>.from(activeType.properties);
+                        final item = currentProps.removeAt(oldIdx);
+                        currentProps.insert(newIdx, item);
+                        _customTypes[_selectedTypeIndex] = activeType.copyWith(properties: currentProps);
+                      });
+                    },
                     itemBuilder: (context, propIdx) {
                       final prop = activeType.properties[propIdx];
                       return Container(
+                        key: ValueKey('prop_${prop.key}_$propIdx'),
                         margin: const EdgeInsets.only(bottom: 8),
                         decoration: BoxDecoration(
                           color: const Color(0xFF161B22),
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: Colors.white12),
                         ),
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                          title: Row(
-                            children: [
-                              Text(prop.label, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-                              const SizedBox(width: 6),
-                              Text('(${prop.key})', style: const TextStyle(color: Colors.white38, fontSize: 11, fontFamily: 'monospace')),
-                              if (prop.isRequired) ...[
-                                const SizedBox(width: 4),
-                                const Text('*', style: TextStyle(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.bold)),
-                              ],
-                            ],
-                          ),
-                          subtitle: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF21262D),
-                                  borderRadius: BorderRadius.circular(3),
-                                ),
-                                child: Text(
-                                  prop.type.name,
-                                  style: const TextStyle(color: Color(0xFF58A6FF), fontSize: 10, fontFamily: 'monospace'),
-                                ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(8),
+                            onTap: () => _showAddEditPropertyDialog(
+                              activeTypeIndex: _selectedTypeIndex,
+                              existingPropIndex: propIdx,
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              child: Row(
+                                children: [
+                                  // Manija de arrastre segura a la izquierda
+                                  ReorderableDragStartListener(
+                                    index: propIdx,
+                                    child: Tooltip(
+                                      message: "Reordenar propiedad",
+                                      child: Container(
+                                        width: 36,
+                                        height: 48,
+                                        alignment: Alignment.center,
+                                        child: const Icon(Icons.reorder, color: Colors.white54, size: 20),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  // Contenido principal de la propiedad
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Flexible(
+                                              child: Text(
+                                                prop.label,
+                                                style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Text('(${prop.key})', style: const TextStyle(color: Colors.white38, fontSize: 11, fontFamily: 'monospace')),
+                                            if (prop.isRequired) ...[
+                                              const SizedBox(width: 4),
+                                              const Text('*', style: TextStyle(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.bold)),
+                                            ],
+                                          ],
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: Colors.cyanAccent.withOpacity(0.18),
+                                                borderRadius: BorderRadius.circular(4),
+                                                border: Border.all(color: Colors.cyanAccent.withOpacity(0.4), width: 1),
+                                              ),
+                                              child: Text(
+                                                prop.type.name,
+                                                style: const TextStyle(color: Colors.cyanAccent, fontSize: 10, fontWeight: FontWeight.w600, fontFamily: 'monospace'),
+                                              ),
+                                            ),
+                                            if (prop.defaultValue != null) ...[
+                                              const SizedBox(width: 8),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.lightGreenAccent.withOpacity(0.18),
+                                                  borderRadius: BorderRadius.circular(4),
+                                                  border: Border.all(color: Colors.lightGreenAccent.withOpacity(0.4), width: 1),
+                                                ),
+                                                child: Text(
+                                                  'default: ${prop.defaultValue}',
+                                                  style: const TextStyle(color: Colors.lightGreenAccent, fontSize: 10, fontWeight: FontWeight.w600),
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  // Acciones aisladas a la derecha
+                                  IconButton(
+                                    icon: const Icon(Icons.edit_outlined, size: 18, color: Colors.white70),
+                                    tooltip: 'Editar Propiedad',
+                                    onPressed: () => _showAddEditPropertyDialog(
+                                      activeTypeIndex: _selectedTypeIndex,
+                                      existingPropIndex: propIdx,
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    width: 48,
+                                    height: 48,
+                                    child: IconButton(
+                                      padding: const EdgeInsets.all(12),
+                                      constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                                      icon: const Icon(Icons.delete_outline, size: 20, color: Colors.redAccent),
+                                      tooltip: 'Eliminar Propiedad',
+                                      onPressed: () {
+                                        setState(() {
+                                          final currentProps = List<PropertyDefinition>.from(activeType.properties);
+                                          currentProps.removeAt(propIdx);
+                                          _customTypes[_selectedTypeIndex] = activeType.copyWith(properties: currentProps);
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                ],
                               ),
-                              if (prop.defaultValue != null) ...[
-                                const SizedBox(width: 8),
-                                Text(
-                                  'default: ${prop.defaultValue}',
-                                  style: const TextStyle(color: Colors.white30, fontSize: 10),
-                                ),
-                              ],
-                            ],
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.edit_outlined, size: 16, color: Colors.white70),
-                                onPressed: () => _showAddEditPropertyDialog(
-                                  activeTypeIndex: _selectedTypeIndex,
-                                  existingPropIndex: propIdx,
-                                ),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline, size: 16, color: Colors.redAccent),
-                                onPressed: () {
-                                  setState(() {
-                                    final currentProps = List<PropertyDefinition>.from(activeType.properties);
-                                    currentProps.removeAt(propIdx);
-                                    _customTypes[_selectedTypeIndex] = activeType.copyWith(properties: currentProps);
-                                  });
-                                },
-                              ),
-                            ],
+                            ),
                           ),
                         ),
                       );
@@ -911,6 +1041,7 @@ class _ModuleEditorScreenState extends ConsumerState<ModuleEditorScreen> with Si
     required ValueChanged<String> onAdd,
     required ValueChanged<int> onRemove,
   }) {
+    final outlineVariant = Theme.of(context).colorScheme.outlineVariant;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -940,11 +1071,22 @@ class _ModuleEditorScreenState extends ConsumerState<ModuleEditorScreen> with Si
                   decoration: InputDecoration(
                     isDense: true,
                     hintText: 'Nuevo identificador...',
-                    hintStyle: const TextStyle(color: Colors.white24, fontSize: 11),
+                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.72), fontSize: 11),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     filled: true,
                     fillColor: const Color(0xFF21262D),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(6),
+                      borderSide: BorderSide(color: outlineVariant, width: 1.0),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(6),
+                      borderSide: BorderSide(color: outlineVariant.withOpacity(0.5), width: 1.0),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(6),
+                      borderSide: BorderSide(color: color, width: 1.5),
+                    ),
                   ),
                   onFieldSubmitted: (v) {
                     final t = v.trim();
@@ -1011,6 +1153,7 @@ class _ModuleEditorScreenState extends ConsumerState<ModuleEditorScreen> with Si
     bool enabled = true,
     int maxLines = 1,
   }) {
+    final outlineVariant = Theme.of(context).colorScheme.outlineVariant;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1024,28 +1167,51 @@ class _ModuleEditorScreenState extends ConsumerState<ModuleEditorScreen> with Si
           decoration: InputDecoration(
             isDense: true,
             hintText: hint,
-            hintStyle: const TextStyle(color: Colors.white24, fontSize: 11),
+            hintStyle: TextStyle(color: Colors.white.withOpacity(0.72), fontSize: 11),
             helperText: helper,
-            helperStyle: const TextStyle(color: Colors.white30, fontSize: 10),
+            helperStyle: const TextStyle(color: Colors.white54, fontSize: 10),
             contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             filled: true,
             fillColor: enabled ? const Color(0xFF161B22) : const Color(0xFF0F1318),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Colors.white12)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Colors.white12)),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFF58A6FF))),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(6),
+              borderSide: BorderSide(color: outlineVariant, width: 1.0),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(6),
+              borderSide: BorderSide(color: outlineVariant.withOpacity(0.5), width: 1.0),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(6),
+              borderSide: const BorderSide(color: Color(0xFF58A6FF), width: 1.5),
+            ),
           ),
         ),
       ],
     );
   }
 
-  InputDecoration _dialogInputDecoration() {
+  InputDecoration _dialogInputDecoration({String? hint}) {
+    final outlineVariant = Theme.of(context).colorScheme.outlineVariant;
     return InputDecoration(
       isDense: true,
+      hintText: hint,
+      hintStyle: TextStyle(color: Colors.white.withOpacity(0.72), fontSize: 12),
       contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       filled: true,
       fillColor: const Color(0xFF21262D),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Colors.white10)),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(6),
+        borderSide: BorderSide(color: outlineVariant, width: 1.0),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(6),
+        borderSide: BorderSide(color: outlineVariant.withOpacity(0.5), width: 1.0),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(6),
+        borderSide: const BorderSide(color: Color(0xFF58A6FF), width: 1.5),
+      ),
     );
   }
 }
