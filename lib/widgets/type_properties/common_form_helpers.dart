@@ -9,6 +9,7 @@ class TypeCardContainer extends StatelessWidget {
   final Color accentColor;
   final Widget child;
   final List<Widget>? actions;
+  final VoidCallback? onHeaderTap;
 
   const TypeCardContainer({
     super.key,
@@ -18,6 +19,7 @@ class TypeCardContainer extends StatelessWidget {
     this.accentColor = Colors.amber,
     required this.child,
     this.actions,
+    this.onHeaderTap,
   });
 
   @override
@@ -28,40 +30,62 @@ class TypeCardContainer extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: accentColor.withOpacity(0.3), width: 1.2),
       ),
-      padding: const EdgeInsets.all(14),
       margin: const EdgeInsets.only(top: 10, bottom: 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Icon(icon, size: 18, color: accentColor),
-                  const SizedBox(width: 8),
-                  Text(
-                    title,
-                    style: TextStyle(
-                      color: accentColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+              onTap: onHeaderTap,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Icon(icon, size: 18, color: accentColor),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              title,
+                              style: TextStyle(
+                                color: accentColor,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                    if (actions != null)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: actions!,
+                      ),
+                  ],
+                ),
               ),
-              if (actions != null) Row(mainAxisSize: MainAxisSize.min, children: actions!),
-            ],
+            ),
           ),
           if (subtitle != null) ...[
-            const SizedBox(height: 3),
-            Text(
-              subtitle!,
-              style: const TextStyle(color: Colors.white54, fontSize: 11),
+            Padding(
+              padding: const EdgeInsets.only(left: 14, right: 14, bottom: 6),
+              child: Text(
+                subtitle!,
+                style: const TextStyle(color: Colors.white54, fontSize: 11),
+              ),
             ),
           ],
-          const SizedBox(height: 12),
-          child,
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: child,
+          ),
         ],
       ),
     );
@@ -116,6 +140,7 @@ class _MindustryFloatFieldState extends State<MindustryFloatField> {
 
   @override
   Widget build(BuildContext context) {
+    final outlineVariant = Theme.of(context).colorScheme.outlineVariant;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Column(
@@ -131,36 +156,42 @@ class _MindustryFloatFieldState extends State<MindustryFloatField> {
             ],
           ),
           const SizedBox(height: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFF141418),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: Colors.white24),
-            ),
-            child: TextFormField(
-              controller: _controller,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^-?[0-9]*\.?[0-9]*')),
-              ],
-              style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace'),
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                isDense: true,
-                hintText: widget.hint ?? "0.0",
-                hintStyle: const TextStyle(color: Colors.white24, fontSize: 12),
+          TextFormField(
+            controller: _controller,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'^-?[0-9]*\.?[0-9]*')),
+            ],
+            style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace'),
+            decoration: InputDecoration(
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              filled: true,
+              fillColor: const Color(0xFF141418),
+              hintText: widget.hint ?? "0.0",
+              hintStyle: TextStyle(color: Colors.white.withOpacity(0.72), fontSize: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+                borderSide: BorderSide(color: outlineVariant, width: 1.0),
               ),
-              onChanged: (val) {
-                final trimmed = val.trim();
-                if (trimmed.isEmpty) {
-                  widget.onChanged(null);
-                } else {
-                  final parsed = double.tryParse(trimmed);
-                  widget.onChanged(parsed);
-                }
-              },
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+                borderSide: BorderSide(color: outlineVariant.withOpacity(0.5), width: 1.0),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+                borderSide: const BorderSide(color: Color(0xFF58A6FF), width: 1.5),
+              ),
             ),
+            onChanged: (val) {
+              final trimmed = val.trim();
+              if (trimmed.isEmpty) {
+                widget.onChanged(null);
+              } else {
+                final parsed = double.tryParse(trimmed);
+                widget.onChanged(parsed);
+              }
+            },
           ),
         ],
       ),
@@ -216,6 +247,7 @@ class _MindustryIntFieldState extends State<MindustryIntField> {
 
   @override
   Widget build(BuildContext context) {
+    final outlineVariant = Theme.of(context).colorScheme.outlineVariant;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Column(
@@ -231,34 +263,40 @@ class _MindustryIntFieldState extends State<MindustryIntField> {
             ],
           ),
           const SizedBox(height: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFF141418),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: Colors.white24),
-            ),
-            child: TextFormField(
-              controller: _controller,
-              keyboardType: const TextInputType.numberWithOptions(decimal: false),
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace'),
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                isDense: true,
-                hintText: widget.hint ?? "0",
-                hintStyle: const TextStyle(color: Colors.white24, fontSize: 12),
+          TextFormField(
+            controller: _controller,
+            keyboardType: const TextInputType.numberWithOptions(decimal: false),
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace'),
+            decoration: InputDecoration(
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              filled: true,
+              fillColor: const Color(0xFF141418),
+              hintText: widget.hint ?? "0",
+              hintStyle: TextStyle(color: Colors.white.withOpacity(0.72), fontSize: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+                borderSide: BorderSide(color: outlineVariant, width: 1.0),
               ),
-              onChanged: (val) {
-                final trimmed = val.trim();
-                if (trimmed.isEmpty) {
-                  widget.onChanged(null);
-                } else {
-                  final parsed = int.tryParse(trimmed);
-                  widget.onChanged(parsed);
-                }
-              },
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+                borderSide: BorderSide(color: outlineVariant.withOpacity(0.5), width: 1.0),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+                borderSide: const BorderSide(color: Color(0xFF58A6FF), width: 1.5),
+              ),
             ),
+            onChanged: (val) {
+              final trimmed = val.trim();
+              if (trimmed.isEmpty) {
+                widget.onChanged(null);
+              } else {
+                final parsed = int.tryParse(trimmed);
+                widget.onChanged(parsed);
+              }
+            },
           ),
         ],
       ),
@@ -309,6 +347,7 @@ class _MindustryStringFieldState extends State<MindustryStringField> {
 
   @override
   Widget build(BuildContext context) {
+    final outlineVariant = Theme.of(context).colorScheme.outlineVariant;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Column(
@@ -316,24 +355,30 @@ class _MindustryStringFieldState extends State<MindustryStringField> {
         children: [
           Text(widget.label, style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600)),
           const SizedBox(height: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFF141418),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: Colors.white24),
-            ),
-            child: TextFormField(
-              controller: _controller,
-              style: const TextStyle(color: Colors.white, fontSize: 12),
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                isDense: true,
-                hintText: widget.hint ?? widget.label,
-                hintStyle: const TextStyle(color: Colors.white24, fontSize: 12),
+          TextFormField(
+            controller: _controller,
+            style: const TextStyle(color: Colors.white, fontSize: 12),
+            decoration: InputDecoration(
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              filled: true,
+              fillColor: const Color(0xFF141418),
+              hintText: widget.hint ?? widget.label,
+              hintStyle: TextStyle(color: Colors.white.withOpacity(0.72), fontSize: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+                borderSide: BorderSide(color: outlineVariant, width: 1.0),
               ),
-              onChanged: widget.onChanged,
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+                borderSide: BorderSide(color: outlineVariant.withOpacity(0.5), width: 1.0),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+                borderSide: const BorderSide(color: Color(0xFF58A6FF), width: 1.5),
+              ),
             ),
+            onChanged: widget.onChanged,
           ),
         ],
       ),
@@ -439,6 +484,7 @@ class _MindustryHexColorFieldState extends State<MindustryHexColorField> {
   @override
   Widget build(BuildContext context) {
     final currentColor = _parseColor(widget.value);
+    final outlineVariant = Theme.of(context).colorScheme.outlineVariant;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -461,30 +507,36 @@ class _MindustryHexColorFieldState extends State<MindustryHexColorField> {
             ],
           ),
           const SizedBox(height: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFF141418),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: Colors.white24),
-            ),
-            child: TextFormField(
-              controller: _controller,
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[0-9a-fA-F#]')),
-                LengthLimitingTextInputFormatter(9),
-              ],
-              style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace'),
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                isDense: true,
-                hintText: "RRGGBBAA (ej: ffd37fff)",
-                hintStyle: TextStyle(color: Colors.white24, fontSize: 12),
+          TextFormField(
+            controller: _controller,
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9a-fA-F#]')),
+              LengthLimitingTextInputFormatter(9),
+            ],
+            style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace'),
+            decoration: InputDecoration(
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              filled: true,
+              fillColor: const Color(0xFF141418),
+              hintText: "RRGGBBAA (ej: ffd37fff)",
+              hintStyle: TextStyle(color: Colors.white.withOpacity(0.72), fontSize: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+                borderSide: BorderSide(color: outlineVariant, width: 1.0),
               ),
-              onChanged: (val) {
-                widget.onChanged(val.trim());
-              },
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+                borderSide: BorderSide(color: outlineVariant.withOpacity(0.5), width: 1.0),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+                borderSide: const BorderSide(color: Color(0xFF58A6FF), width: 1.5),
+              ),
             ),
+            onChanged: (val) {
+              widget.onChanged(val.trim());
+            },
           ),
         ],
       ),
@@ -512,6 +564,7 @@ class MindustryDropdownField extends StatelessWidget {
   Widget build(BuildContext context) {
     final cleanValue = value?.replaceAll('@', '').trim();
     final isValid = cleanValue != null && items.contains(cleanValue);
+    final outlineVariant = Theme.of(context).colorScheme.outlineVariant;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -521,18 +574,18 @@ class MindustryDropdownField extends StatelessWidget {
           Text(label, style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600)),
           const SizedBox(height: 4),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
             decoration: BoxDecoration(
               color: const Color(0xFF141418),
               borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: Colors.white24),
+              border: Border.all(color: outlineVariant.withOpacity(0.6), width: 1.0),
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
                 value: isValid ? cleanValue : null,
                 hint: Text(
                   cleanValue?.isNotEmpty == true ? cleanValue! : (hint ?? "Seleccionar..."),
-                  style: TextStyle(color: isValid ? Colors.white : Colors.white54, fontSize: 12),
+                  style: TextStyle(color: isValid ? Colors.white : Colors.white.withOpacity(0.72), fontSize: 12),
                 ),
                 dropdownColor: const Color(0xFF222228),
                 isExpanded: true,
@@ -816,32 +869,51 @@ class ConsumesSubmodule extends StatelessWidget {
                     const SizedBox(width: 6),
                     Expanded(
                       flex: 2,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF141418),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: Colors.white24),
+                      child: TextFormField(
+                        initialValue: amt,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace'),
+                        decoration: InputDecoration(
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                          filled: true,
+                          fillColor: const Color(0xFF141418),
+                          hintText: "Cant.",
+                          hintStyle: TextStyle(color: Colors.white.withOpacity(0.72), fontSize: 11),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(6),
+                            borderSide: BorderSide(color: Theme.of(context).colorScheme.outlineVariant, width: 1.0),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(6),
+                            borderSide: BorderSide(color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.5), width: 1.0),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(6),
+                            borderSide: const BorderSide(color: Color(0xFF58A6FF), width: 1.5),
+                          ),
                         ),
-                        child: TextFormField(
-                          initialValue: amt,
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                          style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace'),
-                          decoration: const InputDecoration(border: InputBorder.none, isDense: true, hintText: "Cant."),
-                          onChanged: (val) {
-                            itemsList[idx]['amount'] = int.tryParse(val) ?? 1;
-                            saveConsumes(power, itemsList, liquidsList);
-                          },
-                        ),
+                        onChanged: (val) {
+                          itemsList[idx]['amount'] = int.tryParse(val) ?? 1;
+                          saveConsumes(power, itemsList, liquidsList);
+                        },
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Colors.redAccent, size: 16),
-                      onPressed: () {
-                        itemsList.removeAt(idx);
-                        saveConsumes(power, itemsList, liquidsList);
-                      },
+                    const SizedBox(width: 4),
+                    SizedBox(
+                      width: 48,
+                      height: 48,
+                      child: IconButton(
+                        padding: const EdgeInsets.all(12),
+                        constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                        tooltip: "Eliminar Ítem",
+                        onPressed: () {
+                          itemsList.removeAt(idx);
+                          saveConsumes(power, itemsList, liquidsList);
+                        },
+                      ),
                     ),
                   ],
                 ),
@@ -884,12 +956,12 @@ class ConsumesSubmodule extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: const Color(0xFF141418),
                           borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: Colors.white24),
+                          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.5), width: 1.0),
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String>(
                             value: availableLiquids.contains(liq) ? liq : null,
-                            hint: Text(liq, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                            hint: Text(liq, style: TextStyle(color: Colors.white.withOpacity(0.72), fontSize: 12)),
                             dropdownColor: const Color(0xFF222228),
                             isExpanded: true,
                             style: const TextStyle(color: Colors.white, fontSize: 12),
@@ -907,31 +979,50 @@ class ConsumesSubmodule extends StatelessWidget {
                     const SizedBox(width: 6),
                     Expanded(
                       flex: 2,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF141418),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: Colors.white24),
+                      child: TextFormField(
+                        initialValue: amt,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace'),
+                        decoration: InputDecoration(
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                          filled: true,
+                          fillColor: const Color(0xFF141418),
+                          hintText: "Líq/seg",
+                          hintStyle: TextStyle(color: Colors.white.withOpacity(0.72), fontSize: 11),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(6),
+                            borderSide: BorderSide(color: Theme.of(context).colorScheme.outlineVariant, width: 1.0),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(6),
+                            borderSide: BorderSide(color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.5), width: 1.0),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(6),
+                            borderSide: const BorderSide(color: Color(0xFF58A6FF), width: 1.5),
+                          ),
                         ),
-                        child: TextFormField(
-                          initialValue: amt,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace'),
-                          decoration: const InputDecoration(border: InputBorder.none, isDense: true, hintText: "Líq/seg"),
-                          onChanged: (val) {
-                            liquidsList[idx]['amount'] = double.tryParse(val) ?? 0.2;
-                            saveConsumes(power, itemsList, liquidsList);
-                          },
-                        ),
+                        onChanged: (val) {
+                          liquidsList[idx]['amount'] = double.tryParse(val) ?? 0.2;
+                          saveConsumes(power, itemsList, liquidsList);
+                        },
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Colors.redAccent, size: 16),
-                      onPressed: () {
-                        liquidsList.removeAt(idx);
-                        saveConsumes(power, itemsList, liquidsList);
-                      },
+                    const SizedBox(width: 4),
+                    SizedBox(
+                      width: 48,
+                      height: 48,
+                      child: IconButton(
+                        padding: const EdgeInsets.all(12),
+                        constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                        tooltip: "Eliminar Líquido",
+                        onPressed: () {
+                          liquidsList.removeAt(idx);
+                          saveConsumes(power, itemsList, liquidsList);
+                        },
+                      ),
                     ),
                   ],
                 ),
